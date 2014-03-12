@@ -1,4 +1,9 @@
-imprint
+Imprint
 =======
 
-Interactive light art installation
+An interactive light art installation.
+
+2014, Micah Elizabeth Scott
+
+**WORK IN PROGRESS**
+
