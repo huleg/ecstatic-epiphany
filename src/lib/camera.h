@@ -31,8 +31,18 @@ namespace Camera {
         unsigned byteOffset;
         unsigned line;
         unsigned field;
+
+        // Where would this chunk start in a linear framebuffer?
+        inline unsigned framebufferOffset() const {
+            return byteOffset + kBytesPerLine * (field + kFields * line);
+        }
     };
 
+    /*
+     * Process part of a video line. The line and field are indicated,
+     * and 'byteCount' bytes of UYVU-formatted pixel data are included
+     * starting at position 'byteOffset' within that line.
+     */
     typedef void (*videoCallback_t)(const VideoChunk &video, void *context);
 
     // Start the camera on a new thread

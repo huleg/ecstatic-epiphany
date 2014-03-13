@@ -3,12 +3,17 @@
 #include "lib/effect_mixer.h"
 #include "lib/particle.h"
 #include "lib/camera.h"
+#include "lib/camera_framegrab.h"
 
 
 class MyEffect : public ParticleEffect
 {
 public:
+    CameraFramegrab grab;
+    unsigned counter;
+
     MyEffect()
+        : counter(0)
     {
         appearance.resize(Camera::kPixelsPerLine * Camera::kLinesPerField);
 
@@ -26,11 +31,24 @@ public:
                 p.intensity = 0.0f;
             }
         }
+
+        startGrab();
+    }
+
+    void startGrab()
+    {
+        char buffer[128];
+        snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", ++counter);
+        grab.begin(buffer);
     }
 
     static void videoCallback(const Camera::VideoChunk &video, void *context)
     {
         MyEffect *self = static_cast<MyEffect*>(context);
+
+        if (!self->grab.process(video)) {
+            self->startGrab();
+        }
 
         Camera::VideoChunk iter = video;
         while (iter.byteCount) {
