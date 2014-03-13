@@ -1,89 +1,52 @@
+// XXX hacky test code
+
+
 #include "lib/effect.h"
 #include "lib/effect_runner.h"
 #include "lib/effect_mixer.h"
 #include "lib/particle.h"
-#include "lib/brightness.h"
 #include "lib/camera.h"
 #include "lib/camera_framegrab.h"
 #include "lib/camera_sampler.h"
 
+#include "visualmemory.h"
+#include "rings.h"
 
-class MyEffect : public ParticleEffect
+
+static CameraPeriodicFramegrab periodicGrab;
+static VisualMemory vismem;
+
+
+static void videoCallback(const Camera::VideoChunk &video, void *)
 {
-public:
-
-    static const float grabInterval = 2.0;
-
-    CameraFramegrab grab;
-    unsigned counter;
-    float grabTimer;
-
-    MyEffect()
-        : counter(0), grabTimer(0)
-    {
-        appearance.resize(CameraSampler::kSamples);
-
-        for (unsigned sample = 0; sample < CameraSampler::kSamples; sample++) {
-            ParticleAppearance &p = appearance[sample];
-
-            float x = CameraSampler::sampleX(sample) / float(Camera::kPixelsPerLine);
-            float y = CameraSampler::sampleY(sample) / float(Camera::kLinesPerFrame);
-
-            p.point = Vec3( -8.0f * (x - 0.5f), 0, -6.0f * (y - 0.5f) );
-            p.color = Vec3(1, 1, 1);
-            p.radius = 20.0f / float(Camera::kLinesPerField);
-            p.intensity = 0.0f;
-        }
-    }
-
-    virtual void beginFrame(const FrameInfo& f)
-    {
-        grabTimer += f.timeDelta;
-        if (grabTimer > grabInterval) {
-            grabTimer = 0;
-            counter++;
-            
-            char buffer[128];
-            snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", counter);
-            grab.begin(buffer);
-        }
-
-        ParticleEffect::beginFrame(f);
-    }
-
-    static void videoCallback(const Camera::VideoChunk &video, void *context)
-    {
-        MyEffect *self = static_cast<MyEffect*>(context);
-
-        if (self->grab.isGrabbing()) {
-            self->grab.process(video);
-        }
-
-        CameraSampler sampler(video);
-        unsigned index;
-        uint8_t luma;
-
-        while (sampler.next(index, luma)) {
-            ParticleAppearance &p = self->appearance[index];
-            p.intensity = sq(luma / 255.0f);
-        }
-    }
-};
+    periodicGrab.process(video);
+    vismem.process(video);
+}
 
 
 int main(int argc, char **argv)
 {
-    MyEffect effect;
+    Camera::start(videoCallback);
 
-    Camera::start(MyEffect::videoCallback, &effect);
+    RingsEffect rings("data/glass.png");
 
     EffectMixer mixer;
-    mixer.add(&effect);
-
-    Brightness br(mixer);
+    mixer.add(&rings);
 
     EffectRunner r;
-    r.setEffect(&br);
+    r.setEffect(&mixer);
     r.setLayout("layouts/window6x12.json");
-    return r.main(argc, argv);
+    if (!r.parseArguments(argc, argv)) {
+        return 1;
+    }
+
+    // Init visual memory, now that the layout is known
+    vismem.init(&r);
+
+    while (true) {
+        float dt = r.doFrame();
+        periodicGrab.timeStep(dt);
+    }
+
+    return 0;
 }

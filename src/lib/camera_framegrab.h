@@ -71,6 +71,22 @@ private:
 };
 
 
+class CameraPeriodicFramegrab {
+public:
+    CameraPeriodicFramegrab(const char *name = "frame", float interval = 1.0f, int firstIndex = 1);
+
+    CameraFramegrab grab;
+
+    void timeStep(float ts);
+    void process(const Camera::VideoChunk &chunk);
+
+private:
+    float timer, interval;
+    int index;
+    const char *name;
+};
+
+
 /*****************************************************************************************
  *                                   Implementation
  *****************************************************************************************/
@@ -184,4 +200,29 @@ inline void CameraFramegrab::finishGrab()
 
     // Done
     cancel();
+}
+
+inline CameraPeriodicFramegrab::CameraPeriodicFramegrab(const char *name, float interval, int firstIndex)
+    : timer(interval), interval(interval), index(firstIndex), name(name)
+{}
+
+void CameraPeriodicFramegrab::timeStep(float ts)
+{
+    timer += ts;
+    if (timer > interval) {
+
+        char buffer[1024];
+        snprintf(buffer, sizeof buffer, "%s-%04d.jpeg", name, index);
+        grab.begin(buffer);
+
+        timer = fmodf(timer, interval);
+        index++;
+    }
+}
+
+void CameraPeriodicFramegrab::process(const Camera::VideoChunk &chunk)
+{
+    if (grab.isGrabbing()) {
+        grab.process(chunk);
+    }
 }
