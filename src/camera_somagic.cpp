@@ -32,6 +32,7 @@
 #include "lib/tinythread.h"
 
 #include <algorithm>
+#include <strings.h>
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
@@ -112,8 +113,8 @@ static uint8_t brightness = 128;
 /* Luminance aperture factor: 0 = 0, 1 = 0.25, 2 = 0.5, 3 = 1.0 */
 static int luminance_aperture = 1;
 
-/* Control the number of concurrent ISO transfers we have running */
-static const int num_iso_transfers = 8;
+/* Control the number of concurrent ISO transfers we have running. <= 32 */
+static const int num_iso_transfers = 6;
 
 enum sync_state {
 	HSYNC = 0,
@@ -142,6 +143,7 @@ static void *videoCallbackContext;
 
 static struct libusb_device_handle *devh;
 static int pending_requests;
+static unsigned resubmit_bitmask;
 static int lines_per_field;
 
 
@@ -204,12 +206,12 @@ static void install_firmware(struct libusb_device *dev)
 	const char *firmware_path = SOMAGIC_FIRMWARE_PATH;
 	int firmware_length;
 
-	fprintf(stderr, "Camera: Installing firmware...\n");
+	fprintf(stderr, "camera: Installing firmware...\n");
 
 	/* Read firmware file */
 	infile = fopen(firmware_path, "r");
 	if (infile == NULL) {
-		fprintf(stderr, "Camera: Failed to open firmware file '%s': %s\n", firmware_path, strerror(errno));
+		fprintf(stderr, "camera: Failed to open firmware file '%s': %s\n", firmware_path, strerror(errno));
 		goto done;
 	}
 
@@ -218,13 +220,13 @@ static void install_firmware(struct libusb_device *dev)
 	firmware = (char*) malloc(firmware_length);
 
 	if (firmware == NULL) {
-		fprintf(stderr, "Camera: Failed to allocate '%i' bytes of memory for firmware file '%s': %s\n", firmware_length, firmware_path, strerror(errno));
+		fprintf(stderr, "camera: Failed to allocate '%i' bytes of memory for firmware file '%s': %s\n", firmware_length, firmware_path, strerror(errno));
 		goto done;
 	}
 
 	fseek(infile, 0, SEEK_SET);
 	if (fread(firmware, 1, firmware_length, infile) != (unsigned)firmware_length) {
-		fprintf(stderr, "Camera: Failed to read firmware file '%s': %s\n", firmware_path, strerror(errno));
+		fprintf(stderr, "camera: Failed to read firmware file '%s': %s\n", firmware_path, strerror(errno));
 		goto done;
 	}
 
@@ -271,8 +273,6 @@ static void install_firmware(struct libusb_device *dev)
 		goto done;
 	}
 
-	usleep(1 * 1000);
-
 	ret = libusb_control_transfer(devh, LIBUSB_REQUEST_TYPE_VENDOR + LIBUSB_RECIPIENT_DEVICE + LIBUSB_ENDPOINT_IN, 0x0000001, 0x0000001, 0x0000000, buf, 2, 1000);
 
 	for (i = 0; i < firmware_length; i += 62) {
@@ -286,15 +286,13 @@ static void install_firmware(struct libusb_device *dev)
 			fprintf(stderr, "\n");
 			goto done;
 		}
-
-		usleep(1 * 1000);
 	}
 
 	memcpy(buf, "\x07\x00", 2);
 	ret = libusb_control_transfer(devh, LIBUSB_REQUEST_TYPE_VENDOR + LIBUSB_RECIPIENT_DEVICE, 0x0000001, 0x0000007, 0x0000000, buf, 2, 1000);
 
-	// Wait for device to reconnect
-	sleep (1);
+	// Let device reset before we try detecting it
+	usleep(1000 * 250);
 
 done:
 	if (firmware) {
@@ -333,9 +331,6 @@ static void alg1_process(struct alg1_video_state_t *vs, unsigned char *buffer, i
 				hs++;
 				if (nc == (unsigned char)0xff) {
 					vs->state = SYNCZ1;
-					if (bs == 1) {
-						fprintf(stderr, "resync after %d @%td(%04tx)\n", hs, next - buffer, next - buffer);
-					}
 					bs = 0;
 				} else if (bs != 1) {
 					/*
@@ -343,11 +338,6 @@ static void alg1_process(struct alg1_video_state_t *vs, unsigned char *buffer, i
 					 * wasn't, so sync was either lost or has not
 					 * yet been regained. Sync is regained by
 					 * ignoring bytes until the next 0xff.
-					 */
-					fprintf(stderr, "bad sync on line %d @%td (%04tx)\n", vs->active_line_count, next - buffer, next - buffer);
-					/*
-					 *				print_bytes_only(pbuffer, buffer_pos + 64);
-					 *				print_bytes(pbuffer + buffer_pos, 8);
 					 */
 					bs = 1;
 				}
@@ -443,7 +433,9 @@ static void alg1_process(struct alg1_video_state_t *vs, unsigned char *buffer, i
 					chunk.line = vs->active_line_count;
 					chunk.field = vs->field;
 
-					videoCallback(chunk, videoCallbackContext);
+					if (chunk.line < kLinesPerField) {
+						videoCallback(chunk, videoCallbackContext);
+					}
 
 					vs->line_remaining -= wrote;
 					next += wrote;
@@ -463,9 +455,9 @@ static void alg1_process(struct alg1_video_state_t *vs, unsigned char *buffer, i
 	} while (next < end);
 }
 
-static void gotdata(struct libusb_transfer *tfr)
+static void camera_usb_callback(struct libusb_transfer *tfr)
 {
-	int ret;
+	unsigned tfrIndex = (uintptr_t) tfr->user_data;
 	int num = tfr->num_iso_packets;
 	int i;
 	unsigned char *data;
@@ -495,12 +487,11 @@ static void gotdata(struct libusb_transfer *tfr)
 		}
 	}
 
-	ret = libusb_submit_transfer(tfr);
-	if (ret) {
-		fprintf(stderr, "libusb_submit_transfer failed with error %d\n", ret);
-	} else {
-		pending_requests++;
-	}
+	// Remember to resubmit this one later. We can't do it safely from inside
+	// the callback due to a libusb quirk. If the device was removed, this
+	// will cause a use-after-free crash.
+
+	resubmit_bitmask |= 1 << tfrIndex;
 }
 
 static int somagic_write_reg(uint16_t reg, uint8_t val)
@@ -554,36 +545,50 @@ static int somagic_capture()
 	static struct libusb_transfer* tfr[num_iso_transfers];
 	static unsigned char isobuf[num_iso_transfers][64 * 3072];
 
-	pending_requests = 0;
-	memset(&alg1_vs, 0, sizeof alg1_vs);
-
 	for (i = 0; i < num_iso_transfers; i++)	{
 		// Allocate only on first use; keep them around across hotplug events
 		if (tfr[i] == NULL) {
 			tfr[i] = libusb_alloc_transfer(64);
 			if (tfr[i] == NULL) {
-				fprintf(stderr, "Camera: Failed to allocate USB transfer #%d: %s\n", i, strerror(errno));
+				fprintf(stderr, "camera: Failed to allocate USB transfer #%d: %s\n", i, strerror(errno));
 				return 1;
 			}
 		}
 
-		// Reinitialize transfer struct
-		libusb_fill_iso_transfer(tfr[i], devh, 0x00000082, isobuf[i], 64 * 3072, 64, gotdata, NULL, 2000);
+		// Reinitialize transfer struct. Note that userdata is the transfer index.
+		libusb_fill_iso_transfer(tfr[i], devh, 0x00000082,
+			isobuf[i], 64 * 3072, 64,
+			camera_usb_callback,
+			(void*)(uintptr_t)i, 2000);
+
 		libusb_set_iso_packet_lengths(tfr[i], 3072);
 	}
 
-	pending_requests = num_iso_transfers;
-	for (i = 0; i < num_iso_transfers; i++) {
-		ret = libusb_submit_transfer(tfr[i]);
-		if (ret) {
-			fprintf(stderr, "Camera: Failed to submit request #%d for transfer: %s\n", i, strerror(errno));
-			return 1;
-		}
-	}
+	// Start out with no transfers
+	pending_requests = 0;
+	resubmit_bitmask = (1 << num_iso_transfers) - 1;
+	memset(&alg1_vs, 0, sizeof alg1_vs);
 
 	somagic_write_reg(0x1800, 0x0d);
 
-	while (pending_requests > 0) {
+	fprintf(stderr, "camera: Video stream started\n");
+
+	// Keep running until we have no transfers and nothing to resubmit
+	while (pending_requests > 0 || resubmit_bitmask != 0) {
+
+		while (resubmit_bitmask) {
+			int i = ffs(resubmit_bitmask) - 1;
+			resubmit_bitmask &= ~(1 << i);
+
+			ret = libusb_submit_transfer(tfr[i]);
+			if (ret) {
+				fprintf(stderr, "camera: Failed to submit request #%d for transfer: %s\n", i, strerror(errno));
+				return 1;
+			}
+
+			pending_requests++;
+		}
+
 		libusb_handle_events(NULL);
 	}
 
@@ -974,25 +979,32 @@ static void cameraThreadFunc(void *)
 		if (dev) {
 			install_firmware(dev);
 			libusb_unref_device(dev);
+			continue;
 		}
 
 		for (unsigned p = 0; p < PRODUCT_COUNT; p++) {
 			dev = find_device(VENDOR, PRODUCT[p]);
 			if (dev) {
-				libusb_open(dev, &devh);
-				if (devh) {
-					if (somagic_init() == 0) {
-						somagic_capture();
-					}
-					libusb_release_interface(devh, 0);
-					libusb_close(devh);
-				} else {
-					perror("Failed to open USB device");
-				}
-				libusb_unref_device(dev);
+				break;
 			}
 		}
 
+		if (dev) {
+			libusb_open(dev, &devh);
+			if (devh) {
+				if (somagic_init() == 0) {
+					somagic_capture();
+				}
+				libusb_release_interface(devh, 0);
+				libusb_close(devh);
+			} else {
+				perror("Failed to open USB device");
+			}
+			libusb_unref_device(dev);
+			continue;
+		}
+
+		// No devices yet
 		sleep(1);
 	}
 }
