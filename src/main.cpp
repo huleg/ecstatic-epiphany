@@ -46,6 +46,13 @@ int main(int argc, char **argv)
     while (true) {
         float dt = r.doFrame();
         periodicGrab.timeStep(dt);
+
+        static float debugTimer = 0;
+        debugTimer += dt;
+        if (debugTimer > 2.0f) {
+            debugTimer = 0;
+            vismem.debug("vismem-debug.png");
+        }
     }
 
     return 0;
