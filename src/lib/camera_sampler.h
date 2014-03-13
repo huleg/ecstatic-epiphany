@@ -60,6 +60,10 @@ public:
     static int sampleX(unsigned index);
     static int sampleY(unsigned index);
 
+    // Calculate the block position of a particular sample
+    static int blockX(unsigned index);
+    static int blockY(unsigned index);
+
 private:
     Camera::VideoChunk iter;
     unsigned y;
@@ -87,12 +91,22 @@ inline unsigned x8q(unsigned y)
 
 inline int CameraSampler::sampleX(unsigned index)
 {
-    return ((index % kBlocksWide) << 3) + x8q(sampleY(index));
+    return (blockX(index) << 3) + x8q(sampleY(index));
+}
+
+inline int CameraSampler::blockX(unsigned index)
+{
+    return index % kBlocksWide;
 }
 
 inline int CameraSampler::sampleY(unsigned index)
 {
     return index / kBlocksWide;
+}
+
+inline int CameraSampler::blockY(unsigned index)
+{
+    return sampleY(index) / kSamplesPerBlock;
 }
 
 inline bool CameraSampler::next(unsigned &index, uint8_t &luminance)
