@@ -2,68 +2,70 @@
 #include "lib/effect_runner.h"
 #include "lib/effect_mixer.h"
 #include "lib/particle.h"
+#include "lib/brightness.h"
 #include "lib/camera.h"
 #include "lib/camera_framegrab.h"
+#include "lib/camera_sampler.h"
 
 
 class MyEffect : public ParticleEffect
 {
 public:
+
+    static const float grabInterval = 2.0;
+
     CameraFramegrab grab;
     unsigned counter;
+    float grabTimer;
 
     MyEffect()
-        : counter(0)
+        : counter(0), grabTimer(0)
     {
-        appearance.resize(Camera::kPixelsPerLine * Camera::kLinesPerField);
+        appearance.resize(CameraSampler::kSamples);
 
-        for (unsigned line = 0; line < Camera::kLinesPerField; line++) {
-            for (unsigned pixel = 0; pixel < Camera::kPixelsPerLine; pixel++) {
+        for (unsigned sample = 0; sample < CameraSampler::kSamples; sample++) {
+            ParticleAppearance &p = appearance[sample];
 
-                ParticleAppearance &p = appearance[pixel + line * Camera::kPixelsPerLine];
+            float x = CameraSampler::sampleX(sample) / float(Camera::kPixelsPerLine);
+            float y = CameraSampler::sampleY(sample) / float(Camera::kLinesPerFrame);
 
-                p.point = Vec3(
-                    -8.0f * (pixel / float(Camera::kPixelsPerLine) - 0.5f), 0,
-                    -6.0f * (line / float(Camera::kLinesPerField) - 0.5f));
-
-                p.color = Vec3(1, 1, 1);
-                p.radius = 10.0f / float(Camera::kLinesPerField);
-                p.intensity = 0.0f;
-            }
+            p.point = Vec3( -8.0f * (x - 0.5f), 0, -6.0f * (y - 0.5f) );
+            p.color = Vec3(1, 1, 1);
+            p.radius = 20.0f / float(Camera::kLinesPerField);
+            p.intensity = 0.0f;
         }
-
-        startGrab();
     }
 
-    void startGrab()
+    virtual void beginFrame(const FrameInfo& f)
     {
-        char buffer[128];
-        snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", ++counter);
-        grab.begin(buffer);
+        grabTimer += f.timeDelta;
+        if (grabTimer > grabInterval) {
+            grabTimer = 0;
+            counter++;
+            
+            char buffer[128];
+            snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", counter);
+            grab.begin(buffer);
+        }
+
+        ParticleEffect::beginFrame(f);
     }
 
     static void videoCallback(const Camera::VideoChunk &video, void *context)
     {
         MyEffect *self = static_cast<MyEffect*>(context);
 
-        if (!self->grab.process(video)) {
-            self->startGrab();
+        if (self->grab.isGrabbing()) {
+            self->grab.process(video);
         }
 
-        Camera::VideoChunk iter = video;
-        while (iter.byteCount) {
+        CameraSampler sampler(video);
+        unsigned index;
+        uint8_t luma;
 
-            if ((iter.byteOffset & 1) == 1) {
-                // Luminance
-
-                unsigned x = iter.byteOffset / 2;
-                ParticleAppearance &p = self->appearance[x + iter.line * Camera::kPixelsPerLine];
-                p.intensity = 0.0008f * *iter.data;
-            }
-
-            iter.byteOffset++;
-            iter.byteCount--;
-            iter.data++;
+        while (sampler.next(index, luma)) {
+            ParticleAppearance &p = self->appearance[index];
+            p.intensity = sq(luma / 255.0f);
         }
     }
 };
@@ -78,8 +80,10 @@ int main(int argc, char **argv)
     EffectMixer mixer;
     mixer.add(&effect);
 
+    Brightness br(mixer);
+
     EffectRunner r;
-    r.setEffect(&mixer);
+    r.setEffect(&br);
     r.setLayout("layouts/window6x12.json");
     return r.main(argc, argv);
 }

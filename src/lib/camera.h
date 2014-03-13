@@ -23,6 +23,7 @@ namespace Camera {
     static const unsigned kBytesPerLine = kBytesPerPixel * kPixelsPerLine;
     static const unsigned kFields = 2;
     static const unsigned kLinesPerField = 240;
+    static const unsigned kLinesPerFrame = kLinesPerField * kFields;
     static const unsigned kPixels = kPixelsPerLine * kLinesPerField * kFields;
 
     struct VideoChunk {
