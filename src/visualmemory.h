@@ -18,34 +18,46 @@
 class VisualMemory
 {
 public:
-    void init(EffectRunner *runner);
+    // Starts a dedicated processing thread
+    void start(EffectRunner *runner);
+
     void process(const Camera::VideoChunk &chunk);
 
-    void debug(const char *outputPngFilename);
+    void debug(const char *outputPngFilename) const;
 
 private:
-    typedef double memory_t;
+    typedef float memory_t;
     typedef std::vector<memory_t> memoryVector_t;
 
     PRNG random;
     EffectRunner *runner;
     std::vector<unsigned> denseToSparsePixelIndex;
 
-    // Updated on the video thread constantly, via process()
+    // Updated on the learning thread constantly
     memoryVector_t memory;
+
+    // Updated on the video thread constantly, via process()
     uint8_t samples[CameraSampler::kSamples];
 
-    static const unsigned kLearnIterationsPerSample = 25;
-    static const memory_t kLearningThreshold = 0.1f;
-    static const memory_t kSmoothingRate = 1.0f;
+    // Separate learning thread
+    tthread::thread *learnThread;
+    static void learnThreadFunc(void *context);
 
-    // Reinforce memories. Called from the video thread.
+    static const memory_t kLearningThreshold = 0.1;
+    static const memory_t kDamping = 0.9999;
+    static const memory_t kSmoothingGain = 0.0001;
+    static const unsigned kSmoothingSteps = 20;
+
+    // Main loop for learning thread
+    void learnWorker();
+
+    // Reinforce memories. Called from a dedicated learning thread.
     void learn(memory_t &cell, const uint8_t *pixel, uint8_t luminance);
 
     // Smoothing over one axis. Pushes towards a version of the signal with DC
     // components removed along axis A. Remove DC signals from one axis (A) while iterating
     // over another axis (B).
-    void smooth(unsigned stepA, unsigned countA, unsigned stepB, unsigned countB, memory_t gain);
+    void smooth(unsigned stepA, unsigned countA, unsigned stepB, unsigned countB);
 };
 
 
@@ -54,7 +66,7 @@ private:
  *****************************************************************************************/
 
 
-inline void VisualMemory::init(EffectRunner *runner)
+inline void VisualMemory::start(EffectRunner *runner)
 {
     this->runner = runner;
     const Effect::PixelInfoVec &pixelInfo = runner->getPixelInfo();
@@ -78,34 +90,65 @@ inline void VisualMemory::init(EffectRunner *runner)
 
     memory.resize(cells);
     random.seed(27);
+    memset(samples, 0, sizeof samples);
+
+    // Let the thread loose. This starts learning right away- no other thread should be
+    // writing to memory[] from now on.
+
+    learnThread = new tthread::thread(learnThreadFunc, this);
 }
 
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
 {
-    EffectRunner *runner = this->runner;
     CameraSampler sampler(chunk);
     unsigned sampleIndex;
     uint8_t luminance;
-    unsigned denseSize = denseToSparsePixelIndex.size();
 
-    // First, iterate over camera samples
     while (sampler.next(sampleIndex, luminance)) {
-        memory_t *row = &memory[sampleIndex * denseSize];
-
-        // Save the sample's luma value for later
         samples[sampleIndex] = luminance;
+    }
+}
 
-        // Randomly select kLearnIterationsPerSample LEDs to learn with
-        for (unsigned iter = kLearnIterationsPerSample; iter; --iter) {
-            unsigned denseIndex = (uint64_t(random.uniform32()) * denseSize) >> 32;
-            unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+inline void VisualMemory::learnThreadFunc(void *context)
+{
+    VisualMemory *self = static_cast<VisualMemory*>(context);
+    self->learnWorker();
+}
 
-            // Single memory cell and pixel
-            const uint8_t* pixel = runner->getPixel(sparseIndex);
-            memory_t &cell = row[denseIndex];
+inline void VisualMemory::learnWorker()
+{
+    unsigned denseSize = denseToSparsePixelIndex.size();
+    EffectRunner *runner = this->runner;
 
-            // Iterative learning algorithm
-            learn(cell, pixel, luminance);
+    unsigned sampleIndex = 0;
+    unsigned denseIndex = 0;
+    memory_t *cell = &memory[0];
+
+    // Process in memory sequence, for cache performance
+    while (true) {
+
+        unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+        uint8_t luminance = samples[sampleIndex];
+        const uint8_t* pixel = runner->getPixel(sparseIndex);
+
+        learn(*cell, pixel, luminance);
+
+        cell++;
+        denseIndex++;
+        if (denseIndex == denseSize) {
+            denseIndex = 0;
+            sampleIndex++;
+
+            if (sampleIndex == CameraSampler::kSamples) {
+                sampleIndex = 0;
+                cell = &memory[0];
+
+                // Multiple integration steps
+                for (unsigned s = kSmoothingSteps; s; --s) {
+                    smooth(1, denseSize, denseSize, CameraSampler::kSamples);
+                    smooth(denseSize, CameraSampler::kSamples, 1, denseSize);
+                }
+            }
         }
     }
 }
@@ -121,12 +164,12 @@ inline void VisualMemory::learn(memory_t &cell, const uint8_t *pixel, uint8_t lu
     memory_t reinforcement = lumaSq * pixSq;
 
     if (reinforcement > kLearningThreshold) {
-        cell += lumaSq * pixSq;
+        cell += reinforcement;
     }
 }
 
 inline void VisualMemory::smooth(unsigned stepA, unsigned countA,
-    unsigned stepB, unsigned countB, memory_t gain)
+    unsigned stepB, unsigned countB)
 {
     // Normalize, remove DC signals from one axis (A) while iterating
     // over another axis (B).
@@ -146,11 +189,11 @@ inline void VisualMemory::smooth(unsigned stepA, unsigned countA,
 
         // Now subtract the average
 
-        memory_t adjustment = gain * -total / countA;
+        memory_t adjustment = -(kSmoothingGain / kSmoothingSteps) * total / countA;
         indexA = indexB;
         remainingA = countA;
         while (remainingA) {
-            memory[indexA] += adjustment;
+            memory[indexA] = kDamping * (memory[indexA] - adjustment);
             indexA += stepA;
             remainingA--;
         }
@@ -160,13 +203,9 @@ inline void VisualMemory::smooth(unsigned stepA, unsigned countA,
     }
 }
 
-inline void VisualMemory::debug(const char *outputPngFilename)
+inline void VisualMemory::debug(const char *outputPngFilename) const
 {
     unsigned denseSize = denseToSparsePixelIndex.size();
-
-    // XXX smoothing
-    smooth(1, denseSize, denseSize, CameraSampler::kSamples, kSmoothingRate);
-    smooth(denseSize, CameraSampler::kSamples, 1, denseSize, kSmoothingRate);
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
     const int ledsWide = 16;
