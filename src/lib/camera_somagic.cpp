@@ -29,7 +29,7 @@
  */
 
 #include "camera.h"
-#include "lib/tinythread.h"
+#include "tinythread.h"
 
 #include <algorithm>
 #include <strings.h>

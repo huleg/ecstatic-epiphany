@@ -2,8 +2,7 @@
 #include "lib/effect_runner.h"
 #include "lib/effect_mixer.h"
 #include "lib/particle.h"
-
-#include "camera.h"
+#include "lib/camera.h"
 
 
 class MyEffect : public ParticleEffect

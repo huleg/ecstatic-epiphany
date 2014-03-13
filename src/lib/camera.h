@@ -11,7 +11,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "lib/tinythread.h"
+#include "tinythread.h"
 
 namespace Camera {
 
