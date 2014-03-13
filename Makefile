@@ -2,7 +2,8 @@ TARGET = imprint
 CPP_FILES = \
 	src/main.cpp \
 	src/lib/camera_somagic.cpp \
-	src/lib/jpge.cpp
+	src/lib/jpge.cpp \
+	src/lib/lodepng.cpp
 
 # Important optimization options
 CPPFLAGS = -O3 -ffast-math
