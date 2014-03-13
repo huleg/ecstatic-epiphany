@@ -14,13 +14,15 @@
 #include "spokes.h"
 
 
-static CameraPeriodicFramegrab periodicGrab;
+static CameraFramegrab grab;
 static VisualMemory vismem;
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
 {
-    periodicGrab.process(video);
+    if (grab.isGrabbing()) {
+        grab.process(video);
+    }
     vismem.process(video);
 }
 
@@ -33,27 +35,36 @@ int main(int argc, char **argv)
     SpokesEffect spokes;
 
     EffectMixer mixer;
-    mixer.add(&rings);
+    mixer.add(&spokes);
 
     EffectRunner r;
-    r.setEffect(&mixer);
+    r.setEffect(&rings);
     r.setLayout("layouts/window6x12.json");
     if (!r.parseArguments(argc, argv)) {
         return 1;
     }
 
     // Init visual memory, now that the layout is known
-    vismem.init(&r);
+    vismem.start(&r);
 
     while (true) {
         float dt = r.doFrame();
-        periodicGrab.timeStep(dt);
 
+        char buffer[1024];
+        static unsigned counter = 0;
         static float debugTimer = 0;
+
         debugTimer += dt;
-        if (debugTimer > 20.0f) {
+        if (debugTimer > 4.0f) {
             debugTimer = 0;
-            vismem.debug("vismem-debug.png");
+
+            snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", counter);
+            grab.begin(buffer);
+
+            snprintf(buffer, sizeof buffer, "frame-%04d-memory.png", counter);
+            vismem.debug(buffer);
+
+            counter++;
         }
     }
 
