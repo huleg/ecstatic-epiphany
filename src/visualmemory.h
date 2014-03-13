@@ -10,6 +10,7 @@
 #include <vector>
 #include "lib/camera_sampler.h"
 #include "lib/effect_runner.h"
+#include "lib/mt19937.h"
 
 
 class VisualMemory
@@ -22,10 +23,13 @@ private:
     typedef float memory_t;
     typedef std::vector<memory_t> memoryVector_t;
 
+    MT19937 random;
     EffectRunner *runner;
     std::vector<unsigned> denseToSparsePixelIndex;
     memoryVector_t memory;
+    uint8_t samples[CameraSampler::kSamples];
 
+    static const unsigned kLearnIterationsPerSample = 10;
     void learn(memory_t &cell, const uint8_t *pixel, uint8_t luminance);
 };
 
@@ -72,9 +76,12 @@ inline void VisualMemory::process(const Camera::VideoChunk &chunk)
     while (sampler.next(sampleIndex, luminance)) {
         memory_t *row = &memory[sampleIndex * denseSize];
 
-        // Every LED in the dense pixel index
+        // Save the sample's luma value for later
+        samples[sampleIndex] = luminance;
 
-        for (unsigned denseIndex = 0; denseIndex < denseSize; ++denseIndex) {
+        // Randomly select kLearnIterationsPerSample LEDs to learn with
+        for (unsigned iter = kLearnIterationsPerSample; iter; --iter) {
+            unsigned denseIndex = (uint64_t(random.genrand_int32()) * denseSize) >> 32;
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
 
             // Single memory cell and pixel
