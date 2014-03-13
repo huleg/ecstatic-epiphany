@@ -11,6 +11,7 @@
 
 #include "visualmemory.h"
 #include "rings.h"
+#include "spokes.h"
 
 
 static CameraPeriodicFramegrab periodicGrab;
@@ -29,6 +30,7 @@ int main(int argc, char **argv)
     Camera::start(videoCallback);
 
     RingsEffect rings("data/glass.png");
+    SpokesEffect spokes;
 
     EffectMixer mixer;
     mixer.add(&rings);
@@ -49,7 +51,7 @@ int main(int argc, char **argv)
 
         static float debugTimer = 0;
         debugTimer += dt;
-        if (debugTimer > 2.0f) {
+        if (debugTimer > 20.0f) {
             debugTimer = 0;
             vismem.debug("vismem-debug.png");
         }

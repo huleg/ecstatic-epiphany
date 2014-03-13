@@ -10,9 +10,9 @@
 #include <vector>
 #include "lib/camera_sampler.h"
 #include "lib/effect_runner.h"
-#include "lib/mt19937.h"
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
+#include "lib/prng.h"
 
 
 class VisualMemory
@@ -27,15 +27,25 @@ private:
     typedef double memory_t;
     typedef std::vector<memory_t> memoryVector_t;
 
-    MT19937 random;
+    PRNG random;
     EffectRunner *runner;
     std::vector<unsigned> denseToSparsePixelIndex;
+
+    // Updated on the video thread constantly, via process()
     memoryVector_t memory;
     uint8_t samples[CameraSampler::kSamples];
 
-    // Called from the video thread
-    static const unsigned kLearnIterationsPerSample = 50;
+    static const unsigned kLearnIterationsPerSample = 25;
+    static const memory_t kLearningThreshold = 0.1f;
+    static const memory_t kSmoothingRate = 1.0f;
+
+    // Reinforce memories. Called from the video thread.
     void learn(memory_t &cell, const uint8_t *pixel, uint8_t luminance);
+
+    // Smoothing over one axis. Pushes towards a version of the signal with DC
+    // components removed along axis A. Remove DC signals from one axis (A) while iterating
+    // over another axis (B).
+    void smooth(unsigned stepA, unsigned countA, unsigned stepB, unsigned countB, memory_t gain);
 };
 
 
@@ -67,6 +77,7 @@ inline void VisualMemory::init(EffectRunner *runner)
         CameraSampler::kSamples, denseSize, cells);
 
     memory.resize(cells);
+    random.seed(27);
 }
 
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
@@ -86,7 +97,7 @@ inline void VisualMemory::process(const Camera::VideoChunk &chunk)
 
         // Randomly select kLearnIterationsPerSample LEDs to learn with
         for (unsigned iter = kLearnIterationsPerSample; iter; --iter) {
-            unsigned denseIndex = (uint64_t(random.genrand_int32()) * denseSize) >> 32;
+            unsigned denseIndex = (uint64_t(random.uniform32()) * denseSize) >> 32;
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
 
             // Single memory cell and pixel
@@ -105,16 +116,58 @@ inline void VisualMemory::learn(memory_t &cell, const uint8_t *pixel, uint8_t lu
     uint8_t g = pixel[1];
     uint8_t b = pixel[2];
 
-    int lumaSq = int(luminance) * int(luminance);
-    int pixSq = r*r + g*g + b*b;
+    memory_t lumaSq = (int(luminance) * int(luminance)) / 65025.0;
+    memory_t pixSq = int(r*r + g*g + b*b) / 195075.0;
+    memory_t reinforcement = lumaSq * pixSq;
 
-    const memory_t gain = 0.01f;
+    if (reinforcement > kLearningThreshold) {
+        cell += lumaSq * pixSq;
+    }
+}
 
-    cell += gain * lumaSq * pixSq;
+inline void VisualMemory::smooth(unsigned stepA, unsigned countA,
+    unsigned stepB, unsigned countB, memory_t gain)
+{
+    // Normalize, remove DC signals from one axis (A) while iterating
+    // over another axis (B).
+
+    unsigned indexB = 0, remainingB = countB;
+    while (remainingB) {
+
+        // First pass, sum over axis A
+
+        memory_t total = 0;
+        unsigned indexA = indexB, remainingA = countA;
+        while (remainingA) {
+            total += memory[indexA];
+            indexA += stepA;
+            remainingA--;
+        }
+
+        // Now subtract the average
+
+        memory_t adjustment = gain * -total / countA;
+        indexA = indexB;
+        remainingA = countA;
+        while (remainingA) {
+            memory[indexA] += adjustment;
+            indexA += stepA;
+            remainingA--;
+        }
+
+        indexB += stepB;
+        remainingB--;
+    }
 }
 
 inline void VisualMemory::debug(const char *outputPngFilename)
 {
+    unsigned denseSize = denseToSparsePixelIndex.size();
+
+    // XXX smoothing
+    smooth(1, denseSize, denseSize, CameraSampler::kSamples, kSmoothingRate);
+    smooth(denseSize, CameraSampler::kSamples, 1, denseSize, kSmoothingRate);
+
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
     const int ledsWide = 16;
     const int width = ledsWide * CameraSampler::kBlocksWide;
@@ -134,7 +187,6 @@ inline void VisualMemory::debug(const char *outputPngFilename)
     memory_t cellScale = 255 / (cellMax - cellMin);
     fprintf(stderr, "vismem: range [%f, %f]\n", cellMin, cellMax);
 
-    unsigned denseSize = denseToSparsePixelIndex.size();
     for (unsigned sample = 0; sample < CameraSampler::kSamples; sample++) {
         for (unsigned led = 0; led < denseSize; led++) {
 
@@ -144,7 +196,7 @@ inline void VisualMemory::debug(const char *outputPngFilename)
             int x = sx + (led % ledsWide) * CameraSampler::kBlocksWide;
             int y = sy + (led / ledsWide) * CameraSampler::kBlocksHigh;
 
-            memory_t &cell = memory[ sample * denseSize + led ];
+            const memory_t &cell = memory[ sample * denseSize + led ];
             uint8_t *pixel = &image[ y * width + x ];
 
             *pixel = (cell - cellMin) * cellScale;
