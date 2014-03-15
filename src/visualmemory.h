@@ -26,7 +26,7 @@ public:
     void debug(const char *outputPngFilename) const;
 
 private:
-    typedef float memory_t;
+    typedef double memory_t;
     typedef std::vector<memory_t> memoryVector_t;
 
     PRNG random;
@@ -43,21 +43,12 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.1;
-    static const memory_t kDamping = 0.9999;
-    static const memory_t kSmoothingGain = 0.0001;
-    static const unsigned kSmoothingSteps = 20;
+    static const memory_t kLearningThreshold = 0.5;
+    static const memory_t kForgetfulness = 1e-5;
 
     // Main loop for learning thread
     void learnWorker();
-
-    // Reinforce memories. Called from a dedicated learning thread.
-    void learn(memory_t &cell, const uint8_t *pixel, uint8_t luminance);
-
-    // Smoothing over one axis. Pushes towards a version of the signal with DC
-    // components removed along axis A. Remove DC signals from one axis (A) while iterating
-    // over another axis (B).
-    void smooth(unsigned stepA, unsigned countA, unsigned stepB, unsigned countB);
+    memory_t reinforcementFunction(int luminance, int r, int g, int b);
 };
 
 
@@ -115,91 +106,47 @@ inline void VisualMemory::learnThreadFunc(void *context)
     self->learnWorker();
 }
 
+inline VisualMemory::memory_t VisualMemory::reinforcementFunction(int luminance, int r, int g, int b)
+{
+    memory_t lumaSq = (luminance * luminance) / 65025.0;
+    memory_t pixSq = (r*r + g*g + b*b) / 195075.0;
+    return lumaSq * pixSq;
+}
+
 inline void VisualMemory::learnWorker()
 {
     unsigned denseSize = denseToSparsePixelIndex.size();
     EffectRunner *runner = this->runner;
-
-    unsigned sampleIndex = 0;
-    unsigned denseIndex = 0;
-    memory_t *cell = &memory[0];
-
-    // Process in memory sequence, for cache performance
     while (true) {
+        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
 
-        unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-        uint8_t luminance = samples[sampleIndex];
-        const uint8_t* pixel = runner->getPixel(sparseIndex);
+            uint8_t luminance = samples[sampleIndex];
 
-        learn(*cell, pixel, luminance);
+            // Compute maximum possible reinforcement from this luminance; if it's below the
+            // learning threshold, we can skip the entire sample.
 
-        cell++;
-        denseIndex++;
-        if (denseIndex == denseSize) {
-            denseIndex = 0;
-            sampleIndex++;
+            if (reinforcementFunction(luminance, 255, 255, 255) < kLearningThreshold) {
+                continue;
+            }
 
-            if (sampleIndex == CameraSampler::kSamples) {
-                sampleIndex = 0;
-                cell = &memory[0];
+            memory_t *cell = &memory[sampleIndex * denseSize];
 
-                // Multiple integration steps
-                for (unsigned s = kSmoothingSteps; s; --s) {
-                    smooth(1, denseSize, denseSize, CameraSampler::kSamples);
-                    smooth(denseSize, CameraSampler::kSamples, 1, denseSize);
+            for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
+                unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+                const uint8_t* pixel = runner->getPixel(sparseIndex);
+
+                uint8_t r = pixel[0];
+                uint8_t g = pixel[1];
+                uint8_t b = pixel[2];
+
+                memory_t reinforcement = reinforcementFunction(luminance, r, g, b);
+
+                if (reinforcement >= kLearningThreshold) {
+                    memory_t c = *cell;
+                    *cell = (c - c * kForgetfulness) + reinforcement;
                 }
             }
         }
-    }
-}
-
-inline void VisualMemory::learn(memory_t &cell, const uint8_t *pixel, uint8_t luminance)
-{
-    uint8_t r = pixel[0];
-    uint8_t g = pixel[1];
-    uint8_t b = pixel[2];
-
-    memory_t lumaSq = (int(luminance) * int(luminance)) / 65025.0;
-    memory_t pixSq = int(r*r + g*g + b*b) / 195075.0;
-    memory_t reinforcement = lumaSq * pixSq;
-
-    if (reinforcement > kLearningThreshold) {
-        cell += reinforcement;
-    }
-}
-
-inline void VisualMemory::smooth(unsigned stepA, unsigned countA,
-    unsigned stepB, unsigned countB)
-{
-    // Normalize, remove DC signals from one axis (A) while iterating
-    // over another axis (B).
-
-    unsigned indexB = 0, remainingB = countB;
-    while (remainingB) {
-
-        // First pass, sum over axis A
-
-        memory_t total = 0;
-        unsigned indexA = indexB, remainingA = countA;
-        while (remainingA) {
-            total += memory[indexA];
-            indexA += stepA;
-            remainingA--;
-        }
-
-        // Now subtract the average
-
-        memory_t adjustment = -(kSmoothingGain / kSmoothingSteps) * total / countA;
-        indexA = indexB;
-        remainingA = countA;
-        while (remainingA) {
-            memory[indexA] = kDamping * (memory[indexA] - adjustment);
-            indexA += stepA;
-            remainingA--;
-        }
-
-        indexB += stepB;
-        remainingB--;
     }
 }
 
@@ -208,7 +155,7 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
     unsigned denseSize = denseToSparsePixelIndex.size();
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
-    const int ledsWide = 16;
+    const int ledsWide = 4;
     const int width = ledsWide * CameraSampler::kBlocksWide;
     const int ledsHigh = (denseToSparsePixelIndex.size() + ledsWide - 1) / ledsWide;
     const int height = ledsHigh * CameraSampler::kBlocksHigh;
@@ -223,7 +170,9 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
         cellMin = std::min(cellMin, v);
         cellMax = std::max(cellMax, v);
     }
-    memory_t cellScale = 255 / (cellMax - cellMin);
+
+    memory_t cellScale = 1.0 / (cellMax - cellMin);
+    const float gamma = 1.0 / 4.0f;
     fprintf(stderr, "vismem: range [%f, %f]\n", cellMin, cellMax);
 
     for (unsigned sample = 0; sample < CameraSampler::kSamples; sample++) {
@@ -238,7 +187,7 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
             const memory_t &cell = memory[ sample * denseSize + led ];
             uint8_t *pixel = &image[ y * width + x ];
 
-            *pixel = (cell - cellMin) * cellScale;
+            *pixel = powf((cell - cellMin) * cellScale, gamma) * 255.0f + 0.5f;
         }
     }
 
