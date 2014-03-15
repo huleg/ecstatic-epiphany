@@ -12,10 +12,12 @@
 #include "visualmemory.h"
 #include "rings.h"
 #include "spokes.h"
+#include "latencytimer.h"
 
 
 static CameraFramegrab grab;
 static VisualMemory vismem;
+static LatencyTimer latency;
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
@@ -24,6 +26,7 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
         grab.process(video);
     }
     vismem.process(video);
+    latency.process(video);
 }
 
 
@@ -35,10 +38,10 @@ int main(int argc, char **argv)
     SpokesEffect spokes;
 
     EffectMixer mixer;
-    mixer.add(&spokes);
+    mixer.add(&latency.effect);
 
     EffectRunner r;
-    r.setEffect(&rings);
+    r.setEffect(&mixer);
     r.setLayout("layouts/window6x12.json");
     if (!r.parseArguments(argc, argv)) {
         return 1;
@@ -50,19 +53,22 @@ int main(int argc, char **argv)
     while (true) {
         float dt = r.doFrame();
 
-        char buffer[1024];
+        static char buffer[1024];
         static unsigned counter = 0;
         static float debugTimer = 0;
-
         debugTimer += dt;
-        if (debugTimer > 4.0f) {
+        if (debugTimer > 1.0f) {
             debugTimer = 0;
 
+            latency.debug();
+
+            /*
             snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", counter);
             grab.begin(buffer);
 
             snprintf(buffer, sizeof buffer, "frame-%04d-memory.png", counter);
             vismem.debug(buffer);
+            */
 
             counter++;
         }
