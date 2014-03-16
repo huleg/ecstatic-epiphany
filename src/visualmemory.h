@@ -8,6 +8,7 @@
 #pragma once
 
 #include <vector>
+#include <sys/time.h>
 #include "lib/camera_sampler.h"
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
@@ -19,23 +20,31 @@
 class VisualMemory
 {
 public:
-    // Starts a dedicated processing thread
-    void start(const EffectRunner *runner, const EffectTap *tap);
-
-    void process(const Camera::VideoChunk &chunk);
-
-    void debug(const char *outputPngFilename) const;
-
-private:
     typedef double memory_t;
+
     struct Cell {
         memory_t shortTerm;
         memory_t longTerm;
     };
 
-    // Updated on the learning thread constantly
     typedef std::vector<Cell> memoryVector_t;
-    memoryVector_t memory;
+
+    // Starts a dedicated processing thread
+    void start(const EffectRunner *runner, const EffectTap *tap);
+
+    // Handle incoming video
+    void process(const Camera::VideoChunk &chunk);
+
+    // Snapshot memory state as a PNG file
+    void debug(const char *outputPngFilename) const;
+
+    // Buffer of current memory recall, by LED pixel index
+    const memoryVector_t& recall() const;
+
+private:
+    // Updated on the learning thread constantly
+    memoryVector_t memoryBuffer;
+    memoryVector_t recallBuffer;
 
     PRNG random;
     const EffectTap *tap;
@@ -43,6 +52,7 @@ private:
 
     // Updated on the video thread constantly, via process()
     uint8_t samples[CameraSampler::kSamples];
+    int16_t motion[CameraSampler::kSamples];
 
     // Separate learning thread
     tthread::thread *learnThread;
@@ -85,14 +95,21 @@ inline void VisualMemory::start(const EffectRunner *runner, const EffectTap *tap
     fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells\n",
         CameraSampler::kSamples, denseSize, cells);
 
-    memory.resize(cells);
+    memoryBuffer.resize(cells);
+    recallBuffer.resize(pixelInfo.size());
     random.seed(27);
     memset(samples, 0, sizeof samples);
+    memset(motion, 0, sizeof motion);
 
     // Let the thread loose. This starts learning right away- no other thread should be
-    // writing to memory[] from now on.
+    // writing to memoryBuffer. from now on.
 
     learnThread = new tthread::thread(learnThreadFunc, this);
+}
+
+inline const VisualMemory::memoryVector_t& VisualMemory::recall() const
+{
+    return recallBuffer;
 }
 
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
@@ -102,7 +119,9 @@ inline void VisualMemory::process(const Camera::VideoChunk &chunk)
     uint8_t luminance;
 
     while (sampler.next(sampleIndex, luminance)) {
+        uint8_t prev = samples[sampleIndex];
         samples[sampleIndex] = luminance;
+        motion[sampleIndex] = int(luminance) - int(prev);
     }
 }
 
@@ -126,46 +145,87 @@ inline VisualMemory::memory_t VisualMemory::reinforcementFunction(int luminance,
 
 inline void VisualMemory::learnWorker()
 {
+    // Performance counters
+    unsigned loopCount = 0;
+    struct timeval timeA, timeB;
+
     unsigned denseSize = denseToSparsePixelIndex.size();
+    memoryVector_t recallAccumulator;
+    recallAccumulator.resize(recallBuffer.size());
+    gettimeofday(&timeA, 0);
+    gettimeofday(&timeB, 0);
 
+    // Keep iterating over the memory buffer in the order it's stored
     while (true) {
-        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
 
+        // Once per iteration, calculate sums that will become recallBuffer
+        memset(&recallAccumulator[0], 0, recallAccumulator.size() * sizeof recallAccumulator[0]);
+
+        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
             uint8_t luminance = samples[sampleIndex];
 
             // Compute maximum possible reinforcement from this luminance; if it's below the
             // learning threshold, we can skip the entire sample.
+            if (reinforcementFunction(luminance, Vec3(1,1,1)) >= kLearningThreshold) {
 
-            if (reinforcementFunction(luminance, Vec3(1,1,1)) < kLearningThreshold) {
-                continue;
+                // Look up a delayed version of what the LEDs were doing then, to adjust for the system latency
+                const EffectTap::Frame *effectFrame = tap->get(LatencyTimer::kExpectedDelay);
+                if (!effectFrame) {
+                    // This frame isn't in our buffer yet
+                    usleep(10 * 1000);
+                    continue;
+                }
+
+                Cell* cell = &memoryBuffer[sampleIndex * denseSize];
+                for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
+                    unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+                    Vec3 pixel = effectFrame->colors[sparseIndex];
+
+                    memory_t reinforcement = reinforcementFunction(luminance, pixel);
+
+                    if (reinforcement >= kLearningThreshold) {
+                        Cell state = *cell;
+
+                        state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
+                        state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
+
+                        *cell = state;
+                    }
+                }
             }
 
-            const EffectTap::Frame *effectFrame = tap->get(LatencyTimer::kExpectedDelay);
-            if (!effectFrame) {
-                // This frame isn't in our buffer yet
-                usleep(10 * 1000);
-                continue;
-            }
+            // Convolve the camera motion with the memory cells, to compute recall
+            {
+                int motionValueInt = motion[sampleIndex];
+                memory_t motionValue = (motionValueInt * motionValueInt) * (1 / memory_t(255 * 255));
 
-            Cell* cell = &memory[sampleIndex * denseSize];
+                Cell* cell = &memoryBuffer[sampleIndex * denseSize];
+                for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
+                    unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
 
-            for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
-                unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-                Vec3 pixel = effectFrame->colors[sparseIndex];
-
-                memory_t reinforcement = reinforcementFunction(luminance, pixel);
-
-                if (reinforcement >= kLearningThreshold) {
-                    Cell state = *cell;
-
-                    state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
-                    state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
-
-                    *cell = state;
+                    recallAccumulator[sparseIndex].shortTerm += motionValue * cell->shortTerm;
+                    recallAccumulator[sparseIndex].longTerm += motionValue * cell->longTerm;
                 }
             }
         }
+
+        recallBuffer = recallAccumulator;
+
+        /*
+         * Periodic performance stats
+         */
+        
+        loopCount++;
+        gettimeofday(&timeB, 0);
+        double timeDelta = (timeB.tv_sec - timeA.tv_sec) + 1e-6 * (timeB.tv_usec - timeA.tv_usec);
+        if (timeDelta > 2.0f) {
+            fprintf(stderr, "vismem: %.02f cycles / second\n", loopCount / timeDelta);
+            loopCount = 0;
+            timeA = timeB;
+        }
     }
+
+
 }
 
 inline void VisualMemory::debug(const char *outputPngFilename) const
@@ -181,10 +241,9 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
     image.resize(width * height * 3);
 
     // Extents, using long-term memory to set expected range
-    memory_t cellMax = memory[0].longTerm;
-    for (unsigned cell = 1; cell < memory.size(); cell++) {
-        memory_t v = memory[cell].longTerm;
-        cellMax = std::max(cellMax, v);
+    memory_t cellMax = memoryBuffer[0].longTerm;
+    for (unsigned c = 1; c < memoryBuffer.size(); c++) {
+        cellMax = std::max(cellMax, memoryBuffer[c].longTerm);
     }
     memory_t cellScale = 1.0 / cellMax;
 
@@ -199,7 +258,7 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
             int x = sx + (led % ledsWide) * CameraSampler::kBlocksWide;
             int y = sy + (led / ledsWide) * CameraSampler::kBlocksHigh;
 
-            const Cell &cell = memory[ sample * denseSize + led ];
+            const Cell &cell = memoryBuffer[ sample * denseSize + led ];
             uint8_t *pixel = &image[ 3 * (y * width + x) ];
 
             memory_t s = cell.shortTerm * cellScale;

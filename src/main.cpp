@@ -12,6 +12,7 @@
 #include "visualmemory.h"
 #include "rings.h"
 #include "spokes.h"
+#include "react.h"
 #include "latencytimer.h"
 
 
@@ -33,13 +34,9 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    RingsEffect rings("data/glass.png");
-    SpokesEffect spokes;
+    ReactEffect react(&vismem);
 
-    EffectMixer mixer;
-    mixer.add(&spokes);
-
-    tap.setEffect(&mixer);
+    tap.setEffect(&react);
 
     EffectRunner r;
     r.setEffect(&tap);
@@ -58,7 +55,7 @@ int main(int argc, char **argv)
         static unsigned counter = 0;
         static float debugTimer = 0;
         debugTimer += dt;
-        if (debugTimer > 1.0f) {
+        if (debugTimer > 3.0f) {
             debugTimer = 0;
 
             snprintf(buffer, sizeof buffer, "output/frame-%04d.jpeg", counter);
