@@ -13,13 +13,14 @@
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
 #include "lib/prng.h"
+#include "latencytimer.h"
 
 
 class VisualMemory
 {
 public:
     // Starts a dedicated processing thread
-    void start(EffectRunner *runner);
+    void start(const EffectRunner *runner, const EffectTap *tap);
 
     void process(const Camera::VideoChunk &chunk);
 
@@ -27,14 +28,18 @@ public:
 
 private:
     typedef double memory_t;
-    typedef std::vector<memory_t> memoryVector_t;
-
-    PRNG random;
-    EffectRunner *runner;
-    std::vector<unsigned> denseToSparsePixelIndex;
+    struct Cell {
+        memory_t shortTerm;
+        memory_t longTerm;
+    };
 
     // Updated on the learning thread constantly
+    typedef std::vector<Cell> memoryVector_t;
     memoryVector_t memory;
+
+    PRNG random;
+    const EffectTap *tap;
+    std::vector<unsigned> denseToSparsePixelIndex;
 
     // Updated on the video thread constantly, via process()
     uint8_t samples[CameraSampler::kSamples];
@@ -43,12 +48,13 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.5;
-    static const memory_t kForgetfulness = 1e-5;
+    static const memory_t kLearningThreshold = 0.25;
+    static const memory_t kShortTermPermeability = 1e-1;
+    static const memory_t kLongTermPermeability = 1e-4;
 
     // Main loop for learning thread
     void learnWorker();
-    memory_t reinforcementFunction(int luminance, int r, int g, int b);
+    memory_t reinforcementFunction(int luminance, Vec3 led);
 };
 
 
@@ -57,9 +63,9 @@ private:
  *****************************************************************************************/
 
 
-inline void VisualMemory::start(EffectRunner *runner)
+inline void VisualMemory::start(const EffectRunner *runner, const EffectTap *tap)
 {
-    this->runner = runner;
+    this->tap = tap;
     const Effect::PixelInfoVec &pixelInfo = runner->getPixelInfo();
 
     // Make a densely packed pixel index, skipping any unmapped pixels
@@ -106,17 +112,22 @@ inline void VisualMemory::learnThreadFunc(void *context)
     self->learnWorker();
 }
 
-inline VisualMemory::memory_t VisualMemory::reinforcementFunction(int luminance, int r, int g, int b)
+inline VisualMemory::memory_t VisualMemory::reinforcementFunction(int luminance, Vec3 led)
 {
+    Real r = std::min(1.0f, led[0]);
+    Real g = std::min(1.0f, led[1]);
+    Real b = std::min(1.0f, led[2]);
+
     memory_t lumaSq = (luminance * luminance) / 65025.0;
-    memory_t pixSq = (r*r + g*g + b*b) / 195075.0;
+    memory_t pixSq = (r*r + g*g + b*b) / 3.0f;
+
     return lumaSq * pixSq;
 }
 
 inline void VisualMemory::learnWorker()
 {
     unsigned denseSize = denseToSparsePixelIndex.size();
-    EffectRunner *runner = this->runner;
+
     while (true) {
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
 
@@ -125,25 +136,32 @@ inline void VisualMemory::learnWorker()
             // Compute maximum possible reinforcement from this luminance; if it's below the
             // learning threshold, we can skip the entire sample.
 
-            if (reinforcementFunction(luminance, 255, 255, 255) < kLearningThreshold) {
+            if (reinforcementFunction(luminance, Vec3(1,1,1)) < kLearningThreshold) {
                 continue;
             }
 
-            memory_t *cell = &memory[sampleIndex * denseSize];
+            const EffectTap::Frame *effectFrame = tap->get(LatencyTimer::kExpectedDelay);
+            if (!effectFrame) {
+                // This frame isn't in our buffer yet
+                usleep(10 * 1000);
+                continue;
+            }
+
+            Cell* cell = &memory[sampleIndex * denseSize];
 
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-                const uint8_t* pixel = runner->getPixel(sparseIndex);
+                Vec3 pixel = effectFrame->colors[sparseIndex];
 
-                uint8_t r = pixel[0];
-                uint8_t g = pixel[1];
-                uint8_t b = pixel[2];
-
-                memory_t reinforcement = reinforcementFunction(luminance, r, g, b);
+                memory_t reinforcement = reinforcementFunction(luminance, pixel);
 
                 if (reinforcement >= kLearningThreshold) {
-                    memory_t c = *cell;
-                    *cell = (c - c * kForgetfulness) + reinforcement;
+                    Cell state = *cell;
+
+                    state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
+                    state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
+
+                    *cell = state;
                 }
             }
         }
@@ -160,20 +178,17 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
     const int ledsHigh = (denseToSparsePixelIndex.size() + ledsWide - 1) / ledsWide;
     const int height = ledsHigh * CameraSampler::kBlocksHigh;
     std::vector<uint8_t> image;
-    image.resize(width * height);
+    image.resize(width * height * 3);
 
-    // Extents
-    memory_t cellMin = memory[0];
-    memory_t cellMax = memory[0];
+    // Extents, using long-term memory to set expected range
+    memory_t cellMax = memory[0].longTerm;
     for (unsigned cell = 1; cell < memory.size(); cell++) {
-        memory_t v = memory[cell];
-        cellMin = std::min(cellMin, v);
+        memory_t v = memory[cell].longTerm;
         cellMax = std::max(cellMax, v);
     }
+    memory_t cellScale = 1.0 / cellMax;
 
-    memory_t cellScale = 1.0 / (cellMax - cellMin);
-    const float gamma = 1.0 / 4.0f;
-    fprintf(stderr, "vismem: range [%f, %f]\n", cellMin, cellMax);
+    fprintf(stderr, "vismem: range %f\n", cellMax);
 
     for (unsigned sample = 0; sample < CameraSampler::kSamples; sample++) {
         for (unsigned led = 0; led < denseSize; led++) {
@@ -184,14 +199,21 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
             int x = sx + (led % ledsWide) * CameraSampler::kBlocksWide;
             int y = sy + (led / ledsWide) * CameraSampler::kBlocksHigh;
 
-            const memory_t &cell = memory[ sample * denseSize + led ];
-            uint8_t *pixel = &image[ y * width + x ];
+            const Cell &cell = memory[ sample * denseSize + led ];
+            uint8_t *pixel = &image[ 3 * (y * width + x) ];
 
-            *pixel = powf((cell - cellMin) * cellScale, gamma) * 255.0f + 0.5f;
+            memory_t s = cell.shortTerm * cellScale;
+            memory_t l = cell.longTerm * cellScale;
+
+            int shortTermI = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
+            int longTermI = std::min<memory_t>(255.5f, l*l*l*l * 255.0f + 0.5f);
+
+            pixel[0] = shortTermI;
+            pixel[1] = pixel[2] = longTermI;
         }
     }
 
-    if (lodepng_encode_file(outputPngFilename, &image[0], width, height, LCT_GREY, 8)) {
+    if (lodepng_encode_file(outputPngFilename, &image[0], width, height, LCT_RGB, 8)) {
         fprintf(stderr, "vismem: error saving %s\n", outputPngFilename);
     } else {
         fprintf(stderr, "vismem: saved %s\n", outputPngFilename);

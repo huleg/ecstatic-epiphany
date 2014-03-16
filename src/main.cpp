@@ -18,7 +18,6 @@
 static CameraFramegrab grab;
 static VisualMemory vismem;
 static EffectTap tap;
-static LatencyTimer latency(tap);
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
@@ -27,7 +26,6 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
         grab.process(video);
     }
     vismem.process(video);
-    latency.process(video);
 }
 
 
@@ -39,7 +37,7 @@ int main(int argc, char **argv)
     SpokesEffect spokes;
 
     EffectMixer mixer;
-    mixer.add(&latency.effect);
+    mixer.add(&spokes);
 
     tap.setEffect(&mixer);
 
@@ -51,7 +49,7 @@ int main(int argc, char **argv)
     }
 
     // Init visual memory, now that the layout is known
-    vismem.start(&r);
+    vismem.start(&r, &tap);
 
     while (true) {
         float dt = r.doFrame();
@@ -63,15 +61,11 @@ int main(int argc, char **argv)
         if (debugTimer > 1.0f) {
             debugTimer = 0;
 
-            latency.debug();
-
-            /*
             snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", counter);
             grab.begin(buffer);
 
             snprintf(buffer, sizeof buffer, "frame-%04d-memory.png", counter);
             vismem.debug(buffer);
-            */
 
             counter++;
         }
