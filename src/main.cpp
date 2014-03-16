@@ -61,10 +61,10 @@ int main(int argc, char **argv)
         if (debugTimer > 1.0f) {
             debugTimer = 0;
 
-            snprintf(buffer, sizeof buffer, "frame-%04d.jpeg", counter);
+            snprintf(buffer, sizeof buffer, "output/frame-%04d.jpeg", counter);
             grab.begin(buffer);
 
-            snprintf(buffer, sizeof buffer, "frame-%04d-memory.png", counter);
+            snprintf(buffer, sizeof buffer, "output/frame-%04d-memory.png", counter);
             vismem.debug(buffer);
 
             counter++;
