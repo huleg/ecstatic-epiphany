@@ -17,7 +17,8 @@
 
 static CameraFramegrab grab;
 static VisualMemory vismem;
-static LatencyTimer latency;
+static EffectTap tap;
+static LatencyTimer latency(tap);
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
@@ -40,8 +41,10 @@ int main(int argc, char **argv)
     EffectMixer mixer;
     mixer.add(&latency.effect);
 
+    tap.setEffect(&mixer);
+
     EffectRunner r;
-    r.setEffect(&mixer);
+    r.setEffect(&tap);
     r.setLayout("layouts/window6x12.json");
     if (!r.parseArguments(argc, argv)) {
         return 1;

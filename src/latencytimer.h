@@ -10,6 +10,7 @@
 #include <math.h>
 #include "lib/camera.h"
 #include "lib/effect.h"
+#include "lib/effect_tap.h"
 
 
 // Effect to use with the latency timer: a slow square wave.
@@ -30,7 +31,14 @@ public:
 class LatencyTimer
 {
 public:
-    LatencyTimer();
+    // Expected symmetric latency. I.e. if we shift video by this much, we'll have
+    // symmetric rise and fall times. This turns out to be one NTSC video frame.
+    static const float kExpectedDelay = 1.0 / 29.97;
+
+    // Uses EffectTap to test the calibrated delay
+    LatencyTimer(const EffectTap &tap);
+
+    // Historgram for calculating camera transfer function and dumping out a CSV.
     void process(const Camera::VideoChunk &chunk);
     void debug();
 
@@ -52,6 +60,10 @@ private:
     static const float kActualMillisecondsPerBin = 1e3 / LatencyTimerEffect::hz / kNumPhaseBins;
     total_t phaseBinNumerators[kNumPhaseBins];
     total_t phaseBinDenominators[kNumPhaseBins];
+
+    // Testing our tap delay
+    const EffectTap &tap;
+    float ledTapBins[kNumPhaseBins];
 
     static float binToPhase(unsigned bin);
     static unsigned phaseToBin(float p);
@@ -85,7 +97,8 @@ inline float LatencyTimerEffect::brightnessAtPhase(float p)
     return p < 0.5 ? 0.8 : 0;
 }
 
-inline LatencyTimer::LatencyTimer()
+inline LatencyTimer::LatencyTimer(const EffectTap &tap)
+    : tap(tap)
 {
     frameTotal = 0;
     memset(frame, 0, sizeof frame);
@@ -114,6 +127,12 @@ inline void LatencyTimer::process(const Camera::VideoChunk &chunk)
     // Accumulate into the current phase bin
     phaseBinNumerators[bin] += total;
     phaseBinDenominators[bin] += sizeof(frame) * 256 * 256;
+
+    // Test the tap delay
+    const EffectTap::Frame *tf = tap.get(kExpectedDelay);
+    if (tf) {
+        ledTapBins[bin] = tf->colors[0][0];
+    }
 }
 
 inline float LatencyTimer::binToPhase(unsigned bin)
@@ -136,14 +155,13 @@ inline float LatencyTimer::cameraBrightness(unsigned bin)
     return phaseBinDenominators[bin] ? double(phaseBinNumerators[bin]) / double(phaseBinDenominators[bin]) : 0;
 }
 
-
 inline void LatencyTimer::debug()
 {
     fprintf(stderr,
         "\n"
         "=== Latency chart ===\n"
         "bin, milliseconds, led_brightness, camera_brightness, "
-        "phase, normalized_led_brightness, normalized_camera_brightness\n");
+        "phase, normalized_led_brightness, normalized_camera_brightness, led_tap_output\n");
 
     // Capture data
     float camBins[kNumPhaseBins];
@@ -168,11 +186,13 @@ inline void LatencyTimer::debug()
         float ms = i * kActualMillisecondsPerBin;
         float led = ledBrightness(i);
         float cam = camBins[i];
+        float ledTap = ledTapBins[i];
 
-        fprintf(stderr, "%d, %f, %f, %f, %f, %f, %f\n",
+        fprintf(stderr, "%d, %f, %f, %f, %f, %f, %f, %f\n",
             i, ms, led, cam, phase,
             (led - minLed) / (maxLed - minLed),
-            (cam - minCam) / (maxCam - minCam));
+            (cam - minCam) / (maxCam - minCam),
+            (ledTap - minLed) / (maxLed - minLed));
     }
     fprintf(stderr, "\n");
 }
