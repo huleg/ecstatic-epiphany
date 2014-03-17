@@ -211,21 +211,20 @@ inline void VisualMemory::learnWorker()
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
                 Vec3 pixel = effectFrame->colors[sparseIndex];
 
-                memory_t reinforcement = reinforcementFunction(luminance, pixel);
-                if (reinforcement < kLearningThreshold) {
-                    continue;
-                }
-
                 Cell state = *cell;
-
-                state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
-                state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
 
                 // In all cells where we access the memory, recall is proportional to
                 // the difference between short term and long term state (novelty factor)
                 recallAccumulator[sparseIndex] += state.shortTerm - state.longTerm;
 
-                *cell = state;
+                memory_t reinforcement = reinforcementFunction(luminance, pixel);
+                if (reinforcement >= kLearningThreshold) {
+
+                    state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
+                    state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
+
+                    *cell = state;
+                }
             }
         }
 
