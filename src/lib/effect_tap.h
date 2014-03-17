@@ -102,8 +102,8 @@ inline void EffectTap::postProcess(const Vec3& rgb, const PixelInfo& p)
 inline void EffectTap::beginFrame(const FrameInfo& f)
 {
     unsigned c = (fifoCurrent + 1) % fifo.size();
-    fifo[c].timeDelta = f.timeDelta;
     fifo[c].colors.resize(f.pixels.size());
+    fifo[c].timeDelta = f.timeDelta;
     fifoCurrent = c;
 
     next->beginFrame(f);
@@ -144,6 +144,6 @@ inline const EffectTap::Frame* EffectTap::get(float age) const
         age -= fifo[index].timeDelta;
         index = (index ? index : fifo.size()) - 1;
 
-    } while (index < fifoValid && index != firstIndex);
+    } while (index < fifoValid && index != firstIndex && fifo[index].timeDelta != 0.0f);
     return NULL;
 }
