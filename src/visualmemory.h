@@ -17,7 +17,6 @@
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
-#include "lib/prng.h"
 #include "latencytimer.h"
 
 
@@ -54,7 +53,6 @@ private:
     // Updated on the learning thread constantly
     recallVector_t recallBuffer;
 
-    PRNG random;
     const EffectTap *tap;
     std::vector<unsigned> denseToSparsePixelIndex;
 
@@ -103,7 +101,6 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
         CameraSampler::kSamples, denseSize, cells);
 
     recallBuffer.resize(pixelInfo.size());
-    random.seed(27);
     memset(samples, 0, sizeof samples);
 
     // Memory mapped file
