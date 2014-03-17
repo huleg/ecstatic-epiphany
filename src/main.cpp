@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     }
 
     // Init visual memory, now that the layout is known
-    vismem.start(&r, &tap);
+    vismem.start("imprint.mem", &r, &tap);
 
     while (true) {
         float dt = r.doFrame();
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
         static unsigned counter = 0;
         static float debugTimer = 0;
         debugTimer += dt;
-        if (debugTimer > 10.0f) {
+        if (debugTimer > 30.0f) {
             debugTimer = 0;
 
             snprintf(buffer, sizeof buffer, "output/frame-%04d.jpeg", counter);

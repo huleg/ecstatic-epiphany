@@ -7,8 +7,12 @@
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include <sys/time.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include "lib/camera_sampler.h"
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
@@ -24,13 +28,13 @@ public:
     typedef std::vector<memory_t> recallVector_t;
 
     // Starts a dedicated processing thread
-    void start(const EffectRunner *runner, const EffectTap *tap);
+    void start(const char *memoryPath, const EffectRunner *runner, const EffectTap *tap);
 
     // Handle incoming video
     void process(const Camera::VideoChunk &chunk);
 
-    // Snapshot memory state
-    void debug(const char *outputPngFilename, const char *outputRawFilename) const;
+    // Snapshot memory state as a PNG file
+    void debug(const char *outputPngFilename) const;
 
     // Buffer of current memory recall, by LED pixel index
     const recallVector_t& recall() const;
@@ -43,8 +47,11 @@ private:
 
     typedef std::vector<Cell> memoryVector_t;
 
+    // Mapped memory buffer, updated on the learning thread
+    Cell *mappedMemory;
+    unsigned mappedMemorySize;
+
     // Updated on the learning thread constantly
-    memoryVector_t memoryBuffer;
     recallVector_t recallBuffer;
 
     PRNG random;
@@ -73,7 +80,7 @@ private:
  *****************************************************************************************/
 
 
-inline void VisualMemory::start(const EffectRunner *runner, const EffectTap *tap)
+inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runner, const EffectTap *tap)
 {
     this->tap = tap;
     const Effect::PixelInfoVec &pixelInfo = runner->getPixelInfo();
@@ -95,13 +102,36 @@ inline void VisualMemory::start(const EffectRunner *runner, const EffectTap *tap
     fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells\n",
         CameraSampler::kSamples, denseSize, cells);
 
-    memoryBuffer.resize(cells);
     recallBuffer.resize(pixelInfo.size());
     random.seed(27);
     memset(samples, 0, sizeof samples);
 
+    // Memory mapped file
+
+    int fd = open(memoryPath, O_CREAT | O_RDWR | O_NOFOLLOW, 0666);
+    if (fd < 0) {
+        perror("vismem: Error opening mapping file");
+        return;
+    }
+
+    if (ftruncate(fd, cells * sizeof(Cell))) {
+        perror("vismem: Error setting length of mapping file");
+        close(fd);
+        return;
+    }
+
+    mappedMemorySize = cells;
+    mappedMemory = (Cell*) mmap(0, cells * sizeof(Cell),
+        PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, fd, 0);
+
+    if (!mappedMemory) {
+        perror("vismem: Error mapping memory file");
+        close(fd);
+        return;
+    }
+
     // Let the thread loose. This starts learning right away- no other thread should be
-    // writing to memoryBuffer. from now on.
+    // writing to the memory buffer from now on.
 
     learnThread = new tthread::thread(learnThreadFunc, this);
 }
@@ -142,6 +172,8 @@ inline VisualMemory::memory_t VisualMemory::reinforcementFunction(int luminance,
 
 inline void VisualMemory::learnWorker()
 {
+    Cell *memoryBuffer = mappedMemory;
+
     // Performance counters
     unsigned loopCount = 0;
     struct timeval timeA, timeB;
@@ -176,6 +208,7 @@ inline void VisualMemory::learnWorker()
             }
 
             Cell* cell = &memoryBuffer[sampleIndex * denseSize];
+
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
 
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
@@ -221,6 +254,8 @@ inline void VisualMemory::learnWorker()
 inline void VisualMemory::debug(const char *outputPngFilename) const
 {
     unsigned denseSize = denseToSparsePixelIndex.size();
+    const Cell *memoryBuffer = mappedMemory;
+    size_t memoryBufferSize = mappedMemorySize;
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
     const int ledsWide = int(sqrt(denseSize));
@@ -232,7 +267,7 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
 
     // Extents, using long-term memory to set expected range
     memory_t cellMax = memoryBuffer[0].longTerm;
-    for (unsigned c = 1; c < memoryBuffer.size(); c++) {
+    for (unsigned c = 1; c < memoryBufferSize; c++) {
         cellMax = std::max(cellMax, memoryBuffer[c].longTerm);
     }
     memory_t cellScale = 1.0 / cellMax;
