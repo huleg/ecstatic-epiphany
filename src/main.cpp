@@ -34,11 +34,16 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    ReactEffect react(&vismem);
-
-    tap.setEffect(&react);
-
+    EffectMixer mixer;
     EffectRunner r;
+
+    RingsEffect rings("data/glass.png");
+    mixer.add(&rings);
+
+    ReactEffect react(&vismem);
+    mixer.add(&react);
+
+    tap.setEffect(&mixer);
     r.setEffect(&tap);
     r.setLayout("layouts/window6x12.json");
     if (!r.parseArguments(argc, argv)) {
@@ -55,7 +60,7 @@ int main(int argc, char **argv)
         static unsigned counter = 0;
         static float debugTimer = 0;
         debugTimer += dt;
-        if (debugTimer > 3.0f) {
+        if (debugTimer > 10.0f) {
             debugTimer = 0;
 
             snprintf(buffer, sizeof buffer, "output/frame-%04d.jpeg", counter);
