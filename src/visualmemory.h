@@ -20,7 +20,7 @@
 class VisualMemory
 {
 public:
-    typedef double memory_t;
+    typedef float memory_t;
     typedef std::vector<memory_t> recallVector_t;
 
     // Starts a dedicated processing thread
@@ -29,8 +29,8 @@ public:
     // Handle incoming video
     void process(const Camera::VideoChunk &chunk);
 
-    // Snapshot memory state as a PNG file
-    void debug(const char *outputPngFilename) const;
+    // Snapshot memory state
+    void debug(const char *outputPngFilename, const char *outputRawFilename) const;
 
     // Buffer of current memory recall, by LED pixel index
     const recallVector_t& recall() const;
@@ -58,7 +58,7 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.1;
+    static const memory_t kLearningThreshold = 0.25;
     static const memory_t kShortTermPermeability = 1e-1;
     static const memory_t kLongTermPermeability = 1e-4;
 
@@ -163,46 +163,39 @@ inline void VisualMemory::learnWorker()
 
             // Compute maximum possible reinforcement from this luminance; if it's below the
             // learning threshold, we can skip the entire sample.
-            if (reinforcementFunction(luminance, Vec3(1,1,1)) >= kLearningThreshold) {
+            if (reinforcementFunction(luminance, Vec3(1,1,1)) < kLearningThreshold) {
+                continue;
+            }
 
-                // Look up a delayed version of what the LEDs were doing then, to adjust for the system latency
-                const EffectTap::Frame *effectFrame = tap->get(LatencyTimer::kExpectedDelay);
-                if (!effectFrame) {
-                    // This frame isn't in our buffer yet
-                    usleep(10 * 1000);
+            // Look up a delayed version of what the LEDs were doing then, to adjust for the system latency
+            const EffectTap::Frame *effectFrame = tap->get(LatencyTimer::kExpectedDelay);
+            if (!effectFrame) {
+                // This frame isn't in our buffer yet
+                usleep(10 * 1000);
+                continue;
+            }
+
+            Cell* cell = &memoryBuffer[sampleIndex * denseSize];
+            for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
+
+                unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+                Vec3 pixel = effectFrame->colors[sparseIndex];
+
+                memory_t reinforcement = reinforcementFunction(luminance, pixel);
+                if (reinforcement < kLearningThreshold) {
                     continue;
                 }
 
-                Cell* cell = &memoryBuffer[sampleIndex * denseSize];
-                for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
-                    unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-                    Vec3 pixel = effectFrame->colors[sparseIndex];
+                Cell state = *cell;
 
-                    memory_t reinforcement = reinforcementFunction(luminance, pixel);
+                state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
+                state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
 
-                    if (reinforcement >= kLearningThreshold) {
-                        Cell state = *cell;
+                // In all cells where we access the memory, recall is proportional to
+                // the difference between short term and long term state (novelty factor)
+                recallAccumulator[sparseIndex] += state.shortTerm - state.longTerm;
 
-                        state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
-
-                        if (!isfinite(state.shortTerm)) {
-                            // Oops. Reset to zero
-                            state.shortTerm = 0;
-                        }
-
-                        state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
-
-                        if (!isfinite(state.longTerm)) {
-                            state.longTerm = state.shortTerm;
-                        }
-
-                        // In all cells where we access the memory, recall is proportional to
-                        // the difference between short term and long term state (novelty factor)
-                        recallAccumulator[sparseIndex] += state.shortTerm - state.longTerm;
-
-                        *cell = state;
-                    }
-                }
+                *cell = state;
             }
         }
 
