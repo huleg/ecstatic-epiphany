@@ -37,6 +37,9 @@ int main(int argc, char **argv)
     EffectMixer mixer;
     EffectRunner r;
 
+    SpokesEffect spokes;
+    mixer.add(&spokes);
+
     RingsEffect rings("data/glass.png");
     mixer.add(&rings);
 
