@@ -61,10 +61,10 @@ int main(int argc, char **argv)
     EffectRunner r;
 
     SpokesEffect spokes;
-    mixer.add(&spokes);
+    mixer.add(&spokes, 0.2);
 
     RingsEffect rings("data/glass.png");
-    mixer.add(&rings);
+    mixer.add(&rings, 0.5);
 
     ReactEffect react(&vismem);
     mixer.add(&react);
