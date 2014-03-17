@@ -53,7 +53,7 @@ public:
         memory_t f = sq(shortFilter[p.index] - longFilter[p.index]) * 1e-2;
 
         f = isfinite(f) ? f : f;
-        f = -std::min(1.0, std::max(0.0, f));
+        f = -std::min<memory_t>(1.0, std::max<memory_t>(0.0, f));
 
         rgb = Vec3(f,f,f);
     }
