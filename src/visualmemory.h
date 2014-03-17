@@ -258,7 +258,7 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
     size_t memoryBufferSize = mappedMemorySize;
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
-    const int ledsWide = int(sqrt(denseSize));
+    const int ledsWide = int(ceilf(sqrt(denseSize)));
     const int width = ledsWide * CameraSampler::kBlocksWide;
     const int ledsHigh = (denseToSparsePixelIndex.size() + ledsWide - 1) / ledsWide;
     const int height = ledsHigh * CameraSampler::kBlocksHigh;
