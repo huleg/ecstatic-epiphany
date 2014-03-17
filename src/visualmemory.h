@@ -21,13 +21,7 @@ class VisualMemory
 {
 public:
     typedef double memory_t;
-
-    struct Cell {
-        memory_t shortTerm;
-        memory_t longTerm;
-    };
-
-    typedef std::vector<Cell> memoryVector_t;
+    typedef std::vector<memory_t> recallVector_t;
 
     // Starts a dedicated processing thread
     void start(const EffectRunner *runner, const EffectTap *tap);
@@ -39,12 +33,19 @@ public:
     void debug(const char *outputPngFilename) const;
 
     // Buffer of current memory recall, by LED pixel index
-    const memoryVector_t& recall() const;
+    const recallVector_t& recall() const;
 
 private:
+    struct Cell {
+        memory_t shortTerm;
+        memory_t longTerm;
+    };
+
+    typedef std::vector<Cell> memoryVector_t;
+
     // Updated on the learning thread constantly
     memoryVector_t memoryBuffer;
-    memoryVector_t recallBuffer;
+    recallVector_t recallBuffer;
 
     PRNG random;
     const EffectTap *tap;
@@ -52,13 +53,12 @@ private:
 
     // Updated on the video thread constantly, via process()
     uint8_t samples[CameraSampler::kSamples];
-    int16_t motion[CameraSampler::kSamples];
 
     // Separate learning thread
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.25;
+    static const memory_t kLearningThreshold = 0.1;
     static const memory_t kShortTermPermeability = 1e-1;
     static const memory_t kLongTermPermeability = 1e-4;
 
@@ -99,7 +99,6 @@ inline void VisualMemory::start(const EffectRunner *runner, const EffectTap *tap
     recallBuffer.resize(pixelInfo.size());
     random.seed(27);
     memset(samples, 0, sizeof samples);
-    memset(motion, 0, sizeof motion);
 
     // Let the thread loose. This starts learning right away- no other thread should be
     // writing to memoryBuffer. from now on.
@@ -107,7 +106,7 @@ inline void VisualMemory::start(const EffectRunner *runner, const EffectTap *tap
     learnThread = new tthread::thread(learnThreadFunc, this);
 }
 
-inline const VisualMemory::memoryVector_t& VisualMemory::recall() const
+inline const VisualMemory::recallVector_t& VisualMemory::recall() const
 {
     return recallBuffer;
 }
@@ -119,9 +118,7 @@ inline void VisualMemory::process(const Camera::VideoChunk &chunk)
     uint8_t luminance;
 
     while (sampler.next(sampleIndex, luminance)) {
-        uint8_t prev = samples[sampleIndex];
         samples[sampleIndex] = luminance;
-        motion[sampleIndex] = int(luminance) - int(prev);
     }
 }
 
@@ -150,7 +147,7 @@ inline void VisualMemory::learnWorker()
     struct timeval timeA, timeB;
 
     unsigned denseSize = denseToSparsePixelIndex.size();
-    memoryVector_t recallAccumulator;
+    recallVector_t recallAccumulator;
     recallAccumulator.resize(recallBuffer.size());
     gettimeofday(&timeA, 0);
     gettimeofday(&timeB, 0);
@@ -187,24 +184,24 @@ inline void VisualMemory::learnWorker()
                         Cell state = *cell;
 
                         state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
+
+                        if (!isfinite(state.shortTerm)) {
+                            // Oops. Reset to zero
+                            state.shortTerm = 0;
+                        }
+
                         state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
+
+                        if (!isfinite(state.longTerm)) {
+                            state.longTerm = state.shortTerm;
+                        }
+
+                        // In all cells where we access the memory, recall is proportional to
+                        // the difference between short term and long term state (novelty factor)
+                        recallAccumulator[sparseIndex] += state.shortTerm - state.longTerm;
 
                         *cell = state;
                     }
-                }
-            }
-
-            // Convolve the camera motion with the memory cells, to compute recall
-            {
-                int motionValueInt = motion[sampleIndex];
-                memory_t motionValue = (motionValueInt * motionValueInt) * (1 / memory_t(255 * 255));
-
-                Cell* cell = &memoryBuffer[sampleIndex * denseSize];
-                for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
-                    unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-
-                    recallAccumulator[sparseIndex].shortTerm += motionValue * cell->shortTerm;
-                    recallAccumulator[sparseIndex].longTerm += motionValue * cell->longTerm;
                 }
             }
         }
@@ -233,7 +230,7 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
     unsigned denseSize = denseToSparsePixelIndex.size();
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
-    const int ledsWide = 4;
+    const int ledsWide = int(sqrt(denseSize));
     const int width = ledsWide * CameraSampler::kBlocksWide;
     const int ledsHigh = (denseToSparsePixelIndex.size() + ledsWide - 1) / ledsWide;
     const int height = ledsHigh * CameraSampler::kBlocksHigh;
