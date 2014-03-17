@@ -16,64 +16,45 @@ class ReactEffect : public Effect
 {
 public:
     ReactEffect(VisualMemory *mem)
-        : mem(mem), phase(0)
+        : mem(mem)
     {}
 
+    typedef VisualMemory::memory_t memory_t;
+    typedef VisualMemory::recallVector_t recallVector_t;
+
+    recallVector_t shortFilter;
+    recallVector_t longFilter;
+
     VisualMemory *mem;
-    float phase;
 
-    static const VisualMemory::memory_t kLimitFilterGain = 0.1;
-
-    // Upper and lower limits seen while walking the recall buffer
-    VisualMemory::Cell recallMin, recallMax;
-    VisualMemory::Cell filteredRecallMin, filteredRecallMax;
+    static const memory_t kShortFilterGain = 1e-3;
+    static const memory_t kLongFilterGain = 1e-4;
 
     virtual void beginFrame(const FrameInfo &f)
     {
-        // Reset limits for each frame
-        recallMin = recallMax = mem->recall()[0];
+        const recallVector_t &recall = mem->recall();
+        shortFilter.resize(recall.size());
+        longFilter.resize(recall.size());
 
-        phase = fmodf(phase + f.timeDelta * 0.001, 2 * M_PI);
+        for (unsigned i = 0; i < recall.size(); i++) {
+
+            // Log scale
+            memory_t r = recall[i];
+            r = r ? log(sq(r)) : 0;
+
+            // Filters
+            shortFilter[i] += (r - shortFilter[i]) * kShortFilterGain;
+            longFilter[i] += (r - longFilter[i]) * kLongFilterGain;
+        }
     }
 
     virtual void shader(Vec3& rgb, const PixelInfo &p) const
     {
-        const VisualMemory::Cell &recall = mem->recall()[p.index];
-        VisualMemory::Cell normalized;
-        normalized.shortTerm = std::max(0.0, std::min(1.0, (recall.shortTerm - filteredRecallMin.shortTerm)
-                / (recallMax.shortTerm - recallMin.shortTerm)));
-        normalized.longTerm = std::max(0.0, std::min(1.0, (recall.longTerm - filteredRecallMin.longTerm)
-                / (recallMax.longTerm - recallMin.shortTerm)));
+        memory_t f = sq(shortFilter[p.index] - longFilter[p.index]) * 1e-2;
 
-        float hue = 0;
-        //float sat = std::min(1.0f, powf(std::max(0.0, normalized.longTerm), 4.0));
-        float sat = std::min(1.0f, powf(std::max(0.0, normalized.longTerm), 10.0f));
+        f = isfinite(f) ? f : f;
+        f = -std::min(1.0, std::max(0.0, f));
 
-        // Asymmetric sine thing
-        float dist = len(p.point);
-        float angle = atan2(p.point[2], p.point[0]);
-        float value = 0.5 + 0.2 * sinf(4999.0f * phase + 2.0f * dist + 4.0f * sinf(879.0f * phase) * angle);
-
-        hsv2rgb(rgb, hue, sat, value);
+        rgb = Vec3(f,f,f);
     }
-
-    inline void postProcess(const Vec3& rgb, const PixelInfo& p)
-    {
-        // Update recall limits
-        const VisualMemory::Cell &recall = mem->recall()[p.index];
-        recallMin.shortTerm = std::min(recallMin.shortTerm, recall.shortTerm);
-        recallMin.longTerm = std::min(recallMin.longTerm, recall.longTerm);
-        recallMax.shortTerm = std::max(recallMax.shortTerm, recall.shortTerm);
-        recallMax.longTerm = std::max(recallMax.longTerm, recall.longTerm);
-    }
-
-    virtual void endFrame(const FrameInfo &f)
-    {
-        // Filter the recall limits
-        filteredRecallMin.shortTerm += (recallMin.shortTerm - filteredRecallMin.shortTerm) * kLimitFilterGain;
-        filteredRecallMin.longTerm += (recallMin.longTerm - filteredRecallMin.longTerm) * kLimitFilterGain;
-        filteredRecallMax.shortTerm += (recallMax.shortTerm - filteredRecallMax.shortTerm) * kLimitFilterGain;
-        filteredRecallMax.longTerm += (recallMax.longTerm - filteredRecallMax.longTerm) * kLimitFilterGain;
-    }
-
 };
