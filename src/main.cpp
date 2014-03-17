@@ -1,5 +1,6 @@
 // XXX hacky test code
 
+#include <time.h>
 
 #include "lib/effect.h"
 #include "lib/effect_runner.h"
@@ -30,6 +31,28 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
 }
 
 
+static void debugThread(void *)
+{
+    char buffer[1024];
+    unsigned counter = 0;
+    struct tm tm;
+    time_t clk;
+
+    while (true) {
+        clk = time(NULL);
+        localtime_r(&clk, &tm);
+
+        strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-camera.jpeg", &tm);
+        grab.begin(buffer);
+
+        strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-memory.png", &tm);
+        vismem.debug(buffer);
+
+        counter++;
+        sleep(10);
+    }
+}
+
 int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
@@ -56,25 +79,9 @@ int main(int argc, char **argv)
     // Init visual memory, now that the layout is known
     vismem.start("imprint.mem", &r, &tap);
 
-    while (true) {
-        float dt = r.doFrame();
+    // Dump memory in the background, to avoid delaying the main thread
+    new tthread::thread(debugThread, 0);
 
-        static char buffer[1024];
-        static unsigned counter = 0;
-        static float debugTimer = 0;
-        debugTimer += dt;
-        if (debugTimer > 30.0f) {
-            debugTimer = 0;
-
-            snprintf(buffer, sizeof buffer, "output/frame-%04d.jpeg", counter);
-            grab.begin(buffer);
-
-            snprintf(buffer, sizeof buffer, "output/frame-%04d-memory.png", counter);
-            vismem.debug(buffer);
-
-            counter++;
-        }
-    }
-
+    r.run();
     return 0;
 }
