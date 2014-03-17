@@ -22,38 +22,41 @@ public:
     typedef VisualMemory::memory_t memory_t;
     typedef VisualMemory::recallVector_t recallVector_t;
 
-    recallVector_t shortFilter;
-    recallVector_t longFilter;
+    recallVector_t filter;
+
+    static const memory_t kFilterRate = 0.1;
 
     VisualMemory *mem;
-
-    static const memory_t kShortFilterGain = 1e-3;
-    static const memory_t kLongFilterGain = 1e-4;
 
     virtual void beginFrame(const FrameInfo &f)
     {
         const recallVector_t &recall = mem->recall();
-        shortFilter.resize(recall.size());
-        longFilter.resize(recall.size());
 
+        filter.resize(recall.size());
+
+        memory_t max = 0;
         for (unsigned i = 0; i < recall.size(); i++) {
-
-            // Log scale
             memory_t r = recall[i];
-            r = r ? log(sq(r)) : 0;
+            max = std::max(max, r);
+        }
 
-            // Filters
-            shortFilter[i] += (r - shortFilter[i]) * kShortFilterGain;
-            longFilter[i] += (r - longFilter[i]) * kLongFilterGain;
+        if (max > 0) {
+            memory_t scale = 1.0 / max;
+
+            for (unsigned i = 0; i < recall.size(); i++) {
+                memory_t s = recall[i] * scale;
+                s *= s * s;
+
+                memory_t f = filter[i];
+                f += (s - f) * kFilterRate;
+                filter[i] = f;
+            }
         }
     }
 
     virtual void shader(Vec3& rgb, const PixelInfo &p) const
     {
-        memory_t f = sq(shortFilter[p.index] - longFilter[p.index]) * 1e-2;
-
-        f = isfinite(f) ? f : f;
-        f = -std::min<memory_t>(1.0, std::max<memory_t>(0.0, f));
+        memory_t f = std::max<memory_t>(0.0, filter[p.index]) * -1e4;
 
         rgb = Vec3(f,f,f);
     }
