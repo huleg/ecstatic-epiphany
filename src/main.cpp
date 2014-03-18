@@ -55,7 +55,10 @@ static void debugThread(void *)
 
 static void effectThread(void *)
 {
-    runner.run();
+    while (true) {
+        vismem.updateRecall();
+        runner.doFrame();
+    }
 }
 
 static void sdlThread()
@@ -80,25 +83,16 @@ static void sdlThread()
         const VisualMemory::recallVector_t &recall = vismem.recall();
         int pitch = screen->pitch / 4;
 
-        // Draw motion detector image
-        for (unsigned y = 0, i = 0; y < Camera::kLinesPerFrame; y++) {
-            for (unsigned x = 0; x < Camera::kPixelsPerLine; x++, i++) {
-
-                int s = std::min(255, std::max<int>(0, 10 * vismem.sobel.motionMagnitude(i)));
-
-                uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-                *pixel = s << 8;   // Red
-            }
-        }
-
-        // Draw camera image
+        // Draw camera image with motion detection
         for (unsigned i = 0; i < CameraSampler8Q::kSamples; i++) {
-            int x = CameraSampler8Q::sampleX(i);
-            int y = CameraSampler8Q::sampleY(i);
+            int x = 1 + CameraSampler8Q::sampleX(i);
+            int y = 1 + CameraSampler8Q::sampleY(i);
+
             uint8_t s = vismem.samples()[i];
+            uint8_t m = std::min(255, std::max<int>(0, 20 * vismem.sobel.motionMagnitude(i)));
 
             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-            *pixel |= (s << 24) | (s << 16);  // Green / Blue
+            pixel[2] = pixel[0] = pixel[-1] = (m << 8) | (s << 16) | (s << 24);
         }
 
         // Draw recall buffer
@@ -131,11 +125,11 @@ int main(int argc, char **argv)
     SpokesEffect spokes;
     mixer.add(&spokes, 1.0);
 
-    ReactiveRingsEffect rings("data/glass.png", &vismem);
-    mixer.add(&rings, 0.2);
+    // ReactiveRingsEffect rings("data/glass.png", &vismem);
+    // mixer.add(&rings);
 
-    // RecallDebugEffect recallDebug(&vismem);
-    // mixer.add(&recallDebug, 1.0);
+    RecallDebugEffect recallDebug(&vismem);
+    mixer.add(&recallDebug, 0.75);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);

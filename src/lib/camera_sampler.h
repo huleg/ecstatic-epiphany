@@ -68,17 +68,19 @@ public:
     static int blockX(unsigned index);
     static int blockY(unsigned index);
 
+    static unsigned x8q(unsigned y);
+
 private:
     Camera::VideoChunk iter;
     unsigned y;
     unsigned yIndex;
-
-    static unsigned x8q(unsigned y);
 };
 
 
 /*
  * Sample every luminance pixel, and use them to update a Sobel edge detection filter.
+ * The sobel filter is at full resolution, but the magnitude results are indexed
+ * using the CameraSampler8Q grid.
  */
 class CameraSamplerSobel
 {
@@ -104,10 +106,10 @@ private:
     };
 
     // Diff buffer for sobel magnitude (XY)
-    float sobelXY[Camera::kPixels];
+    float sobelXY[CameraSampler8Q::kSamples];
 
     // Motion filter, boosted when sobelXY changes
-    float motion[Camera::kPixels];
+    float motion[CameraSampler8Q::kSamples];
 };
 
 
@@ -189,6 +191,8 @@ inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
     Camera::VideoChunk iter = chunk;
     int y = iter.line * Camera::kFields + iter.field;
     int yIndex = y * Camera::kPixelsPerLine;
+    int yIndex8q = y * CameraSampler8Q::kBlocksWide;
+    unsigned mask = CameraSampler8Q::x8q(y) * 2 + 1;
 
     while (iter.byteCount) {
         if (iter.byteOffset & 1) {
@@ -217,20 +221,25 @@ inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
             *(sobelY + index    + Camera::kPixelsPerLine) -= delta2;
             *(sobelY + index +1 + Camera::kPixelsPerLine) -= delta;       
 
-            // While we're here, calculate magnitude and magnitude delta
+            // Is this on our 8Q grid?
+            if ((iter.byteOffset & 0xF) == mask) {
+                unsigned i8q = yIndex8q + (iter.byteOffset >> 4);
 
-            int sx = sobelX[index];
-            int sy = sobelY[index];
-            float sxy = sobelXY[index];
-            int target = sx*sx + sy*sy;
+                int sx = sobelX[index];
+                int sy = sobelY[index];
+                float sxy = sobelXY[i8q];
+                int target = sx*sx + sy*sy;
 
-            float motionSample = target - sxy;
-            sxy += motionSample * kMotionFilterGain;
-            sobelXY[index] = sxy;
+                float motionSample = target - sxy;
+                sxy = std::max<float>(1e-10, sxy + motionSample * kMotionFilterGain);
+                sobelXY[i8q] = sxy;
 
-            // Motion, adjusted for the novelty factor
+                // Motion, adjusted for the novelty factor
 
-            motion[index] = motionSample / sxy;
+                motionSample /= sxy;
+                motionSample *= motionSample;
+                motion[i8q] = motionSample;
+            }
         }
 
         iter.byteOffset++;

@@ -38,10 +38,13 @@ public:
     // Buffer of current memory recall, by LED pixel index
     const recallVector_t& recall() const;
 
+    // Update the memory recall buffer. Call once per LED / Camera frame.
+    void updateRecall();
+
     // Buffer of camera samples
     const uint8_t *samples() const;
 
-    // xxx
+    // Sobel filter, with camera motion and edge detection info
     CameraSamplerSobel sobel;
 
 private:
@@ -56,8 +59,9 @@ private:
     Cell *mappedMemory;
     unsigned mappedMemorySize;
 
-    // Updated on the learning thread constantly
+    // Updated by updateRecall()
     recallVector_t recallBuffer;
+    recallVector_t recallAccumulator;
     recallVector_t recallTolerance;
 
     const EffectTap *tap;
@@ -70,7 +74,8 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.25;
+    static const memory_t kLearningThreshold = 0.5;
+    static const memory_t kMotionThreshold = 0.1;
     static const memory_t kShortTermPermeability = 1e-1;
     static const memory_t kLongTermPermeability = 1e-4;
     static const memory_t kToleranceRate = 2e-3;
@@ -85,7 +90,7 @@ private:
 class RecallDebugEffect : public Effect
 {
 public:
-    RecallDebugEffect(VisualMemory *mem, double sensitivity = 50.0)
+    RecallDebugEffect(VisualMemory *mem, double sensitivity = -4.0)
         : mem(mem), sensitivity(sensitivity) {}
 
     VisualMemory *mem;
@@ -125,11 +130,15 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
     fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells\n",
         CameraSampler8Q::kSamples, denseSize, cells);
 
-    recallBuffer.resize(pixelInfo.size());
-    memset(sampleBuffer, 0, sizeof sampleBuffer);
+    // Recall and camera buffers
 
+    recallBuffer.resize(pixelInfo.size());
+    recallAccumulator.resize(denseSize);
     recallTolerance.resize(denseSize);
+
     std::fill(recallTolerance.begin(), recallTolerance.end(), 1.0);
+
+    memset(sampleBuffer, 0, sizeof sampleBuffer);
 
     // Memory mapped file
 
@@ -224,19 +233,11 @@ inline void VisualMemory::learnWorker()
 
     unsigned denseSize = denseToSparsePixelIndex.size();
 
-    // Recall accumulator stored densely
-    recallVector_t recallAccumulator;
-    recallAccumulator.resize(denseSize);
-
     gettimeofday(&timeA, 0);
     gettimeofday(&timeB, 0);
 
     // Keep iterating over the memory buffer in the order it's stored
     while (true) {
-
-        // Once per iteration, calculate sums that will become recallBuffer
-        memset(&recallAccumulator[0], 0, recallAccumulator.size() * sizeof recallAccumulator[0]);
-        double recallAccumulatorTotal = 0;
 
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
             uint8_t luminance = sampleBuffer[sampleIndex];
@@ -260,16 +261,7 @@ inline void VisualMemory::learnWorker()
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
                 Vec3 pixel = effectFrame->colors[sparseIndex];
-
                 Cell state = *cell;
-
-                // Recall: Accumulate squared learning rate, normalized by long-term state
-                double learnRate = double(state.shortTerm) - double(state.longTerm);
-                double acc = (learnRate * learnRate) / (1 + state.longTerm * state.longTerm);
-
-                acc *= recallTolerance[denseIndex];
-                recallAccumulator[denseIndex] += acc;
-                recallAccumulatorTotal += acc;
 
                 memory_t reinforcement = reinforcementFunction(luminance, pixel);
                 if (reinforcement >= kLearningThreshold) {
@@ -279,30 +271,12 @@ inline void VisualMemory::learnWorker()
 
                     // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer
                     // details once the gap narrows.
-                    state.longTerm += (learnRate * learnRate * learnRate) * kLongTermPermeability;
+
+                    double r = double(state.shortTerm) - double(state.longTerm);
+                    state.longTerm += (r * r * r) * kLongTermPermeability;
 
                     *cell = state;
                 }
-            }
-        }
-
-        // Normalize and store recall state. Tolerance builds up slowly over time with negative feedback.
-
-        if (recallAccumulatorTotal) {
-            const memory_t scale = denseSize / recallAccumulatorTotal;
-
-            for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
-                unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-
-                memory_t tolerance = recallTolerance[denseIndex];
-                memory_t value = recallAccumulator[denseIndex] * scale - 1.0;
-
-                tolerance = std::max(1e-10, tolerance * (1.0 - value * kToleranceRate) );
-
-                // fprintf(stderr, "[%d] tolerance=%e value=%e scale=%e tot=%e\n", sparseIndex, tolerance, value, scale, recallAccumulatorTotal);
-
-                recallBuffer[sparseIndex] = value;
-                recallTolerance[denseIndex] = tolerance; 
             }
         }
 
@@ -319,8 +293,39 @@ inline void VisualMemory::learnWorker()
             timeA = timeB;
         }
     }
+}
 
+inline void VisualMemory::updateRecall()
+{
+    const Cell *memoryBuffer = mappedMemory;
+    unsigned denseSize = denseToSparsePixelIndex.size();
 
+    double total = 0;
+    std::fill(recallAccumulator.begin(), recallAccumulator.end(), 0);
+
+    for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
+
+        float motion = sobel.motionMagnitude(sampleIndex);
+        if (motion < kMotionThreshold) {
+            continue;
+        }
+
+        const Cell* cell = &memoryBuffer[sampleIndex * denseSize];    
+        for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
+            unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+
+            double a = motion * cell->longTerm;
+            recallAccumulator[sparseIndex] += a;
+            total += a;
+        }
+    }
+
+    double scale = denseSize / total;
+
+    for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
+        unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+        recallBuffer[sparseIndex] = recallAccumulator[denseIndex] * scale - 1.0;
+    }
 }
 
 inline void VisualMemory::debug(const char *outputPngFilename) const
