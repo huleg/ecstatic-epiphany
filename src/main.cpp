@@ -99,7 +99,7 @@ static void sdlThread()
 
         for (unsigned i = 0; i < screen->h && i < recall.size(); i++) {
 
-            double r = i < recall.size() ? 0.5 * recall[i] : 0;
+            double r = i < recall.size() ? 0.5 + recall[i] : 0;
    
             unsigned s = std::min<int>(255, std::max<int>(0, r * 255.0)); 
             uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
@@ -121,14 +121,14 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    // SpokesEffect spokes;
-    // mixer.add(&spokes, 1.0);
+    SpokesEffect spokes;
+    mixer.add(&spokes, 0.2);
 
     RingsEffect rings("data/glass.png");
     mixer.add(&rings, 0.5);
 
     ReactEffect react(&vismem);
-    mixer.add(&react, 0.3);
+    mixer.add(&react, 1.0);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);

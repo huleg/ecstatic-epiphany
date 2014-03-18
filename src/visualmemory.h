@@ -23,7 +23,7 @@
 class VisualMemory
 {
 public:
-    typedef float memory_t;
+    typedef double memory_t;
     typedef std::vector<memory_t> recallVector_t;
 
     // Starts a dedicated processing thread
@@ -67,10 +67,10 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.25;
+    static const memory_t kLearningThreshold = 0.5;
     static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-4;
-    static const memory_t kToleranceRate = 2e-4;
+    static const memory_t kLongTermPermeability = 1e-15;
+    static const memory_t kToleranceRate = 2e-3;
 
     // Main loop for learning thread
     void learnWorker();
@@ -133,6 +133,17 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
         perror("vismem: Error mapping memory file");
         close(fd);
         return;
+    }
+
+    // Scrub any non-finite values out of memory
+
+    for (unsigned i = 0; i != cells; i++) {
+        if (!isfinite(mappedMemory[i].longTerm)) {
+            mappedMemory[i].longTerm = 0;
+        }
+        if (!isfinite(mappedMemory[i].shortTerm)) {
+            mappedMemory[i].shortTerm = 0;
+        }
     }
 
     // Let the thread loose. This starts learning right away- no other thread should be
@@ -202,7 +213,7 @@ inline void VisualMemory::learnWorker()
 
         // Once per iteration, calculate sums that will become recallBuffer
         memset(&recallAccumulator[0], 0, recallAccumulator.size() * sizeof recallAccumulator[0]);
-        memory_t recallAccumulatorTotal = 0;
+        double recallAccumulatorTotal = 0;
 
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
             uint8_t luminance = sampleBuffer[sampleIndex];
@@ -230,7 +241,9 @@ inline void VisualMemory::learnWorker()
                 Cell state = *cell;
 
                 // Recall: Accumulate squared learning rate, normalized by long-term state
-                memory_t acc = sq(state.shortTerm - state.longTerm) / (1e-4 + sq(state.longTerm));
+                double learnRate = double(state.shortTerm) - double(state.longTerm);
+                double acc = (learnRate * learnRate) / (1 + state.longTerm * state.longTerm);
+
                 acc *= recallTolerance[denseIndex];
                 recallAccumulator[denseIndex] += acc;
                 recallAccumulatorTotal += acc;
@@ -243,7 +256,7 @@ inline void VisualMemory::learnWorker()
 
                     // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer
                     // details once the gap narrows.
-                    memory_t r = state.shortTerm - state.longTerm;
+                    double r = state.shortTerm - state.longTerm;
                     state.longTerm += r*r*r * kLongTermPermeability;
 
                     *cell = state;
@@ -254,15 +267,17 @@ inline void VisualMemory::learnWorker()
         // Normalize and store recall state. Tolerance builds up slowly over time with negative feedback.
 
         if (recallAccumulatorTotal) {
-            memory_t scale = denseSize / recallAccumulatorTotal;
+            const memory_t scale = denseSize / recallAccumulatorTotal;
 
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
 
                 memory_t tolerance = recallTolerance[denseIndex];
-                memory_t value = recallAccumulator[denseIndex] * scale;
+                memory_t value = recallAccumulator[denseIndex] * scale - 1.0;
 
-                tolerance = std::max(1e-20, tolerance + (1.0 - value) * kToleranceRate);
+                tolerance = std::max(1e-10, tolerance * (1.0 - value * kToleranceRate) );
+
+                // fprintf(stderr, "[%d] tolerance=%e value=%e scale=%e tot=%e\n", sparseIndex, tolerance, value, scale, recallAccumulatorTotal);
 
                 recallBuffer[sparseIndex] = value;
                 recallTolerance[denseIndex] = tolerance; 
