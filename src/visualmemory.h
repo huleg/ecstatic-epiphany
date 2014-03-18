@@ -70,7 +70,7 @@ private:
     static const memory_t kLearningThreshold = 0.25;
     static const memory_t kShortTermPermeability = 1e-1;
     static const memory_t kLongTermPermeability = 1e-2;
-    static const memory_t kToleranceRate = 1e-1;
+    static const memory_t kToleranceRate = 1e-2;
 
     // Main loop for learning thread
     void learnWorker();
@@ -238,8 +238,13 @@ inline void VisualMemory::learnWorker()
                 memory_t reinforcement = reinforcementFunction(luminance, pixel);
                 if (reinforcement >= kLearningThreshold) {
 
+                    // Short term learning: Fixed decay rate at each access, additive reinforcement
                     state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
-                    state.longTerm += (state.shortTerm - state.longTerm) * kLongTermPermeability;
+
+                    // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer
+                    // details once the gap narrows.
+                    memory_t r = state.shortTerm - state.longTerm;
+                    state.longTerm += r*r*r * kLongTermPermeability;
 
                     *cell = state;
                 }
@@ -257,7 +262,9 @@ inline void VisualMemory::learnWorker()
                 memory_t tolerance = recallTolerance[denseIndex];
                 memory_t value = recallAccumulator[denseIndex] * scale;
 
-                tolerance -= value * kToleranceRate;
+                tolerance = std::max(1e-20, tolerance + (1.0 - value) * kToleranceRate);
+
+                printf("Recall[%d] val=%e tol=%e\n", sparseIndex, value, tolerance);
 
                 recallBuffer[sparseIndex] = value;
                 recallTolerance[denseIndex] = tolerance; 
