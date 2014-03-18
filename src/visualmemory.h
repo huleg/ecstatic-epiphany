@@ -38,6 +38,9 @@ public:
     // Buffer of current memory recall, by LED pixel index
     const recallVector_t& recall() const;
 
+    // Buffer of camera samples
+    const uint8_t *samples() const;
+
 private:
     struct Cell {
         memory_t shortTerm;
@@ -57,7 +60,7 @@ private:
     std::vector<unsigned> denseToSparsePixelIndex;
 
     // Updated on the video thread constantly, via process()
-    uint8_t samples[CameraSampler::kSamples];
+    uint8_t sampleBuffer[CameraSampler::kSamples];
 
     // Separate learning thread
     tthread::thread *learnThread;
@@ -65,7 +68,7 @@ private:
 
     static const memory_t kLearningThreshold = 0.25;
     static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-4;
+    static const memory_t kLongTermPermeability = 1e-3;
 
     // Main loop for learning thread
     void learnWorker();
@@ -101,7 +104,7 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
         CameraSampler::kSamples, denseSize, cells);
 
     recallBuffer.resize(pixelInfo.size());
-    memset(samples, 0, sizeof samples);
+    memset(sampleBuffer, 0, sizeof sampleBuffer);
 
     // Memory mapped file
 
@@ -138,6 +141,11 @@ inline const VisualMemory::recallVector_t& VisualMemory::recall() const
     return recallBuffer;
 }
 
+inline const uint8_t* VisualMemory::samples() const
+{
+    return sampleBuffer;
+}
+
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
 {
     CameraSampler sampler(chunk);
@@ -145,7 +153,7 @@ inline void VisualMemory::process(const Camera::VideoChunk &chunk)
     uint8_t luminance;
 
     while (sampler.next(sampleIndex, luminance)) {
-        samples[sampleIndex] = luminance;
+        sampleBuffer[sampleIndex] = luminance;
     }
 }
 
@@ -176,8 +184,11 @@ inline void VisualMemory::learnWorker()
     struct timeval timeA, timeB;
 
     unsigned denseSize = denseToSparsePixelIndex.size();
+
+    // Recall accumulator stored densely
     recallVector_t recallAccumulator;
-    recallAccumulator.resize(recallBuffer.size());
+    recallAccumulator.resize(denseSize);
+
     gettimeofday(&timeA, 0);
     gettimeofday(&timeB, 0);
 
@@ -186,9 +197,10 @@ inline void VisualMemory::learnWorker()
 
         // Once per iteration, calculate sums that will become recallBuffer
         memset(&recallAccumulator[0], 0, recallAccumulator.size() * sizeof recallAccumulator[0]);
+        memory_t recallAccumulatorTotal = 0;
 
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
-            uint8_t luminance = samples[sampleIndex];
+            uint8_t luminance = sampleBuffer[sampleIndex];
 
             // Compute maximum possible reinforcement from this luminance; if it's below the
             // learning threshold, we can skip the entire sample.
@@ -207,15 +219,15 @@ inline void VisualMemory::learnWorker()
             Cell* cell = &memoryBuffer[sampleIndex * denseSize];
 
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
-
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
                 Vec3 pixel = effectFrame->colors[sparseIndex];
 
                 Cell state = *cell;
 
-                // In all cells where we access the memory, recall is proportional to
-                // the difference between short term and long term state (novelty factor)
-                recallAccumulator[sparseIndex] += state.shortTerm - state.longTerm;
+                // Recall: Accumulate squared learning rate, normalized by long-term state
+                memory_t acc = sq(state.shortTerm - state.longTerm) / (1e-4 + sq(state.longTerm));
+                recallAccumulator[denseIndex] += acc;
+                recallAccumulatorTotal += acc;
 
                 memory_t reinforcement = reinforcementFunction(luminance, pixel);
                 if (reinforcement >= kLearningThreshold) {
@@ -228,7 +240,12 @@ inline void VisualMemory::learnWorker()
             }
         }
 
-        recallBuffer = recallAccumulator;
+        // Normalize and store recall state
+        memory_t scale = denseSize / recallAccumulatorTotal;
+        for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
+            unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+            recallBuffer[sparseIndex] = recallAccumulator[denseIndex] * scale;
+        }
 
         /*
          * Periodic performance stats

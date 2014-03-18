@@ -1,6 +1,7 @@
 // XXX hacky test code
 
 #include <time.h>
+#include <SDL/SDL.h>
 
 #include "lib/effect.h"
 #include "lib/effect_runner.h"
@@ -20,6 +21,8 @@
 static CameraFramegrab grab;
 static VisualMemory vismem;
 static EffectTap tap;
+static EffectRunner runner;
+static EffectMixer mixer;
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
@@ -53,12 +56,69 @@ static void debugThread(void *)
     }
 }
 
+static void effectThread(void *)
+{
+    runner.run();
+}
+
+static void sdlThread()
+{
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        perror("SDL init failed");
+        return;
+    }
+
+    SDL_Surface *screen = SDL_SetVideoMode(1024, 768, 32, 0);
+    if (!screen) {
+        perror("SDL failed to set video mode");
+        return;
+    }
+
+    SDL_Event event;
+    do {
+
+        SDL_Flip(screen);
+        SDL_LockSurface(screen);
+
+        const VisualMemory::recallVector_t &recall = vismem.recall();
+
+        // Draw camera image
+        int pitch = screen->pitch / 4;
+        for (unsigned i = 0; i < CameraSampler::kSamples; i++) {
+            int x = 1 + CameraSampler::sampleX(i);
+            int y = 1 + CameraSampler::sampleY(i);
+            uint8_t s = vismem.samples()[i];
+
+            uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
+            uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
+            pixel[pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[-pitch] = rgba;
+        }
+ 
+        // Draw recall buffer
+        for (unsigned i = 0; i < screen->h && i < recall.size(); i++) {
+
+            const double scale = 0.1;
+            float f = i < recall.size() ? recall[i] * scale : 0;
+
+            unsigned s = std::min<int>(255, std::max<int>(0, f * 255.0)); 
+
+            uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
+            uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
+            for (unsigned x = 750; x < screen->w; x++) {
+                pixel[x] = rgba;
+            }
+        }
+
+        SDL_UnlockSurface(screen);
+        usleep(10000);
+
+        while (SDL_PollEvent(&event) && event.type != SDL_QUIT);
+    } while (event.type != SDL_QUIT);
+}
+
 int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
-
-    EffectMixer mixer;
-    EffectRunner r;
 
     SpokesEffect spokes;
     mixer.add(&spokes, 0.2);
@@ -66,22 +126,21 @@ int main(int argc, char **argv)
     RingsEffect rings("data/glass.png");
     mixer.add(&rings, 0.5);
 
-    ReactEffect react(&vismem);
-    mixer.add(&react);
+    // ReactEffect react(&vismem);
+    // mixer.add(&react);
 
     tap.setEffect(&mixer);
-    r.setEffect(&tap);
-    r.setLayout("layouts/window6x12.json");
-    if (!r.parseArguments(argc, argv)) {
+    runner.setEffect(&tap);
+    runner.setLayout("layouts/window6x12.json");
+    if (!runner.parseArguments(argc, argv)) {
         return 1;
     }
 
     // Init visual memory, now that the layout is known
-    vismem.start("imprint.mem", &r, &tap);
+    vismem.start("imprint.mem", &runner, &tap);
 
-    // Dump memory in the background, to avoid delaying the main thread
     new tthread::thread(debugThread, 0);
-
-    r.run();
+    new tthread::thread(effectThread, 0);
+    sdlThread();
     return 0;
 }
