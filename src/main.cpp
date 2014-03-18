@@ -12,7 +12,7 @@
 #include "lib/camera_sampler.h"
 
 #include "visual_memory.h"
-#include "rings.h"
+#include "reactive_rings.h"
 #include "spokes.h"
 
 static CameraFramegrab grab;
@@ -119,13 +119,13 @@ int main(int argc, char **argv)
     Camera::start(videoCallback);
 
     SpokesEffect spokes;
-    mixer.add(&spokes, 0.2);
+    mixer.add(&spokes, 1.0);
 
-    RingsEffect rings("data/glass.png");
-    mixer.add(&rings, 0.5);
+    ReactiveRingsEffect rings("data/glass.png", &vismem);
+    mixer.add(&rings, 0.2);
 
-    RecallDebugEffect recallDebug(&vismem);
-    mixer.add(&recallDebug, 1.0);
+    // RecallDebugEffect recallDebug(&vismem);
+    // mixer.add(&recallDebug, 1.0);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);

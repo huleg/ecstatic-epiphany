@@ -67,9 +67,9 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.5;
+    static const memory_t kLearningThreshold = 0.25;
     static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-15;
+    static const memory_t kLongTermPermeability = 1e-4;
     static const memory_t kToleranceRate = 2e-3;
 
     // Main loop for learning thread
@@ -273,8 +273,7 @@ inline void VisualMemory::learnWorker()
 
                     // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer
                     // details once the gap narrows.
-                    double r = state.shortTerm - state.longTerm;
-                    state.longTerm += r*r*r * kLongTermPermeability;
+                    state.longTerm += (learnRate * learnRate * learnRate) * kLongTermPermeability;
 
                     *cell = state;
                 }
