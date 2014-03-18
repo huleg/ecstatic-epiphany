@@ -95,17 +95,32 @@ static void sdlThread()
         }
  
         // Draw recall buffer
+        unsigned left = 750;
+
+        VisualMemory::memory_t recallMax = recall[0];
+        for (unsigned i = 1; i < recall.size(); i++) {
+            recallMax = std::max(recallMax, recall[i]);
+        }
+
+        printf("vismem: recall max %e\n", recallMax);
+
         for (unsigned i = 0; i < screen->h && i < recall.size(); i++) {
 
-            const double scale = 0.1;
-            float f = i < recall.size() ? recall[i] * scale : 0;
+            // double r = i < recall.size() ? recall[i] : 0;
+            // r = r ? log(r) : 0;
+            // r = r ? 1e3 / -r : 0;
 
-            unsigned s = std::min<int>(255, std::max<int>(0, f * 255.0)); 
+            double r = i < recall.size() ? recall[i] : 0;
+            r = recallMax ? r / recallMax : 0;
 
+            // fprintf(stderr, "Recall[%d] = %e\n", i, r);
+
+            unsigned s = std::min<int>(255, std::max<int>(0, r * 255.0)); 
             uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
             uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
-            for (unsigned x = 750; x < screen->w; x++) {
-                pixel[x] = rgba;
+            unsigned bar = (screen->w - left) * r + left;
+            for (unsigned x = left; x < screen->w; x++) {
+                pixel[x] = x < bar ? rgba : 0;
             }
         }
 
@@ -121,10 +136,10 @@ int main(int argc, char **argv)
     Camera::start(videoCallback);
 
     SpokesEffect spokes;
-    mixer.add(&spokes, 0.2);
+    mixer.add(&spokes);
 
-    RingsEffect rings("data/glass.png");
-    mixer.add(&rings, 0.5);
+    // RingsEffect rings("data/glass.png");
+    // mixer.add(&rings, 0.5);
 
     // ReactEffect react(&vismem);
     // mixer.add(&react);
