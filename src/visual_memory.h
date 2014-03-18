@@ -14,7 +14,6 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include "lib/camera_sampler.h"
-#include "lib/camera_kernel.h"
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
@@ -24,8 +23,6 @@
 class VisualMemory
 {
 public:
-    VisualMemory();
-
     typedef double memory_t;
     typedef std::vector<memory_t> recallVector_t;
 
@@ -44,8 +41,8 @@ public:
     // Buffer of camera samples
     const uint8_t *samples() const;
 
-    // Single real-time Gabor kernel
-    CameraKernelGabor gabor;
+    // xxx
+    CameraSamplerSobel sobel;
 
 private:
     struct Cell {
@@ -68,7 +65,6 @@ private:
 
     // Updated on the video thread constantly, via process()
     uint8_t sampleBuffer[CameraSampler8Q::kSamples];
-    CameraSamplerDelta::Buffer cameraDeltaBuffer;
 
     // Separate learning thread
     tthread::thread *learnThread;
@@ -106,10 +102,6 @@ public:
  *                                   Implementation
  *****************************************************************************************/
 
-
-inline VisualMemory::VisualMemory()
-    : gabor( 5, 0 * M_PI / 180.0, 1.0, 0.2)
-{}
 
 inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runner, const EffectTap *tap)
 {
@@ -192,23 +184,16 @@ inline const uint8_t* VisualMemory::samples() const
 
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
 {
-    unsigned sampleIndex;
-
-#if 0
     // Store samples for the learning thread to process
+    unsigned sampleIndex;
     uint8_t luminance;
     CameraSampler8Q s8q(chunk);
     while (s8q.next(sampleIndex, luminance)) {
         sampleBuffer[sampleIndex] = luminance;
     }
-#endif
 
     // Compute kernel functions for motion detection
-    int delta;
-    CameraSamplerDelta sd(chunk, cameraDeltaBuffer);
-    while (sd.next(sampleIndex, delta)) {
-        gabor.process(sampleIndex, delta);
-    }
+    sobel.process(chunk);
 }
 
 inline void VisualMemory::learnThreadFunc(void *context)

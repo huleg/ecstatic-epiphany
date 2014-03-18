@@ -78,26 +78,36 @@ private:
 
 
 /*
- * Sample every luminance pixel, but look at deltas between them.
- * This is a short-lived object, existing on the stack only during video
- * processing. The "Buffer" object holds persistent information.
+ * Sample every luminance pixel, and use them to update a Sobel edge detection filter.
  */
-class CameraSamplerDelta
+class CameraSamplerSobel
 {
 public:
-    struct Buffer {
-        uint8_t luminance[Camera::kPixels];
-    };
+    CameraSamplerSobel();
+    void process(const Camera::VideoChunk &chunk);
 
-    CameraSamplerDelta(const Camera::VideoChunk &chunk, Buffer &buffer);
-
-    bool next(unsigned &index, int &delta);
+    int edgeMagnitude(int index);
+    float motionMagnitude(int index);
 
 private:
-    Camera::VideoChunk iter;
-    Buffer &buffer;
-    unsigned y;
-    unsigned yIndex;
+    static const float kMotionFilterGain = 1e-2;
+
+    // Diff buffer for raw video
+    uint8_t luminance[Camera::kPixels];
+
+    struct {
+        // Layout of buffers such that we don't need to bounds-check while updating sobel filter
+        int padding1[Camera::kPixelsPerLine];
+        int sobelX[Camera::kPixels];
+        int sobelY[Camera::kPixels];
+        int padding2[Camera::kPixelsPerLine];
+    };
+
+    // Diff buffer for sobel magnitude (XY)
+    float sobelXY[Camera::kPixels];
+
+    // Motion filter, boosted when sobelXY changes
+    float motion[Camera::kPixels];
 };
 
 
@@ -167,40 +177,74 @@ inline bool CameraSampler8Q::next(unsigned &index, uint8_t &luminance)
     return false;
 }
 
-inline CameraSamplerDelta::CameraSamplerDelta(const Camera::VideoChunk &chunk, Buffer &buffer)
-    : iter(chunk),
-      buffer(buffer),
-      y(iter.line * Camera::kFields + iter.field),
-      yIndex(y * Camera::kPixelsPerLine)
-{}
-
-inline bool CameraSamplerDelta::next(unsigned &index, int &delta)
+inline CameraSamplerSobel::CameraSamplerSobel()
 {
-    while (iter.byteCount) {
+    memset(sobelX, 0, sizeof sobelX);
+    memset(sobelY, 0, sizeof sobelY);
+    memset(luminance, 0, sizeof luminance);
+}
 
+inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
+{
+    Camera::VideoChunk iter = chunk;
+    int y = iter.line * Camera::kFields + iter.field;
+    int yIndex = y * Camera::kPixelsPerLine;
+
+    while (iter.byteCount) {
         if (iter.byteOffset & 1) {
             // Luminance
 
-            index = yIndex + (iter.byteOffset >> 1);
-            int prev = buffer.luminance[index];
+            // Delta detect
+            int index = yIndex + (iter.byteOffset >> 1);
+            int prev = luminance[index];
             int next = *iter.data;
+            luminance[index] = next;
+            int delta = next - prev;
+            int delta2 = delta * 2;
 
-            buffer.luminance[index] = next;
-            delta = next - prev;
+            // Sobel operators. No bounds-checking; instead we just pad the buffers
 
-            iter.byteOffset++;
-            iter.byteCount--;
-            iter.data++;
+            *(sobelX + index -1 - Camera::kPixelsPerLine) -= delta;
+            *(sobelX + index +1 - Camera::kPixelsPerLine) += delta;
+            *(sobelX + index -1                         ) -= delta2;
+            *(sobelX + index +1                         ) += delta2;
+            *(sobelX + index -1 + Camera::kPixelsPerLine) -= delta;
+            *(sobelX + index +1 + Camera::kPixelsPerLine) += delta;
+            *(sobelY + index -1 - Camera::kPixelsPerLine) += delta;
+            *(sobelY + index    - Camera::kPixelsPerLine) += delta2;
+            *(sobelY + index +1 - Camera::kPixelsPerLine) += delta;
+            *(sobelY + index -1 + Camera::kPixelsPerLine) -= delta;
+            *(sobelY + index    + Camera::kPixelsPerLine) -= delta2;
+            *(sobelY + index +1 + Camera::kPixelsPerLine) -= delta;       
 
-            // Ready for more
-            return true;
+            // While we're here, calculate magnitude and magnitude delta
+
+            int sx = sobelX[index];
+            int sy = sobelY[index];
+            float sxy = sobelXY[index];
+            int target = sx*sx + sy*sy;
+
+            float motionSample = target - sxy;
+            sxy += motionSample * kMotionFilterGain;
+            sobelXY[index] = sxy;
+
+            // Motion, adjusted for the novelty factor
+
+            motion[index] = motionSample / sxy;
         }
 
         iter.byteOffset++;
         iter.byteCount--;
         iter.data++;
     }
+}
 
-    // Out of data
-    return false;
+inline int CameraSamplerSobel::edgeMagnitude(int index)
+{
+    return sobelXY[index];
+}
+
+inline float CameraSamplerSobel::motionMagnitude(int index)
+{
+    return motion[index];
 }
