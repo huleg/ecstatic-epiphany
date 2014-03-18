@@ -11,12 +11,9 @@
 #include "lib/camera_framegrab.h"
 #include "lib/camera_sampler.h"
 
-#include "visualmemory.h"
+#include "visual_memory.h"
 #include "rings.h"
 #include "spokes.h"
-#include "react.h"
-#include "latencytimer.h"
-
 
 static CameraFramegrab grab;
 static VisualMemory vismem;
@@ -127,8 +124,8 @@ int main(int argc, char **argv)
     RingsEffect rings("data/glass.png");
     mixer.add(&rings, 0.5);
 
-    ReactEffect react(&vismem);
-    mixer.add(&react, 1.0);
+    RecallDebugEffect recallDebug(&vismem);
+    mixer.add(&recallDebug, 1.0);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);

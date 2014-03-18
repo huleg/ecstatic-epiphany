@@ -17,7 +17,7 @@
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
-#include "latencytimer.h"
+#include "latency_timer.h"
 
 
 class VisualMemory
@@ -75,6 +75,23 @@ private:
     // Main loop for learning thread
     void learnWorker();
     memory_t reinforcementFunction(int luminance, Vec3 led);
+};
+
+
+// Simple effect that visualizes recall data directly
+class RecallDebugEffect : public Effect
+{
+public:
+    RecallDebugEffect(VisualMemory *mem, double sensitivity = 50.0)
+        : mem(mem), sensitivity(sensitivity) {}
+
+    VisualMemory *mem;
+    double sensitivity;
+
+    virtual void shader(Vec3& rgb, const PixelInfo &p) const
+    {
+        rgb[1] = std::min(1.0, std::max(0.0, 0.5 + mem->recall()[p.index] * sensitivity));
+    }
 };
 
 
