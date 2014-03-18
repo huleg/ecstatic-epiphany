@@ -264,8 +264,6 @@ inline void VisualMemory::learnWorker()
 
                 tolerance = std::max(1e-20, tolerance + (1.0 - value) * kToleranceRate);
 
-                printf("Recall[%d] val=%e tol=%e\n", sparseIndex, value, tolerance);
-
                 recallBuffer[sparseIndex] = value;
                 recallTolerance[denseIndex] = tolerance; 
             }

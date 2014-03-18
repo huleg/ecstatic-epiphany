@@ -124,13 +124,13 @@ int main(int argc, char **argv)
     Camera::start(videoCallback);
 
     SpokesEffect spokes;
-    mixer.add(&spokes);
+    mixer.add(&spokes, 0.9);
 
     // RingsEffect rings("data/glass.png");
     // mixer.add(&rings, 0.5);
 
-    // ReactEffect react(&vismem);
-    // mixer.add(&react);
+    ReactEffect react(&vismem);
+    mixer.add(&react, 0.2);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
