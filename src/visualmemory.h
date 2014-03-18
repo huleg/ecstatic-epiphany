@@ -55,6 +55,7 @@ private:
 
     // Updated on the learning thread constantly
     recallVector_t recallBuffer;
+    recallVector_t recallTolerance;
 
     const EffectTap *tap;
     std::vector<unsigned> denseToSparsePixelIndex;
@@ -68,7 +69,8 @@ private:
 
     static const memory_t kLearningThreshold = 0.25;
     static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-3;
+    static const memory_t kLongTermPermeability = 1e-2;
+    static const memory_t kToleranceRate = 1e-1;
 
     // Main loop for learning thread
     void learnWorker();
@@ -105,6 +107,9 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
 
     recallBuffer.resize(pixelInfo.size());
     memset(sampleBuffer, 0, sizeof sampleBuffer);
+
+    recallTolerance.resize(denseSize);
+    std::fill(recallTolerance.begin(), recallTolerance.end(), 1.0);
 
     // Memory mapped file
 
@@ -226,6 +231,7 @@ inline void VisualMemory::learnWorker()
 
                 // Recall: Accumulate squared learning rate, normalized by long-term state
                 memory_t acc = sq(state.shortTerm - state.longTerm) / (1e-4 + sq(state.longTerm));
+                acc *= recallTolerance[denseIndex];
                 recallAccumulator[denseIndex] += acc;
                 recallAccumulatorTotal += acc;
 
@@ -240,11 +246,22 @@ inline void VisualMemory::learnWorker()
             }
         }
 
-        // Normalize and store recall state
-        memory_t scale = denseSize / recallAccumulatorTotal;
-        for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
-            unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-            recallBuffer[sparseIndex] = recallAccumulator[denseIndex] * scale;
+        // Normalize and store recall state. Tolerance builds up slowly over time with negative feedback.
+
+        if (recallAccumulatorTotal) {
+            memory_t scale = denseSize / recallAccumulatorTotal;
+
+            for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
+                unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+
+                memory_t tolerance = recallTolerance[denseIndex];
+                memory_t value = recallAccumulator[denseIndex] * scale;
+
+                tolerance -= value * kToleranceRate;
+
+                recallBuffer[sparseIndex] = value;
+                recallTolerance[denseIndex] = tolerance; 
+            }
         }
 
         /*
