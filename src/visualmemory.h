@@ -69,8 +69,8 @@ private:
 
     static const memory_t kLearningThreshold = 0.25;
     static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-2;
-    static const memory_t kToleranceRate = 1e-2;
+    static const memory_t kLongTermPermeability = 1e-4;
+    static const memory_t kToleranceRate = 2e-4;
 
     // Main loop for learning thread
     void learnWorker();

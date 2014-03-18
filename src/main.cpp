@@ -97,11 +97,9 @@ static void sdlThread()
         // Draw recall buffer
         unsigned left = 750;
 
-        VisualMemory::memory_t scale = 1.0 / 4;
-
         for (unsigned i = 0; i < screen->h && i < recall.size(); i++) {
 
-            double r = i < recall.size() ? scale * recall[i] : 0;
+            double r = i < recall.size() ? 0.5 * recall[i] : 0;
    
             unsigned s = std::min<int>(255, std::max<int>(0, r * 255.0)); 
             uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
@@ -123,14 +121,14 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    SpokesEffect spokes;
-    mixer.add(&spokes, 0.9);
+    // SpokesEffect spokes;
+    // mixer.add(&spokes, 1.0);
 
-    // RingsEffect rings("data/glass.png");
-    // mixer.add(&rings, 0.5);
+    RingsEffect rings("data/glass.png");
+    mixer.add(&rings, 0.5);
 
     ReactEffect react(&vismem);
-    mixer.add(&react, 0.2);
+    mixer.add(&react, 0.3);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
