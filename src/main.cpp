@@ -20,6 +20,9 @@ static VisualMemory vismem;
 static EffectTap tap;
 static EffectRunner runner;
 static EffectMixer mixer;
+static SpokesEffect spokes;
+static ReactiveRingsEffect rings("data/glass.png", &vismem);
+static RecallDebugEffect recallDebug(&vismem);
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
@@ -55,9 +58,18 @@ static void debugThread(void *)
 
 static void effectThread(void *)
 {
+    float phase = 0;
+    const float rate = 0.1;
+
     while (true) {
         vismem.updateRecall();
-        runner.doFrame();
+        float dt = runner.doFrame();
+
+        phase = fmodf(phase + rate * dt, 2*M_PI);
+        float f = std::max(0.0, sin(phase));
+
+        mixer.setFader(0, f);
+        mixer.setFader(1, 1 - f);
     }
 }
 
@@ -122,14 +134,9 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    SpokesEffect spokes;
-    mixer.add(&spokes, 1.0);
-
-    // ReactiveRingsEffect rings("data/glass.png", &vismem);
+    mixer.add(&spokes);
+    mixer.add(&recallDebug);
     // mixer.add(&rings);
-
-    RecallDebugEffect recallDebug(&vismem);
-    mixer.add(&recallDebug, 0.75);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);

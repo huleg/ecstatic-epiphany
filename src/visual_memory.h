@@ -90,7 +90,7 @@ private:
 class RecallDebugEffect : public Effect
 {
 public:
-    RecallDebugEffect(VisualMemory *mem, double sensitivity = -4.0)
+    RecallDebugEffect(VisualMemory *mem, double sensitivity = -8.0)
         : mem(mem), sensitivity(sensitivity) {}
 
     VisualMemory *mem;
@@ -98,7 +98,8 @@ public:
 
     virtual void shader(Vec3& rgb, const PixelInfo &p) const
     {
-        rgb[1] = std::min(1.0, std::max(0.0, 0.5 + mem->recall()[p.index] * sensitivity));
+        float f = std::min(1.0, std::max(0.0, 0.5 + mem->recall()[p.index] * sensitivity));
+        rgb = Vec3(f,f,f);
     }
 };
 
