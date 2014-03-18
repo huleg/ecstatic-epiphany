@@ -78,19 +78,35 @@ static void sdlThread()
         SDL_LockSurface(screen);
 
         const VisualMemory::recallVector_t &recall = vismem.recall();
+        int pitch = screen->pitch / 4;
 
         // Draw camera image
-        int pitch = screen->pitch / 4;
-        for (unsigned i = 0; i < CameraSampler::kSamples; i++) {
-            int x = 1 + CameraSampler::sampleX(i);
-            int y = 1 + CameraSampler::sampleY(i);
-            uint8_t s = vismem.samples()[i];
+        if (false) {
+            for (unsigned i = 0; i < CameraSampler8Q::kSamples; i++) {
+                int x = 1 + CameraSampler8Q::sampleX(i);
+                int y = 1 + CameraSampler8Q::sampleY(i);
+                uint8_t s = vismem.samples()[i];
 
-            uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
-            uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-            pixel[pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[-pitch] = rgba;
+                uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
+                uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
+                pixel[pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[-pitch] = rgba;
+            }
         }
- 
+
+        // Draw Gabor filtered camera image
+        if (true) {
+            unsigned x, y, i;
+            for (y = 0, i = 0; y < Camera::kLinesPerFrame; y++) {
+                for (x = 0; x < Camera::kPixelsPerLine; x++, i++) {
+
+                    int s = std::min(255, std::max(0, 127 + vismem.gabor.results()[i] / 100 ));
+
+                    uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
+                    *pixel = (s << 24) | (s << 16) | (s << 8) | s;
+                }
+            }
+        }
+
         // Draw recall buffer
         unsigned left = 750;
 

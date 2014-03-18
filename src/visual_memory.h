@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include "lib/camera_sampler.h"
+#include "lib/camera_kernel.h"
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
@@ -23,6 +24,8 @@
 class VisualMemory
 {
 public:
+    VisualMemory();
+
     typedef double memory_t;
     typedef std::vector<memory_t> recallVector_t;
 
@@ -40,6 +43,9 @@ public:
 
     // Buffer of camera samples
     const uint8_t *samples() const;
+
+    // Single real-time Gabor kernel
+    CameraKernelGabor gabor;
 
 private:
     struct Cell {
@@ -61,7 +67,8 @@ private:
     std::vector<unsigned> denseToSparsePixelIndex;
 
     // Updated on the video thread constantly, via process()
-    uint8_t sampleBuffer[CameraSampler::kSamples];
+    uint8_t sampleBuffer[CameraSampler8Q::kSamples];
+    CameraSamplerDelta::Buffer cameraDeltaBuffer;
 
     // Separate learning thread
     tthread::thread *learnThread;
@@ -100,6 +107,10 @@ public:
  *****************************************************************************************/
 
 
+inline VisualMemory::VisualMemory()
+    : gabor( 5, 0 * M_PI / 180.0, 1.0, 0.2)
+{}
+
 inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runner, const EffectTap *tap)
 {
     this->tap = tap;
@@ -118,9 +129,9 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
     // Calculate size of full visual memory
 
     unsigned denseSize = denseToSparsePixelIndex.size();
-    unsigned cells = CameraSampler::kSamples * denseSize;
+    unsigned cells = CameraSampler8Q::kSamples * denseSize;
     fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells\n",
-        CameraSampler::kSamples, denseSize, cells);
+        CameraSampler8Q::kSamples, denseSize, cells);
 
     recallBuffer.resize(pixelInfo.size());
     memset(sampleBuffer, 0, sizeof sampleBuffer);
@@ -181,12 +192,22 @@ inline const uint8_t* VisualMemory::samples() const
 
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
 {
-    CameraSampler sampler(chunk);
     unsigned sampleIndex;
-    uint8_t luminance;
 
-    while (sampler.next(sampleIndex, luminance)) {
+#if 0
+    // Store samples for the learning thread to process
+    uint8_t luminance;
+    CameraSampler8Q s8q(chunk);
+    while (s8q.next(sampleIndex, luminance)) {
         sampleBuffer[sampleIndex] = luminance;
+    }
+#endif
+
+    // Compute kernel functions for motion detection
+    int delta;
+    CameraSamplerDelta sd(chunk, cameraDeltaBuffer);
+    while (sd.next(sampleIndex, delta)) {
+        gabor.process(sampleIndex, delta);
     }
 }
 
@@ -232,7 +253,7 @@ inline void VisualMemory::learnWorker()
         memset(&recallAccumulator[0], 0, recallAccumulator.size() * sizeof recallAccumulator[0]);
         double recallAccumulatorTotal = 0;
 
-        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler::kSamples; sampleIndex++) {
+        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
             uint8_t luminance = sampleBuffer[sampleIndex];
 
             // Compute maximum possible reinforcement from this luminance; if it's below the
@@ -325,9 +346,9 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
     const int ledsWide = int(ceilf(sqrt(denseSize)));
-    const int width = ledsWide * CameraSampler::kBlocksWide;
+    const int width = ledsWide * CameraSampler8Q::kBlocksWide;
     const int ledsHigh = (denseToSparsePixelIndex.size() + ledsWide - 1) / ledsWide;
-    const int height = ledsHigh * CameraSampler::kBlocksHigh;
+    const int height = ledsHigh * CameraSampler8Q::kBlocksHigh;
     std::vector<uint8_t> image;
     image.resize(width * height * 3);
 
@@ -340,14 +361,14 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
 
     fprintf(stderr, "vismem: range %f\n", cellMax);
 
-    for (unsigned sample = 0; sample < CameraSampler::kSamples; sample++) {
+    for (unsigned sample = 0; sample < CameraSampler8Q::kSamples; sample++) {
         for (unsigned led = 0; led < denseSize; led++) {
 
-            int sx = CameraSampler::blockX(sample);
-            int sy = CameraSampler::blockY(sample);
+            int sx = CameraSampler8Q::blockX(sample);
+            int sy = CameraSampler8Q::blockY(sample);
 
-            int x = sx + (led % ledsWide) * CameraSampler::kBlocksWide;
-            int y = sy + (led / ledsWide) * CameraSampler::kBlocksHigh;
+            int x = sx + (led % ledsWide) * CameraSampler8Q::kBlocksWide;
+            int y = sy + (led / ledsWide) * CameraSampler8Q::kBlocksHigh;
 
             const Cell &cell = memoryBuffer[ sample * denseSize + led ];
             uint8_t *pixel = &image[ 3 * (y * width + x) ];

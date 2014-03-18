@@ -1,13 +1,6 @@
 /*
- * Camera sampler layer. This picks out a relatively small number
- * of individual luminance pixels to sample. We use the symmetric
- * solution to the 8 queens problem, in order to use 1/8 the pixels
- * without losing any entire rows or columns.
- *
- * This class acts as a VideoChunk processor that emits callbacks
- * for each new sample it encounters. Video is arriving nearly in
- * real-time, each sample is processed as soon as its Isoc buffer
- * is available.
+ * Camera sampler layer: Ways of breaking down camera data into
+ * precursors used by our other algorithms.
  *
  * Copyright (c) 2014 Micah Elizabeth Scott <micah@scanlime.org>
  *
@@ -38,7 +31,18 @@
 #include "camera.h"
 
 
-class CameraSampler
+/*
+ * This picks out a relatively small number
+ * of individual luminance pixels to sample. We use the symmetric
+ * solution to the 8 queens problem, in order to use 1/8 the pixels
+ * without losing any entire rows or columns.
+ *
+ * This class acts as a VideoChunk processor that emits callbacks
+ * for each new sample it encounters. Video is arriving nearly in
+ * real-time, each sample is processed as soon as its Isoc buffer
+ * is available.
+ */
+class CameraSampler8Q
 {
 public:
     static const int kSamplesPerBlock = 8;
@@ -47,7 +51,7 @@ public:
     static const int kBlocks = kBlocksWide * kBlocksHigh;
     static const int kSamples = kBlocks * kSamplesPerBlock;
 
-    CameraSampler(const Camera::VideoChunk &chunk);
+    CameraSampler8Q(const Camera::VideoChunk &chunk);
 
     /*
      * Look for a sample in the current chunk. Returns 'true' if the sample
@@ -68,6 +72,32 @@ private:
     Camera::VideoChunk iter;
     unsigned y;
     unsigned yIndex;
+
+    static unsigned x8q(unsigned y);
+};
+
+
+/*
+ * Sample every luminance pixel, but look at deltas between them.
+ * This is a short-lived object, existing on the stack only during video
+ * processing. The "Buffer" object holds persistent information.
+ */
+class CameraSamplerDelta
+{
+public:
+    struct Buffer {
+        uint8_t luminance[Camera::kPixels];
+    };
+
+    CameraSamplerDelta(const Camera::VideoChunk &chunk, Buffer &buffer);
+
+    bool next(unsigned &index, int &delta);
+
+private:
+    Camera::VideoChunk iter;
+    Buffer &buffer;
+    unsigned y;
+    unsigned yIndex;
 };
 
 
@@ -76,40 +106,40 @@ private:
  *****************************************************************************************/
 
 
-inline CameraSampler::CameraSampler(const Camera::VideoChunk &chunk)
+inline CameraSampler8Q::CameraSampler8Q(const Camera::VideoChunk &chunk)
     : iter(chunk),
       y(iter.line * Camera::kFields + iter.field),
       yIndex(y * kBlocksWide)
 {}
 
-inline unsigned x8q(unsigned y)
+inline unsigned CameraSampler8Q::x8q(unsigned y)
 {
     // Tiny lookup table for the X offset of the Eight Queens
     // solution on row (Y % 8).
     return (0x24170635 >> ((y & 7) << 2)) & 7;
 }   
 
-inline int CameraSampler::sampleX(unsigned index)
+inline int CameraSampler8Q::sampleX(unsigned index)
 {
     return (blockX(index) << 3) + x8q(sampleY(index));
 }
 
-inline int CameraSampler::blockX(unsigned index)
+inline int CameraSampler8Q::blockX(unsigned index)
 {
     return index % kBlocksWide;
 }
 
-inline int CameraSampler::sampleY(unsigned index)
+inline int CameraSampler8Q::sampleY(unsigned index)
 {
     return index / kBlocksWide;
 }
 
-inline int CameraSampler::blockY(unsigned index)
+inline int CameraSampler8Q::blockY(unsigned index)
 {
     return sampleY(index) / kSamplesPerBlock;
 }
 
-inline bool CameraSampler::next(unsigned &index, uint8_t &luminance)
+inline bool CameraSampler8Q::next(unsigned &index, uint8_t &luminance)
 {
     // Low four bits of the byteOffset we want (X coord + luminance byte)
     unsigned mask = x8q(y) * 2 + 1;
@@ -119,6 +149,44 @@ inline bool CameraSampler::next(unsigned &index, uint8_t &luminance)
         if ((iter.byteOffset & 0xF) == mask) {
             index = yIndex + (iter.byteOffset >> 4);
             luminance = *iter.data;
+
+            iter.byteOffset++;
+            iter.byteCount--;
+            iter.data++;
+
+            // Ready for more
+            return true;
+        }
+
+        iter.byteOffset++;
+        iter.byteCount--;
+        iter.data++;
+    }
+
+    // Out of data
+    return false;
+}
+
+inline CameraSamplerDelta::CameraSamplerDelta(const Camera::VideoChunk &chunk, Buffer &buffer)
+    : iter(chunk),
+      buffer(buffer),
+      y(iter.line * Camera::kFields + iter.field),
+      yIndex(y * Camera::kPixelsPerLine)
+{}
+
+inline bool CameraSamplerDelta::next(unsigned &index, int &delta)
+{
+    while (iter.byteCount) {
+
+        if (iter.byteOffset & 1) {
+            // Luminance
+
+            index = yIndex + (iter.byteOffset >> 1);
+            int prev = buffer.luminance[index];
+            int next = *iter.data;
+
+            buffer.luminance[index] = next;
+            delta = next - prev;
 
             iter.byteOffset++;
             iter.byteCount--;
