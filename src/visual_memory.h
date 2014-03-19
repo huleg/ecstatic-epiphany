@@ -73,13 +73,9 @@ private:
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
-    static const float kMotionRecallProportion = 0.02;
-    static const memory_t kRecallFilterGain = 0.006;
-    static const memory_t kRecallDivisorFilterUpGain = 0.1;
-    static const memory_t kRecallDivisorFilterDownGain = 0.05;
-    static const memory_t kRecallToleranceGain = 1e-3;
-    static const memory_t kRecallMaskingPeak = 1e8;
-    static const memory_t kRecallMaskingDecay = 1e-3;
+    static const float kMotionRecallProportion = 0.1;
+    static const memory_t kRecallFilterGain = 0.06;
+    static const memory_t kRecallToleranceGain = 0.03;
 
     // Main loop for learning thread
     void learnWorker();
@@ -219,17 +215,9 @@ inline void VisualMemory::learnWorker()
     PRNG prng;
     prng.seed(84);
 
-    // Filter states
-    memory_t recallDivisor = 1.0;
-
     // Coordinated motion sorting buffer
     std::vector< std::pair< float, unsigned > > cMotion;
     cMotion.resize(CameraSampler8Q::kBlocks);
-
-    // Masking buffer, prevents oscillations between recall and LED output
-    std::vector<memory_t> masking;
-    masking.resize(denseSize);
-    std::fill(masking.begin(), masking.end(), 1.0f);
 
     // Performance counters
     unsigned loopCount = 0;
@@ -284,7 +272,7 @@ inline void VisualMemory::learnWorker()
         // 2. Accumulate motion for each block
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
             unsigned blockIndex = CameraSampler8Q::blockIndex(sampleIndex);
-            cMotion[blockIndex].first += sobel.motion[sampleIndex];
+            cMotion[blockIndex].first += sq(sobel.motion[sampleIndex]);
         }
 
         // 3. Sort accumulators by total motion
@@ -344,14 +332,7 @@ inline void VisualMemory::learnWorker()
                 *cell = state;
 
                 if (isRecalling) {
-                    // Convolve motion matrix with covariance matrix
-                    double acc = motion * state;
-
-                    /*
-                     * Now 'acc' is our estimate of the original ledSample() for this.
-                     * Prevent oscillations by masking out the influence of the LEDs.
-                     */
-                    acc /= 1.0 + masking[denseIndex];
+                    double acc = motion * motion * state;
 
                     // Integrate over all camera samples
                     recallAccumulator[sparseIndex] += acc;
@@ -364,14 +345,7 @@ inline void VisualMemory::learnWorker()
          * Update recallBuffer
          */
 
-        if (recallTotal) {
-            double recallDivisorTarget = recallTotal / denseSize;
-
-            // Asymmetric filter
-            double delta = recallDivisorTarget - recallDivisor;
-            recallDivisor += delta * (delta > 0 ? kRecallDivisorFilterUpGain : kRecallDivisorFilterDownGain);
-        }
-        double recallScale = 1.0 / recallDivisor;
+        double recallScale = recallTotal ? denseSize / recallTotal : 0.0;
 
         for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
@@ -386,23 +360,7 @@ inline void VisualMemory::learnWorker()
 
             // Filtered update for tolerance
             recallTolerance[denseIndex] = tol - r * kRecallToleranceGain;
-
-            // Update LED masking. Masking takes effect immediately, and gradually decays.
-            // We use the most recent LED values for this.
-
-            const EffectTap::Frame *recentFrame = tap->get(0);
-            if (recentFrame) {
-                Vec3 rgb = recentFrame->colors[sparseIndex];
-                float v = sqrlen(rgb);
-                if (isfinite(v)) {
-                    memory_t m = masking[denseIndex];
-                    m = std::max(m * (1.0 - kRecallMaskingDecay), std::min(1.0f, v) * kRecallMaskingPeak); 
-                    masking[denseIndex] = m;
-                }
-            }
         }
-
-        // printf("scale = %e  total = %e\n", recallScale, recallTotal);
 
         /*
          * Periodic performance stats
