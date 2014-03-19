@@ -331,13 +331,24 @@ inline void VisualMemory::learnWorker()
                 memory_t state = *cell;
 
                 // Compute covariance incrementally
-                memory_t lSample = ledSample(sparseIndex, effectFrame) * pixelExpectedValue[denseIndex];
-                memory_t reinforcement = cSample * lSample;
+                memory_t lSample = ledSample(sparseIndex, effectFrame);
+                memory_t reinforcement = cSample * (lSample - pixelExpectedValue[denseIndex]);
                 state = (state - state * kPermeability) + reinforcement;
                 *cell = state;
 
                 if (isRecalling) {
+                    // Convolve motion matrix with covariance matrix
                     double acc = motion * state;
+
+                    // Now 'acc' is our estimate of the original ledSample() for this.
+                    // Our practical uses of recall, however, want to discount the light
+                    // being put out right now by the LEDs, to therefore return the amount
+                    // of unexpected light. This is easy to do now, since we've already looked
+                    // up the proper past LED frame's value.
+
+                    acc -= lSample;
+
+                    // Integrate over all camera samples
                     recallAccumulator[sparseIndex] += acc;
                     recallTotal += acc;
                 }
