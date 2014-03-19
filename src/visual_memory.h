@@ -73,7 +73,11 @@ private:
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
-    static const float kMotionRecallProportion = 0.1;
+    static const float kMotionRecallProportion = 0.30;
+    static const float kMotionRecallThresholdDecay = 1e-4;
+    static const float kMotionRecallThresholdLimit = 1e-4;
+    static const float kMotionThresholdMaxPeakRatio = 1e6;
+
     static const memory_t kRecallFilterGain = 0.06;
     static const memory_t kRecallToleranceGain = 0.03;
 
@@ -218,6 +222,7 @@ inline void VisualMemory::learnWorker()
     // Coordinated motion sorting buffer
     std::vector< std::pair< float, unsigned > > cMotion;
     cMotion.resize(CameraSampler8Q::kBlocks);
+    float cMotionThresholdPeak = 0.0f;
 
     // Performance counters
     unsigned loopCount = 0;
@@ -278,9 +283,17 @@ inline void VisualMemory::learnWorker()
         // 3. Sort accumulators by total motion
         std::sort(cMotion.begin(), cMotion.end());
 
-        // 4. Remember the blocks within the top kMotionRecallProportion 
-        for (int i = cMotion.size() * (1.0 - kMotionRecallProportion); i < cMotion.size(); ++i) {
-            recallFlags[cMotion[i].second] = true;
+        // 4. Target the blocks within the top kMotionRecallProportion, smoothed with a leaky peak detector
+        float cMotionThresholdTarget = cMotion[cMotion.size() * (1.0 - kMotionRecallProportion)].first;
+        cMotionThresholdPeak = std::max( cMotionThresholdTarget,
+                                std::min( kMotionThresholdMaxPeakRatio * cMotionThresholdTarget,
+                                 cMotionThresholdPeak - cMotionThresholdPeak * kMotionRecallThresholdDecay));
+
+        // printf("cMotion threshold filter=%e target=%e\n", cMotionThresholdPeak, cMotionThresholdTarget);
+
+        // 5. Set recallFlags[] for use below and in the debug window
+        for (unsigned i = 0; i < cMotion.size(); ++i) {
+            recallFlags[cMotion[i].second] = cMotion[i].first >= cMotionThresholdPeak;
         }
 
         /*
