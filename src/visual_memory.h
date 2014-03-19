@@ -43,8 +43,8 @@ public:
     CameraLuminanceBuffer luminance;
     CameraSamplerSobel sobel;
 
-    // Debug flags, shows when learning occurs on a sample
     std::bitset<CameraSampler8Q::kSamples> learnFlags;
+    std::bitset<CameraSampler8Q::kBlocks> recallFlags;
 
 private:
     typedef double memory_t;
@@ -73,9 +73,10 @@ private:
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
-    static const memory_t kMotionRecallThreshold = 1e5;
-    static const memory_t kRecallFilterGain = 1e-2;
-    static const memory_t kRecallToleranceGain = 1e-2;
+    static const float kMotionRecallPercent = 1;
+    static const memory_t kRecallFilterGain = 1e-1;
+    static const memory_t kRecallDivisorFilterGain = 1e-2;
+    static const memory_t kRecallToleranceGain = 1e-3;
 
     // Main loop for learning thread
     void learnWorker();
@@ -213,6 +214,13 @@ inline void VisualMemory::learnWorker()
     PRNG prng;
     prng.seed(84);
 
+    // Filter for recall scaling
+    memory_t recallDivisor = 1.0;
+
+    // Coordinated motion sorting buffer
+    std::vector< std::pair< float, unsigned > > cMotion;
+    cMotion.resize(CameraSampler8Q::kBlocks);
+
     // Performance counters
     unsigned loopCount = 0;
     struct timeval timeA, timeB;
@@ -255,15 +263,28 @@ inline void VisualMemory::learnWorker()
 
         /*
          * Coordinated motion filter: sum of camera motion per-block, to detect clumps of motion
-         * in a tight area.
+         * in a tight area for recall.
          */
 
-        float cMotion[CameraSampler8Q::kBlocks];
-        memset(cMotion, 0, sizeof cMotion);
+        // 1. Clear coordinated motion accumulator, reset order
+        for (unsigned blockIndex = 0; blockIndex != cMotion.size(); blockIndex++) {
+            cMotion[blockIndex].first = 0;
+            cMotion[blockIndex].second = blockIndex;
+            recallFlags[blockIndex] = false;
+        }
 
+        // 2. Accumulate motion for each block
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
             unsigned blockIndex = CameraSampler8Q::blockIndex(sampleIndex);
-            cMotion[blockIndex] += sobel.motion[sampleIndex];
+            cMotion[blockIndex].first += sobel.motion[sampleIndex];
+        }
+
+        // 3. Sort accumulators by total motion
+        std::sort(cMotion.begin(), cMotion.end());
+
+        // 4. Remember the blocks within the top kMotionRecallPercent 
+        for (int i = cMotion.size() * (100 - kMotionRecallPercent) / 100; i < cMotion.size(); ++i) {
+            recallFlags[cMotion[i].second] = true;
         }
 
         /*
@@ -301,7 +322,7 @@ inline void VisualMemory::learnWorker()
 
             // Recall occurs when we exceed the coordinated motion threshold
             unsigned blockIndex = CameraSampler8Q::blockIndex(sampleIndex);
-            bool isRecalling = cMotion[blockIndex] > kMotionRecallThreshold;
+            bool isRecalling = recallFlags[blockIndex];
 
             // Learning and occurs on all LEDs for this sample
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
@@ -326,7 +347,11 @@ inline void VisualMemory::learnWorker()
          * Update recallBuffer
          */
 
-        double recallScale = recallTotal ? denseSize / recallTotal : 0;
+        if (recallTotal) {
+            double recallDivisorTarget = recallTotal / denseSize;
+            recallDivisor += (recallDivisorTarget - recallDivisor) * kRecallDivisorFilterGain;
+        }
+        double recallScale = 1.0 / recallDivisor;
 
         for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];

@@ -98,8 +98,9 @@ static void sdlThread()
             int y = 1 + CameraSampler8Q::sampleY(i);
 
             uint8_t s = vismem.luminance.buffer[i];
-            uint8_t m = std::min(255, std::max<int>(0, 0.1 * vismem.sobel.motion[i]));
+            //uint8_t m = std::min(255, std::max<int>(0, 0.1 * vismem.sobel.motion[i]));
             uint8_t l = vismem.learnFlags[i] ? 0xFF : 0;
+            uint8_t m = vismem.recallFlags[CameraSampler8Q::blockIndex(i)] ? 0xFF : 0;
 
             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
 
@@ -154,7 +155,7 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    mixer.add(&spokes, 0.2);
+    // mixer.add(&spokes, 0.2);
     // mixer.add(&recallDebug);
     mixer.add(&rings);
 
