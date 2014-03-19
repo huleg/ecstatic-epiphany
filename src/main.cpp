@@ -90,7 +90,6 @@ static void sdlThread()
         SDL_Flip(screen);
         SDL_LockSurface(screen);
 
-        const VisualMemory::memoryVector_t &recall = vismem.recall();
         int pitch = screen->pitch / 4;
 
         // Draw camera image with motion detection
@@ -115,16 +114,16 @@ static void sdlThread()
         unsigned left = 750;
         unsigned top = 400;
 
-        for (unsigned i = 0; i < screen->h && i < recall.size(); i++) {
+        for (unsigned i = 0; i < screen->h && i < runner.getPixelInfo().size(); i++) {
 
             // Convert to RGB color
-            double r = i < recall.size() ? 0.5 + recall[i] : 0;   
-            unsigned s = std::min<int>(255, 255 * std::max(0.0, r*r*r)); 
+            float r = vismem.recall(i);
+            unsigned s = r * 255; 
             uint32_t bgra = (s << 24) | (s << 16) | (s << 8);
 
             // Bars
             uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
-            unsigned bar = std::min(double(screen->w), (screen->w - left) * r + left);
+            unsigned bar = std::min(float(screen->w), (screen->w - left) * r + left);
             for (unsigned x = left; x < screen->w; x++) {
                 pixel[x] = x < bar ? bgra : 0;
             }

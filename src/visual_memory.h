@@ -27,9 +27,6 @@
 class VisualMemory
 {
 public:
-    typedef double memory_t;
-    typedef std::vector<memory_t> memoryVector_t;
-
     // Starts a dedicated processing thread
     void start(const char *memoryPath, const EffectRunner *runner, const EffectTap *tap);
 
@@ -39,8 +36,8 @@ public:
     // Snapshot memory state as a PNG file
     void debug(const char *outputPngFilename) const;
 
-    // Buffer of current memory recall, by LED pixel index
-    const memoryVector_t& recall() const;
+    // Read results, by LED pixel index. Between 0 and 1.
+    float recall(unsigned ledIndex) const;
 
     // Camera feature extraction filters
     CameraLuminanceBuffer luminance;
@@ -50,6 +47,8 @@ public:
     std::bitset<CameraSampler8Q::kSamples> learnFlags;
 
 private:
+    typedef double memory_t;
+    typedef std::vector<memory_t> memoryVector_t;
 
     // Persistent mapped memory buffers updated on the learning thread
     memory_t *covariance;
@@ -74,6 +73,7 @@ private:
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
+    static const memory_t kMotionRecallThreshold = 2e3;
     static const memory_t kRecallFilterGain = 1e-2;
     static const memory_t kRecallToleranceGain = 1e-2;
 
@@ -90,15 +90,11 @@ private:
 class RecallDebugEffect : public Effect
 {
 public:
-    RecallDebugEffect(VisualMemory *mem, double sensitivity = 3.0)
-        : mem(mem), sensitivity(sensitivity) {}
-
+    RecallDebugEffect(VisualMemory *mem) : mem(mem) {}
     VisualMemory *mem;
-    double sensitivity;
 
-    virtual void shader(Vec3& rgb, const PixelInfo &p) const
-    {
-        float f = std::min(1.0, std::max(0.0, 0.5 + mem->recall()[p.index] * sensitivity));
+    virtual void shader(Vec3& rgb, const PixelInfo &p) const {
+        float f = mem->recall(p.index);
         rgb = Vec3(0,f,0);
     }
 };
@@ -132,9 +128,6 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
     int pagesize = getpagesize();
     mappingSize += pagesize - 1;
     mappingSize -= mappingSize % pagesize;
-
-    fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells, %d kB\n",
-        CameraSampler8Q::kSamples, denseSize, cells, mappingSize / 1024);
 
     // Recall and camera buffers
 
@@ -176,9 +169,13 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
     learnThread = new tthread::thread(learnThreadFunc, this);
 }
 
-inline const VisualMemory::memoryVector_t& VisualMemory::recall() const
+inline float VisualMemory::recall(unsigned ledIndex) const
 {
-    return recallBuffer;
+    // Clamped and nonlinearly scaled
+    float r = recallBuffer[ledIndex];
+    r += 0.793;  // Cube root of 0.5
+    r = std::max(0.0f, std::min(1.0f, r));
+    return r*r*r;
 }
 
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
@@ -257,13 +254,25 @@ inline void VisualMemory::learnWorker()
         }
 
         /*
+         * Coordinated motion filter: sum of camera motion per-block, to detect clumps of motion
+         * in a tight area.
+         */
+
+        float cMotion[CameraSampler8Q::kBlocks];
+        memset(cMotion, 0, sizeof cMotion);
+
+        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
+            unsigned blockIndex = CameraSampler8Q::blockIndex(sampleIndex);
+            cMotion[blockIndex] += sobel.motion[sampleIndex];
+        }
+
+        /*
          * Big loop, iterate over the huge covariance matrix. We update this matrix
          * sparsely, using a motion heuristic to avoid learning from areas of the image
          * that aren't moving.
          */
 
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
-
             float motion = sobel.motion[sampleIndex];
 
             // Nonlinear probability distribution
@@ -290,7 +299,11 @@ inline void VisualMemory::learnWorker()
             memory_t* cell = &covariance[sampleIndex * denseSize];
             memory_t cSample = cameraSample(sampleIndex) - sampleExpectedValue[sampleIndex];
 
-            // Learning and recall occurs on all LEDs for this sample
+            // Recall occurs when we exceed the coordinated motion threshold
+            unsigned blockIndex = CameraSampler8Q::blockIndex(sampleIndex);
+            bool isRecalling = cMotion[blockIndex] > kMotionRecallThreshold;
+
+            // Learning and occurs on all LEDs for this sample
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
                 memory_t state = *cell;
@@ -299,13 +312,13 @@ inline void VisualMemory::learnWorker()
                 memory_t lSample = ledSample(sparseIndex, effectFrame) * pixelExpectedValue[denseIndex];
                 memory_t reinforcement = cSample * lSample;
                 state = (state - state * kPermeability) + reinforcement;
-
                 *cell = state;
 
-                // Recall
-                double acc = motion * motion * motion * state;
-                recallAccumulator[sparseIndex] += acc;
-                recallTotal += acc;
+                if (isRecalling) {
+                    double acc = motion * motion * motion * state;
+                    recallAccumulator[sparseIndex] += acc;
+                    recallTotal += acc;
+                }
             }
         }
 

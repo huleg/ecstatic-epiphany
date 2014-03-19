@@ -67,6 +67,7 @@ public:
     // Calculate the block position of a particular sample
     static int blockX(unsigned index);
     static int blockY(unsigned index);
+    static unsigned blockIndex(unsigned index);
 
     static unsigned x8q(unsigned y);
 
@@ -148,6 +149,11 @@ inline int CameraSampler8Q::sampleX(unsigned index)
 inline int CameraSampler8Q::blockX(unsigned index)
 {
     return index % kBlocksWide;
+}
+
+inline unsigned CameraSampler8Q::blockIndex(unsigned index)
+{
+    return blockX(index) + blockY(index) * kBlocksWide;
 }
 
 inline int CameraSampler8Q::sampleY(unsigned index)
