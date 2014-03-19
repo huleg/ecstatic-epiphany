@@ -148,11 +148,11 @@ public:
         }
         n /= fbmTotal(brightnessOctaves);
 
-        // Recall value perturbs color
-        float m = colorParam + mem->recall(p.index) * 2.0f;
+        // Recall value, between 0 and 1
+        float r = mem->recall(p.index)
 
         // Assemble color using a lookup through our palette
-        rgb = color(m, sq(n));
+        rgb = color(colorParam + r * 5.0, r * sq(n));
     }
 
     inline void postProcess(const Vec3& rgb, const PixelInfo& p)

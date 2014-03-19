@@ -73,7 +73,7 @@ private:
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
-    static const memory_t kMotionRecallThreshold = 2e3;
+    static const memory_t kMotionRecallThreshold = 1e5;
     static const memory_t kRecallFilterGain = 1e-2;
     static const memory_t kRecallToleranceGain = 1e-2;
 
