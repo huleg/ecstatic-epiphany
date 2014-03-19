@@ -78,7 +78,7 @@ private:
     static const float kMotionRecallThresholdLimit = 1e-4;
     static const float kMotionThresholdMaxPeakRatio = 1e6;
 
-    static const memory_t kRecallFilterGain = 0.06;
+    static const memory_t kRecallFilterGain = 0.01;
     static const memory_t kRecallToleranceGain = 0.03;
 
     // Main loop for learning thread
@@ -360,6 +360,8 @@ inline void VisualMemory::learnWorker()
 
         double recallScale = recallTotal ? denseSize / recallTotal : 0.0;
 
+        // printf("recallTotal %e recallScale %e\n", recallTotal, recallScale);
+
         for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
 
@@ -371,8 +373,10 @@ inline void VisualMemory::learnWorker()
             r += (target - r) * kRecallFilterGain;
             recallBuffer[sparseIndex] = r;
 
-            // Filtered update for tolerance
-            recallTolerance[denseIndex] = tol - r * kRecallToleranceGain;
+            if (recallTotal) {
+                // Filtered update for tolerance
+                recallTolerance[denseIndex] = tol - r * kRecallToleranceGain;
+            }
         }
 
         /*
