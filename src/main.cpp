@@ -67,8 +67,8 @@ static void effectThread(void *)
         phase = fmodf(phase + rate * dt, 2*M_PI);
         float f = std::max(0.0, sin(phase));
 
-        mixer.setFader(0, f);
-        mixer.setFader(1, 1 - f);
+        // mixer.setFader(0, f);
+        // mixer.setFader(1, 1 - f);
     }
 }
 
@@ -104,7 +104,12 @@ static void sdlThread()
             uint8_t l = vismem.learnFlags[i] ? 0xFF : 0;
 
             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-            pixel[2] = pixel[0] = pixel[-1] = (m << 8) | (s << 16) | (l << 24);
+
+            // Pack lots of debug info into RGB channels...
+            uint32_t bgra = (m << 8) | (l << 16) | (s << 24);
+
+            // Splat
+            pixel[-pitch] = pixel[2] = pixel[0] = pixel[-1] = pixel[pitch] = bgra;
         }
 
         // Draw recall buffer
@@ -135,7 +140,7 @@ int main(int argc, char **argv)
     Camera::start(videoCallback);
 
     mixer.add(&spokes);
-    mixer.add(&recallDebug);
+    // mixer.add(&recallDebug);
     // mixer.add(&rings);
 
     tap.setEffect(&mixer);

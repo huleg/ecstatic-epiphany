@@ -70,10 +70,9 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kMotionThreshold = 1e2;
+    static const memory_t kMotionLearningThreshold = 2.0;
     static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-4;
-    static const memory_t kToleranceRate = 2e-3;
+    static const memory_t kLongTermPermeability = 1e-3;
 
     // Main loop for learning thread
     void learnWorker();
@@ -224,14 +223,14 @@ inline void VisualMemory::learnWorker()
             float motion = sobel.motion[sampleIndex];
             uint8_t luma = luminance.buffer[sampleIndex];
 
-            // Increased motion increases the probability that we learn from this sample.
-            // Above kMotionThreshold, we're guaranteed to notice. Below it, we may also randomly
-            // learn from those samples too.
-
+            // Nonlinear probability distribution
             float r = prng.uniform();
             r *= r;
-            bool isLearning = motion / kMotionThreshold >= r;
+            r *= r;
+            r *= r;
 
+            // Increased motion increases the probability that we learn from this sample.
+            bool isLearning = kMotionLearningThreshold / (1 + motion) < r;
             learnFlags[sampleIndex] = isLearning;
             if (!isLearning) {
                 continue;
