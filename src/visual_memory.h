@@ -70,10 +70,11 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kMotionLearningThreshold = 180.0;
-    static const memory_t kShortTermPermeability = 1e-2;
+    static const memory_t kMotionLearningThreshold = 3e-2;
+    static const memory_t kShortTermPermeability = 1e-1;
     static const memory_t kLongTermPermeability = 1e-4;
-    static const memory_t kRecallFilterGain = 1e-2;
+    static const memory_t kRecallFilterGain = 1e-1;
+    static const memory_t kRecallToleranceGain = 1e-4;
 
     // Main loop for learning thread
     void learnWorker();
@@ -133,7 +134,7 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
     recallAccumulator.resize(denseSize);
     recallTolerance.resize(denseSize);
 
-    std::fill(recallTolerance.begin(), recallTolerance.end(), 1.0);
+    std::fill(recallTolerance.begin(), recallTolerance.end(), 0);
 
     // Memory mapped file
 
@@ -232,7 +233,7 @@ inline void VisualMemory::learnWorker()
             r *= r;
 
             // Increased motion increases the probability that we learn from this sample.
-            bool isLearning = kMotionLearningThreshold / (1 + motion) < r;
+            bool isLearning = 1.0 / (kMotionLearningThreshold * (1 + motion)) < r;
             learnFlags[sampleIndex] = isLearning;
             if (!isLearning) {
                 continue;
@@ -265,7 +266,7 @@ inline void VisualMemory::learnWorker()
 
                 // Recall
 
-                double acc = motion * state.longTerm;
+                double acc = motion * motion * state.longTerm;
                 recallAccumulator[sparseIndex] += acc;
                 recallTotal += acc;
             }
@@ -276,12 +277,20 @@ inline void VisualMemory::learnWorker()
          */
 
         double recallScale = recallTotal ? denseSize / recallTotal : 0;
+
         for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+
+            memory_t tol = recallTolerance[denseIndex];
+            memory_t target = recallAccumulator[denseIndex] * recallScale + tol;
+
+            // Filtered update for recall buffer
             memory_t r = recallBuffer[sparseIndex];
-            memory_t target = recallAccumulator[denseIndex] * recallScale - 1.0;
             r += (target - r) * kRecallFilterGain;
             recallBuffer[sparseIndex] = r;
+
+            // Filtered update for tolerance
+            recallTolerance[denseIndex] = tol - r * kRecallToleranceGain;
         }
 
         /*

@@ -119,7 +119,7 @@ static void sdlThread()
 
             // Convert to RGB color
             double r = i < recall.size() ? 0.5 + recall[i] : 0;   
-            unsigned s = std::min<int>(255, std::max<int>(0, r * 255.0)); 
+            unsigned s = std::min<int>(255, 255 * std::max(0.0, r*r*r)); 
             uint32_t bgra = (s << 24) | (s << 16) | (s << 8);
 
             // Bars
@@ -153,9 +153,9 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    // mixer.add(&spokes);
+    mixer.add(&spokes);
     // mixer.add(&recallDebug);
-    mixer.add(&rings);
+    // mixer.add(&rings);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
