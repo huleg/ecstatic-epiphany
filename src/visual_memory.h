@@ -74,10 +74,12 @@ private:
 
     // Recall parameters
     static const float kMotionRecallProportion = 0.02;
-    static const memory_t kRecallFilterGain = 0.02;
+    static const memory_t kRecallFilterGain = 0.002;
     static const memory_t kRecallDivisorFilterUpGain = 0.1;
     static const memory_t kRecallDivisorFilterDownGain = 0.05;
     static const memory_t kRecallToleranceGain = 1e-3;
+    static const memory_t kRecallMaskingPeak = 1e8;
+    static const memory_t kRecallMaskingDecay = 1e-3;
 
     // Main loop for learning thread
     void learnWorker();
@@ -211,22 +213,27 @@ inline VisualMemory::memory_t VisualMemory::ledSample(int sparseIndex, const Eff
 
 inline void VisualMemory::learnWorker()
 {
+    unsigned denseSize = denseToSparsePixelIndex.size();
+
     // Fast inlined PRNG
     PRNG prng;
     prng.seed(84);
 
-    // Filter for recall scaling
+    // Filter states
     memory_t recallDivisor = 1.0;
 
     // Coordinated motion sorting buffer
     std::vector< std::pair< float, unsigned > > cMotion;
     cMotion.resize(CameraSampler8Q::kBlocks);
 
+    // Masking buffer, prevents oscillations between recall and LED output
+    std::vector<memory_t> masking;
+    masking.resize(denseSize);
+    std::fill(masking.begin(), masking.end(), 1.0f);
+
     // Performance counters
     unsigned loopCount = 0;
     struct timeval timeA, timeB;
-
-    unsigned denseSize = denseToSparsePixelIndex.size();
 
     gettimeofday(&timeA, 0);
     gettimeofday(&timeB, 0);
@@ -340,13 +347,11 @@ inline void VisualMemory::learnWorker()
                     // Convolve motion matrix with covariance matrix
                     double acc = motion * state;
 
-                    // Now 'acc' is our estimate of the original ledSample() for this.
-                    // Our practical uses of recall, however, want to discount the light
-                    // being put out right now by the LEDs, to therefore return the amount
-                    // of unexpected light. This is easy to do now, since we've already looked
-                    // up the proper past LED frame's value.
-
-                    acc -= lSample;
+                    /*
+                     * Now 'acc' is our estimate of the original ledSample() for this.
+                     * Prevent oscillations by masking out the influence of the LEDs.
+                     */
+                    acc /= 1.0 + masking[denseIndex];
 
                     // Integrate over all camera samples
                     recallAccumulator[sparseIndex] += acc;
@@ -381,6 +386,20 @@ inline void VisualMemory::learnWorker()
 
             // Filtered update for tolerance
             recallTolerance[denseIndex] = tol - r * kRecallToleranceGain;
+
+            // Update LED masking. Masking takes effect immediately, and gradually decays.
+            // We use the most recent LED values for this.
+
+            const EffectTap::Frame *recentFrame = tap->get(0);
+            if (recentFrame) {
+                Vec3 rgb = recentFrame->colors[sparseIndex];
+                float v = sqrlen(rgb);
+                if (isfinite(v)) {
+                    memory_t m = masking[denseIndex];
+                    m = std::max(m * (1.0 - kRecallMaskingDecay), std::min(1.0f, v) * kRecallMaskingPeak); 
+                    masking[denseIndex] = m;
+                }
+            }
         }
 
         // printf("scale = %e  total = %e\n", recallScale, recallTotal);

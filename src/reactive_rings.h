@@ -71,7 +71,7 @@ public:
 
     virtual void beginFrame(const FrameInfo &f)
     {
-        timer += f.timeDelta;
+        timer += f.timeDelta * 0.1;
 
         spacing = sq(0.5 + noise2(timer * ringScaleRate, 1.5)) * ringScale;
 
