@@ -78,8 +78,8 @@ private:
     static const float kMotionRecallThresholdLimit = 1e-4;
     static const float kMotionThresholdMaxPeakRatio = 1e6;
 
-    static const memory_t kRecallFilterGain = 0.01;
-    static const memory_t kRecallToleranceGain = 0.03;
+    static const memory_t kRecallFilterGain = 0.08;
+    static const memory_t kRecallToleranceGain = 0.001;
 
     // Main loop for learning thread
     void learnWorker();

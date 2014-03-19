@@ -61,6 +61,11 @@ public:
     float seed;
     float threshold;
 
+    // Recall delay buffer
+    std::vector<float> ring;
+    unsigned ringIndex;
+    static const unsigned kNumDelayFrames = 100;
+
     // Calculated once per frame
     float spacing;
     float colorParam;
@@ -71,6 +76,15 @@ public:
 
     virtual void beginFrame(const FrameInfo &f)
     {
+        // Store frame's recall data in our ring
+        ring.resize(kNumDelayFrames * f.pixels.size());
+        for (unsigned i = 0; i < f.pixels.size(); i++) {
+            if (ringIndex >= ring.size()) {
+                ringIndex = 0;
+            }
+            ring[ringIndex++] = mem->recall(i);
+        }
+
         timer += f.timeDelta * 0.1;
 
         spacing = sq(0.5 + noise2(timer * ringScaleRate, 1.5)) * ringScale;
@@ -168,8 +182,8 @@ public:
         }
         m /= fbmTotal(colorOctaves);
 
-        // Recall value, between 0 and 1
-        float r = mem->recall(p.index);
+        // Recall value, between 0 and 1, buffered via our ring
+        float r = ring[(ringIndex + p.index) % ring.size()];
 
         // Assemble color using a lookup through our palette
         rgb = color(colorParam + m + r * 2.0, sq(n));
