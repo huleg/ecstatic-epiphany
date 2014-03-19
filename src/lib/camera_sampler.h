@@ -212,10 +212,10 @@ inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
 
             // Delta detect
             int index = yIndex + (iter.byteOffset >> 1);
-            int prev = luminance[index];
-            int next = *iter.data;
-            luminance[index] = next;
-            int delta = next - prev;
+            int prevL = luminance[index];
+            int nextL = *iter.data;
+            luminance[index] = nextL;
+            int delta = nextL - prevL;
             int delta2 = delta * 2;
 
             // Sobel operators. No bounds-checking; instead we just pad the buffers
@@ -246,10 +246,11 @@ inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
                 sxy = std::max<float>(1e-10, sxy + motionSample * kMotionFilterGain);
                 sobelXY[i8q] = sxy;
 
-                // Motion, adjusted for the novelty factor
+                // Motion, adjusted for the novelty factor and brightness
 
                 motionSample /= sxy;
                 motionSample *= motionSample;
+                motionSample *= nextL;
                 motion[i8q] = motionSample;
             }
         }

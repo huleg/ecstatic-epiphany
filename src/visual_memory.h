@@ -70,7 +70,7 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kMotionLearningThreshold = 1.5;
+    static const memory_t kMotionLearningThreshold = 180.0;
     static const memory_t kShortTermPermeability = 1e-2;
     static const memory_t kLongTermPermeability = 1e-4;
     static const memory_t kRecallFilterGain = 1e-2;

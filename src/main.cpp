@@ -99,7 +99,7 @@ static void sdlThread()
             int y = 1 + CameraSampler8Q::sampleY(i);
 
             uint8_t s = vismem.luminance.buffer[i];
-            uint8_t m = std::min(255, std::max<int>(0, 20 * vismem.sobel.motion[i]));
+            uint8_t m = std::min(255, std::max<int>(0, 0.1 * vismem.sobel.motion[i]));
             uint8_t l = vismem.learnFlags[i] ? 0xFF : 0;
 
             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
@@ -108,22 +108,37 @@ static void sdlThread()
             uint32_t bgra = (m << 8) | (l << 16) | (s << 24);
 
             // Splat
-            pixel[-pitch] = pixel[2] = pixel[0] = pixel[-1] = pixel[pitch] = bgra;
+            pixel[-pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[pitch] = bgra;
         }
 
         // Draw recall buffer
         unsigned left = 750;
+        unsigned top = 400;
 
         for (unsigned i = 0; i < screen->h && i < recall.size(); i++) {
 
-            double r = i < recall.size() ? 0.5 + recall[i] : 0;
-   
+            // Convert to RGB color
+            double r = i < recall.size() ? 0.5 + recall[i] : 0;   
             unsigned s = std::min<int>(255, std::max<int>(0, r * 255.0)); 
-            uint32_t rgba = (s << 24) | (s << 16) | (s << 8) | s;
+            uint32_t bgra = (s << 24) | (s << 16) | (s << 8);
+
+            // Bars
             uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
             unsigned bar = std::min(double(screen->w), (screen->w - left) * r + left);
             for (unsigned x = left; x < screen->w; x++) {
-                pixel[x] = x < bar ? rgba : 0;
+                pixel[x] = x < bar ? bgra : 0;
+            }
+
+            // XZ plane
+            Vec3 point = runner.getPixelInfo()[i].point;
+            int scale = -80;
+            int x = screen->w/2 + point[0] * scale;
+            int y = (screen->h + top) / 2 + point[2] * scale;
+            if (x > 1 && x < screen->w - 1 && y > 1 && y < screen->h - 1) {
+                uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
+            
+                // Splat
+                pixel[-pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[pitch] = bgra;
             }
         }
 
