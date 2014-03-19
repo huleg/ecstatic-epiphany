@@ -68,9 +68,12 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
+    // Learning parameters
     static const memory_t kMotionLearningThreshold = 3e-2;
     static const memory_t kPermeability = 1e-4;
     static const memory_t kExpectedValueGain = 1e-3;
+
+    // Recall parameters
     static const memory_t kRecallFilterGain = 1e-2;
     static const memory_t kRecallToleranceGain = 1e-2;
 
@@ -300,8 +303,7 @@ inline void VisualMemory::learnWorker()
                 *cell = state;
 
                 // Recall
-
-                double acc = motion * motion * state;
+                double acc = motion * motion * motion * state;
                 recallAccumulator[sparseIndex] += acc;
                 recallTotal += acc;
             }
@@ -361,7 +363,6 @@ inline void VisualMemory::debug(const char *filename) const
         memory_t l = covariance[c];
         cellMax = std::max(cellMax, l);
     }
-    memory_t cellScale = 1.0 / cellMax;
 
     fprintf(stderr, "vismem: range %f\n", cellMax);
 
@@ -378,13 +379,12 @@ inline void VisualMemory::debug(const char *filename) const
             uint8_t *pixel = &image[ 3 * (y * width + x) ];
 
             // Some cheesy HDR, so we can see more detail
-            memory_t s = cell * cellScale;
-            int l = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
+            memory_t s = cell / cellMax;
+            pixel[0] = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
             s *= 10;
-            int l10 = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
-
-            pixel[0] = pixel[1] = l;
-            pixel[2] = l10;
+            pixel[1] = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
+            s *= 10;
+            pixel[2] = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
         }
     }
 
