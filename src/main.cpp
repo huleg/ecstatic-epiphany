@@ -114,7 +114,7 @@ static void sdlThread()
         unsigned left = 750;
         unsigned top = 400;
 
-        for (unsigned i = 0; i < screen->h && i < runner.getPixelInfo().size(); i++) {
+        for (unsigned i = 0; i < runner.getPixelInfo().size(); i++) {
 
             // Convert to RGB color
             float r = vismem.recall(i);
@@ -122,10 +122,12 @@ static void sdlThread()
             uint32_t bgra = (s << 24) | (s << 16) | (s << 8);
 
             // Bars
-            uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
-            unsigned bar = std::min(float(screen->w), (screen->w - left) * r + left);
-            for (unsigned x = left; x < screen->w; x++) {
-                pixel[x] = x < bar ? bgra : 0;
+            if (i < screen->h) {
+                uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
+                unsigned bar = std::min(float(screen->w), (screen->w - left) * r + left);
+                for (unsigned x = left; x < screen->w; x++) {
+                    pixel[x] = x < bar ? bgra : 0;
+                }
             }
 
             // XZ plane
