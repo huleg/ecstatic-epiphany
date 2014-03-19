@@ -148,11 +148,31 @@ public:
         }
         n /= fbmTotal(brightnessOctaves);
 
+        /*
+         * Another hybrid 2D/3D fbm for chroma. Use half the octaves.
+         */
+
+        float m = 0;
+        amplitude = colorContrast;
+        arg = s + Vec4(0, 0, 0, 10);
+        i = colorOctaves;
+
+        while (true) {
+            m += amplitude * dNoise(arg);
+            if (--i == 0) {
+                break;
+            }
+
+            amplitude *= 0.5f;
+            arg *= 2.0f;
+        }
+        m /= fbmTotal(colorOctaves);
+
         // Recall value, between 0 and 1
         float r = mem->recall(p.index);
 
         // Assemble color using a lookup through our palette
-        rgb = color(colorParam + r, sq(n));
+        rgb = color(colorParam + m + r * 2.0, sq(n));
     }
 
     inline void postProcess(const Vec3& rgb, const PixelInfo& p)
