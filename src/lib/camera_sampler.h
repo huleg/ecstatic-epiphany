@@ -78,6 +78,18 @@ private:
 
 
 /*
+ * Buffer every sampled luminance value, using the 8Q grid
+ */
+class CameraLuminanceBuffer
+{
+public:
+    CameraLuminanceBuffer();
+    void process(const Camera::VideoChunk &chunk);
+    uint8_t buffer[CameraSampler8Q::kSamples];
+};
+
+
+/*
  * Sample every luminance pixel, and use them to update a Sobel edge detection filter.
  * The sobel filter is at full resolution, but the magnitude results are indexed
  * using the CameraSampler8Q grid.
@@ -88,28 +100,25 @@ public:
     CameraSamplerSobel();
     void process(const Camera::VideoChunk &chunk);
 
-    int edgeMagnitude(int index);
-    float motionMagnitude(int index);
-
-private:
-    static const float kMotionFilterGain = 1e-2;
-
     // Diff buffer for raw video
     uint8_t luminance[Camera::kPixels];
-
-    struct {
-        // Layout of buffers such that we don't need to bounds-check while updating sobel filter
-        int padding1[Camera::kPixelsPerLine];
-        int sobelX[Camera::kPixels];
-        int sobelY[Camera::kPixels];
-        int padding2[Camera::kPixelsPerLine];
-    };
 
     // Diff buffer for sobel magnitude (XY)
     float sobelXY[CameraSampler8Q::kSamples];
 
     // Motion filter, boosted when sobelXY changes
     float motion[CameraSampler8Q::kSamples];
+
+private:
+    static const float kMotionFilterGain = 1e-2;
+
+    struct {
+        // Layout of buffers such that we don't need to bounds-check while updating sobel filter
+        int padding1[Camera::kPixelsPerLine * 2];
+        int sobelX[Camera::kPixels];
+        int sobelY[Camera::kPixels];
+        int padding2[Camera::kPixelsPerLine * 2];
+    };
 };
 
 
@@ -179,11 +188,14 @@ inline bool CameraSampler8Q::next(unsigned &index, uint8_t &luminance)
     return false;
 }
 
+
 inline CameraSamplerSobel::CameraSamplerSobel()
 {
     memset(sobelX, 0, sizeof sobelX);
     memset(sobelY, 0, sizeof sobelY);
     memset(luminance, 0, sizeof luminance);
+    memset(sobelXY, 0, sizeof sobelXY);
+    memset(motion, 0, sizeof motion);
 }
 
 inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
@@ -248,12 +260,20 @@ inline void CameraSamplerSobel::process(const Camera::VideoChunk &chunk)
     }
 }
 
-inline int CameraSamplerSobel::edgeMagnitude(int index)
+
+inline CameraLuminanceBuffer::CameraLuminanceBuffer()
 {
-    return sobelXY[index];
+    memset(buffer, 0, sizeof buffer);
 }
 
-inline float CameraSamplerSobel::motionMagnitude(int index)
+inline void CameraLuminanceBuffer::process(const Camera::VideoChunk &chunk)
 {
-    return motion[index];
+    unsigned sampleIndex;
+    uint8_t luminance;
+ 
+    CameraSampler8Q s8q(chunk);
+ 
+    while (s8q.next(sampleIndex, luminance)) {
+        buffer[sampleIndex] = luminance;
+    }
 }

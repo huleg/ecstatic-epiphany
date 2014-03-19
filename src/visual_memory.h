@@ -17,6 +17,7 @@
 #include "lib/effect_runner.h"
 #include "lib/jpge.h"
 #include "lib/lodepng.h"
+#include "lib/prng.h"
 #include "latency_timer.h"
 
 
@@ -38,14 +39,12 @@ public:
     // Buffer of current memory recall, by LED pixel index
     const recallVector_t& recall() const;
 
-    // Update the memory recall buffer. Call once per LED / Camera frame.
-    void updateRecall();
-
-    // Buffer of camera samples
-    const uint8_t *samples() const;
-
-    // Sobel filter, with camera motion and edge detection info
+    // Camera feature extraction filters
+    CameraLuminanceBuffer luminance;
     CameraSamplerSobel sobel;
+
+    // Debug flags, shows when learning occurs on a sample
+    std::bitset<CameraSampler8Q::kSamples> learnFlags;
 
 private:
     struct Cell {
@@ -59,7 +58,7 @@ private:
     Cell *mappedMemory;
     unsigned mappedMemorySize;
 
-    // Updated by updateRecall()
+    // Recall buffers, updated during learning
     recallVector_t recallBuffer;
     recallVector_t recallAccumulator;
     recallVector_t recallTolerance;
@@ -67,15 +66,11 @@ private:
     const EffectTap *tap;
     std::vector<unsigned> denseToSparsePixelIndex;
 
-    // Updated on the video thread constantly, via process()
-    uint8_t sampleBuffer[CameraSampler8Q::kSamples];
-
     // Separate learning thread
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kLearningThreshold = 0.5;
-    static const memory_t kMotionThreshold = 0.1;
+    static const memory_t kMotionThreshold = 1e2;
     static const memory_t kShortTermPermeability = 1e-1;
     static const memory_t kLongTermPermeability = 1e-4;
     static const memory_t kToleranceRate = 2e-3;
@@ -139,8 +134,6 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
 
     std::fill(recallTolerance.begin(), recallTolerance.end(), 1.0);
 
-    memset(sampleBuffer, 0, sizeof sampleBuffer);
-
     // Memory mapped file
 
     int fd = open(memoryPath, O_CREAT | O_RDWR | O_NOFOLLOW, 0666);
@@ -165,16 +158,7 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
         return;
     }
 
-    // Scrub any non-finite values out of memory
-
-    for (unsigned i = 0; i != cells; i++) {
-        if (!isfinite(mappedMemory[i].longTerm)) {
-            mappedMemory[i].longTerm = 0;
-        }
-        if (!isfinite(mappedMemory[i].shortTerm)) {
-            mappedMemory[i].shortTerm = 0;
-        }
-    }
+    fprintf(stderr, "vismem: Mapped %d cells at %p\n", mappedMemorySize, mappedMemory);
 
     // Let the thread loose. This starts learning right away- no other thread should be
     // writing to the memory buffer from now on.
@@ -187,22 +171,9 @@ inline const VisualMemory::recallVector_t& VisualMemory::recall() const
     return recallBuffer;
 }
 
-inline const uint8_t* VisualMemory::samples() const
-{
-    return sampleBuffer;
-}
-
 inline void VisualMemory::process(const Camera::VideoChunk &chunk)
 {
-    // Store samples for the learning thread to process
-    unsigned sampleIndex;
-    uint8_t luminance;
-    CameraSampler8Q s8q(chunk);
-    while (s8q.next(sampleIndex, luminance)) {
-        sampleBuffer[sampleIndex] = luminance;
-    }
-
-    // Compute kernel functions for motion detection
+    luminance.process(chunk);
     sobel.process(chunk);
 }
 
@@ -228,6 +199,10 @@ inline void VisualMemory::learnWorker()
 {
     Cell *memoryBuffer = mappedMemory;
 
+    // Fast inlined PRNG
+    PRNG prng;
+    prng.seed(84);
+
     // Performance counters
     unsigned loopCount = 0;
     struct timeval timeA, timeB;
@@ -240,12 +215,25 @@ inline void VisualMemory::learnWorker()
     // Keep iterating over the memory buffer in the order it's stored
     while (true) {
 
-        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
-            uint8_t luminance = sampleBuffer[sampleIndex];
+        // For each cycle, keep an accumulator for the next recall buffer
+        double recallTotal = 0;
+        std::fill(recallAccumulator.begin(), recallAccumulator.end(), 0);
 
-            // Compute maximum possible reinforcement from this luminance; if it's below the
-            // learning threshold, we can skip the entire sample.
-            if (reinforcementFunction(luminance, Vec3(1,1,1)) < kLearningThreshold) {
+        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
+
+            float motion = sobel.motion[sampleIndex];
+            uint8_t luma = luminance.buffer[sampleIndex];
+
+            // Increased motion increases the probability that we learn from this sample.
+            // Above kMotionThreshold, we're guaranteed to notice. Below it, we may also randomly
+            // learn from those samples too.
+
+            float r = prng.uniform();
+            r *= r;
+            bool isLearning = motion / kMotionThreshold >= r;
+
+            learnFlags[sampleIndex] = isLearning;
+            if (!isLearning) {
                 continue;
             }
 
@@ -257,28 +245,39 @@ inline void VisualMemory::learnWorker()
                 continue;
             }
 
+            // Learning and recall occurs on all LEDs for this sample
             Cell* cell = &memoryBuffer[sampleIndex * denseSize];
-
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
                 Vec3 pixel = effectFrame->colors[sparseIndex];
                 Cell state = *cell;
 
-                memory_t reinforcement = reinforcementFunction(luminance, pixel);
-                if (reinforcement >= kLearningThreshold) {
+                // Short term learning: Fixed decay rate at each access, additive reinforcement
+                memory_t reinforcement = reinforcementFunction(luma, pixel);
+                state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
 
-                    // Short term learning: Fixed decay rate at each access, additive reinforcement
-                    state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
+                // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer details once the gap narrows.
+                double r = double(state.shortTerm) - double(state.longTerm);
+                state.longTerm += (r * r * r) * kLongTermPermeability;
 
-                    // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer
-                    // details once the gap narrows.
+                *cell = state;
 
-                    double r = double(state.shortTerm) - double(state.longTerm);
-                    state.longTerm += (r * r * r) * kLongTermPermeability;
+                // Recall
 
-                    *cell = state;
-                }
+                double acc = motion * state.longTerm;
+                recallAccumulator[sparseIndex] += acc;
+                recallTotal += acc;
             }
+        }
+
+        /*
+         * Update recallBuffer
+         */
+
+        double recallScale = recallTotal ? denseSize / recallTotal : 0;
+        for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
+            unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+            recallBuffer[sparseIndex] = recallAccumulator[denseIndex] * recallScale - 1.0;
         }
 
         /*
@@ -296,40 +295,7 @@ inline void VisualMemory::learnWorker()
     }
 }
 
-inline void VisualMemory::updateRecall()
-{
-    const Cell *memoryBuffer = mappedMemory;
-    unsigned denseSize = denseToSparsePixelIndex.size();
-
-    double total = 0;
-    std::fill(recallAccumulator.begin(), recallAccumulator.end(), 0);
-
-    for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
-
-        float motion = sobel.motionMagnitude(sampleIndex);
-        if (motion < kMotionThreshold) {
-            continue;
-        }
-
-        const Cell* cell = &memoryBuffer[sampleIndex * denseSize];    
-        for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
-            unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-
-            double a = motion * cell->longTerm;
-            recallAccumulator[sparseIndex] += a;
-            total += a;
-        }
-    }
-
-    double scale = denseSize / total;
-
-    for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
-        unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-        recallBuffer[sparseIndex] = recallAccumulator[denseIndex] * scale - 1.0;
-    }
-}
-
-inline void VisualMemory::debug(const char *outputPngFilename) const
+inline void VisualMemory::debug(const char *filename) const
 {
     unsigned denseSize = denseToSparsePixelIndex.size();
     const Cell *memoryBuffer = mappedMemory;
@@ -346,7 +312,8 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
     // Extents, using long-term memory to set expected range
     memory_t cellMax = memoryBuffer[0].longTerm;
     for (unsigned c = 1; c < memoryBufferSize; c++) {
-        cellMax = std::max(cellMax, memoryBuffer[c].longTerm);
+        memory_t l = memoryBuffer[c].longTerm;
+        cellMax = std::max(cellMax, l);
     }
     memory_t cellScale = 1.0 / cellMax;
 
@@ -375,9 +342,9 @@ inline void VisualMemory::debug(const char *outputPngFilename) const
         }
     }
 
-    if (lodepng_encode_file(outputPngFilename, &image[0], width, height, LCT_RGB, 8)) {
-        fprintf(stderr, "vismem: error saving %s\n", outputPngFilename);
+    if (lodepng_encode_file(filename, &image[0], width, height, LCT_RGB, 8)) {
+        fprintf(stderr, "vismem: error saving %s\n", filename);
     } else {
-        fprintf(stderr, "vismem: saved %s\n", outputPngFilename);
+        fprintf(stderr, "vismem: saved %s\n", filename);
     }
 }

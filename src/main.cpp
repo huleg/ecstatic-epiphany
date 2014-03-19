@@ -62,7 +62,6 @@ static void effectThread(void *)
     const float rate = 0.1;
 
     while (true) {
-        vismem.updateRecall();
         float dt = runner.doFrame();
 
         phase = fmodf(phase + rate * dt, 2*M_PI);
@@ -100,11 +99,12 @@ static void sdlThread()
             int x = 1 + CameraSampler8Q::sampleX(i);
             int y = 1 + CameraSampler8Q::sampleY(i);
 
-            uint8_t s = vismem.samples()[i];
-            uint8_t m = std::min(255, std::max<int>(0, 20 * vismem.sobel.motionMagnitude(i)));
+            uint8_t s = vismem.luminance.buffer[i];
+            uint8_t m = std::min(255, std::max<int>(0, 20 * vismem.sobel.motion[i]));
+            uint8_t l = vismem.learnFlags[i] ? 0xFF : 0;
 
             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-            pixel[2] = pixel[0] = pixel[-1] = (m << 8) | (s << 16) | (s << 24);
+            pixel[2] = pixel[0] = pixel[-1] = (m << 8) | (s << 16) | (l << 24);
         }
 
         // Draw recall buffer
