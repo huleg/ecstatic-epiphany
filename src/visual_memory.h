@@ -70,9 +70,10 @@ private:
     tthread::thread *learnThread;
     static void learnThreadFunc(void *context);
 
-    static const memory_t kMotionLearningThreshold = 2.0;
-    static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-3;
+    static const memory_t kMotionLearningThreshold = 1.5;
+    static const memory_t kShortTermPermeability = 1e-2;
+    static const memory_t kLongTermPermeability = 1e-4;
+    static const memory_t kRecallFilterGain = 1e-2;
 
     // Main loop for learning thread
     void learnWorker();
@@ -84,7 +85,7 @@ private:
 class RecallDebugEffect : public Effect
 {
 public:
-    RecallDebugEffect(VisualMemory *mem, double sensitivity = -8.0)
+    RecallDebugEffect(VisualMemory *mem, double sensitivity = 4.0)
         : mem(mem), sensitivity(sensitivity) {}
 
     VisualMemory *mem;
@@ -93,7 +94,8 @@ public:
     virtual void shader(Vec3& rgb, const PixelInfo &p) const
     {
         float f = std::min(1.0, std::max(0.0, 0.5 + mem->recall()[p.index] * sensitivity));
-        rgb = Vec3(f,f,f);
+        float r = random() / double(RAND_MAX) * 0.5;
+        rgb = Vec3(r,f,r);
     }
 };
 
@@ -276,7 +278,10 @@ inline void VisualMemory::learnWorker()
         double recallScale = recallTotal ? denseSize / recallTotal : 0;
         for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
             unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-            recallBuffer[sparseIndex] = recallAccumulator[denseIndex] * recallScale - 1.0;
+            memory_t r = recallBuffer[sparseIndex];
+            memory_t target = recallAccumulator[denseIndex] * recallScale - 1.0;
+            r += (target - r) * kRecallFilterGain;
+            recallBuffer[sparseIndex] = r;
         }
 
         /*

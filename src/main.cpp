@@ -65,8 +65,7 @@ static void effectThread(void *)
         float dt = runner.doFrame();
 
         phase = fmodf(phase + rate * dt, 2*M_PI);
-        float f = std::max(0.0, sin(phase));
-
+        // float f = std::max(0.0, sin(phase));
         // mixer.setFader(0, f);
         // mixer.setFader(1, 1 - f);
     }
@@ -139,9 +138,9 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    mixer.add(&spokes);
+    // mixer.add(&spokes);
     // mixer.add(&recallDebug);
-    // mixer.add(&rings);
+    mixer.add(&rings);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
