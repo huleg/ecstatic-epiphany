@@ -149,7 +149,7 @@ public:
         n /= fbmTotal(brightnessOctaves);
 
         // Recall value perturbs color
-        float m = mem->recall()[p.index] * 10.0f;
+        float m = mem->recall()[p.index] * 5.0f;
 
         // Assemble color using a lookup through our palette
         rgb = color(colorParam + m, sq(n));

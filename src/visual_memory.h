@@ -1,6 +1,9 @@
 /*
  * Experimental learning algorithm
  *
+ *   - Motion-seeking stochastic update method
+ *   - Estimates covariance matrix between LED and camera luminance
+ *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/
  */
@@ -25,7 +28,7 @@ class VisualMemory
 {
 public:
     typedef double memory_t;
-    typedef std::vector<memory_t> recallVector_t;
+    typedef std::vector<memory_t> memoryVector_t;
 
     // Starts a dedicated processing thread
     void start(const char *memoryPath, const EffectRunner *runner, const EffectTap *tap);
@@ -37,7 +40,7 @@ public:
     void debug(const char *outputPngFilename) const;
 
     // Buffer of current memory recall, by LED pixel index
-    const recallVector_t& recall() const;
+    const memoryVector_t& recall() const;
 
     // Camera feature extraction filters
     CameraLuminanceBuffer luminance;
@@ -47,21 +50,16 @@ public:
     std::bitset<CameraSampler8Q::kSamples> learnFlags;
 
 private:
-    struct Cell {
-        memory_t shortTerm;
-        memory_t longTerm;
-    };
 
-    typedef std::vector<Cell> memoryVector_t;
-
-    // Mapped memory buffer, updated on the learning thread
-    Cell *mappedMemory;
-    unsigned mappedMemorySize;
+    // Persistent mapped memory buffers updated on the learning thread
+    memory_t *covariance;
+    memory_t *sampleExpectedValue;
+    memory_t *pixelExpectedValue;
 
     // Recall buffers, updated during learning
-    recallVector_t recallBuffer;
-    recallVector_t recallAccumulator;
-    recallVector_t recallTolerance;
+    memoryVector_t recallBuffer;
+    memoryVector_t recallAccumulator;
+    memoryVector_t recallTolerance;
 
     const EffectTap *tap;
     std::vector<unsigned> denseToSparsePixelIndex;
@@ -71,14 +69,17 @@ private:
     static void learnThreadFunc(void *context);
 
     static const memory_t kMotionLearningThreshold = 3e-2;
-    static const memory_t kShortTermPermeability = 1e-1;
-    static const memory_t kLongTermPermeability = 1e-4;
-    static const memory_t kRecallFilterGain = 1e-1;
-    static const memory_t kRecallToleranceGain = 1e-4;
+    static const memory_t kPermeability = 1e-4;
+    static const memory_t kExpectedValueGain = 1e-3;
+    static const memory_t kRecallFilterGain = 1e-2;
+    static const memory_t kRecallToleranceGain = 1e-2;
 
     // Main loop for learning thread
     void learnWorker();
-    memory_t reinforcementFunction(int luminance, Vec3 led);
+
+    // Scalar sample utilities
+    memory_t cameraSample(int sample);
+    memory_t ledSample(int sparseIndex, const EffectTap::Frame *frame);
 };
 
 
@@ -86,7 +87,7 @@ private:
 class RecallDebugEffect : public Effect
 {
 public:
-    RecallDebugEffect(VisualMemory *mem, double sensitivity = 4.0)
+    RecallDebugEffect(VisualMemory *mem, double sensitivity = 3.0)
         : mem(mem), sensitivity(sensitivity) {}
 
     VisualMemory *mem;
@@ -95,8 +96,7 @@ public:
     virtual void shader(Vec3& rgb, const PixelInfo &p) const
     {
         float f = std::min(1.0, std::max(0.0, 0.5 + mem->recall()[p.index] * sensitivity));
-        float r = random() / double(RAND_MAX) * 0.5;
-        rgb = Vec3(r,f,r);
+        rgb = Vec3(0,f,0);
     }
 };
 
@@ -125,8 +125,13 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
 
     unsigned denseSize = denseToSparsePixelIndex.size();
     unsigned cells = CameraSampler8Q::kSamples * denseSize;
-    fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells\n",
-        CameraSampler8Q::kSamples, denseSize, cells);
+    unsigned mappingSize = sizeof(memory_t) * (cells + denseSize + CameraSampler8Q::kSamples);
+    int pagesize = getpagesize();
+    mappingSize += pagesize - 1;
+    mappingSize -= mappingSize % pagesize;
+
+    fprintf(stderr, "vismem: %d camera samples * %d LED pixels = %d cells, %d kB\n",
+        CameraSampler8Q::kSamples, denseSize, cells, mappingSize / 1024);
 
     // Recall and camera buffers
 
@@ -144,15 +149,13 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
         return;
     }
 
-    if (ftruncate(fd, cells * sizeof(Cell))) {
+    if (ftruncate(fd, mappingSize)) {
         perror("vismem: Error setting length of mapping file");
         close(fd);
         return;
     }
 
-    mappedMemorySize = cells;
-    mappedMemory = (Cell*) mmap(0, cells * sizeof(Cell),
-        PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, fd, 0);
+    memory_t *mappedMemory = (memory_t*) mmap(0, mappingSize, PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, fd, 0);
 
     if (!mappedMemory) {
         perror("vismem: Error mapping memory file");
@@ -160,7 +163,9 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
         return;
     }
 
-    fprintf(stderr, "vismem: Mapped %d cells at %p\n", mappedMemorySize, mappedMemory);
+    covariance = mappedMemory;
+    sampleExpectedValue = covariance + cells;
+    pixelExpectedValue = sampleExpectedValue + CameraSampler8Q::kSamples;
 
     // Let the thread loose. This starts learning right away- no other thread should be
     // writing to the memory buffer from now on.
@@ -168,7 +173,7 @@ inline void VisualMemory::start(const char *memoryPath, const EffectRunner *runn
     learnThread = new tthread::thread(learnThreadFunc, this);
 }
 
-inline const VisualMemory::recallVector_t& VisualMemory::recall() const
+inline const VisualMemory::memoryVector_t& VisualMemory::recall() const
 {
     return recallBuffer;
 }
@@ -185,22 +190,25 @@ inline void VisualMemory::learnThreadFunc(void *context)
     self->learnWorker();
 }
 
-inline VisualMemory::memory_t VisualMemory::reinforcementFunction(int luminance, Vec3 led)
+inline VisualMemory::memory_t VisualMemory::cameraSample(int sample)
 {
+    int l = luminance.buffer[sample];
+    return (l * l) / memory_t(255 * 255);
+}
+
+inline VisualMemory::memory_t VisualMemory::ledSample(int sparseIndex, const EffectTap::Frame *frame)
+{
+    const Vec3 &led = frame->colors[sparseIndex];
+
     Real r = std::min(1.0f, led[0]);
     Real g = std::min(1.0f, led[1]);
     Real b = std::min(1.0f, led[2]);
 
-    memory_t lumaSq = (luminance * luminance) / 65025.0;
-    memory_t pixSq = (r*r + g*g + b*b) / 3.0f;
-
-    return lumaSq * pixSq;
+    return (r*r + g*g + b*b) / 3.0f;
 }
 
 inline void VisualMemory::learnWorker()
 {
-    Cell *memoryBuffer = mappedMemory;
-
     // Fast inlined PRNG
     PRNG prng;
     prng.seed(84);
@@ -221,10 +229,39 @@ inline void VisualMemory::learnWorker()
         double recallTotal = 0;
         std::fill(recallAccumulator.begin(), recallAccumulator.end(), 0);
 
+        /*
+         * Update expected value filters
+         */
+
+        for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
+            memory_t v = cameraSample(sampleIndex);
+            memory_t ev = sampleExpectedValue[sampleIndex];
+            ev += (v * v - ev) * kExpectedValueGain;
+            sampleExpectedValue[sampleIndex] = ev;
+        }
+
+        {
+            const EffectTap::Frame *effectFrame = tap->get(LatencyTimer::kExpectedDelay);
+            if (effectFrame) {
+                for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++) {
+                    unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
+                    memory_t v = ledSample(sparseIndex, effectFrame);
+                    memory_t ev = pixelExpectedValue[denseIndex];
+                    ev += (v * v - ev) * kExpectedValueGain;
+                    pixelExpectedValue[denseIndex] = ev;
+                }
+            }
+        }
+
+        /*
+         * Big loop, iterate over the huge covariance matrix. We update this matrix
+         * sparsely, using a motion heuristic to avoid learning from areas of the image
+         * that aren't moving.
+         */
+
         for (unsigned sampleIndex = 0; sampleIndex != CameraSampler8Q::kSamples; sampleIndex++) {
 
             float motion = sobel.motion[sampleIndex];
-            uint8_t luma = luminance.buffer[sampleIndex];
 
             // Nonlinear probability distribution
             float r = prng.uniform();
@@ -247,26 +284,24 @@ inline void VisualMemory::learnWorker()
                 continue;
             }
 
+            memory_t* cell = &covariance[sampleIndex * denseSize];
+            memory_t cSample = cameraSample(sampleIndex) - sampleExpectedValue[sampleIndex];
+
             // Learning and recall occurs on all LEDs for this sample
-            Cell* cell = &memoryBuffer[sampleIndex * denseSize];
             for (unsigned denseIndex = 0; denseIndex != denseSize; denseIndex++, cell++) {
                 unsigned sparseIndex = denseToSparsePixelIndex[denseIndex];
-                Vec3 pixel = effectFrame->colors[sparseIndex];
-                Cell state = *cell;
+                memory_t state = *cell;
 
-                // Short term learning: Fixed decay rate at each access, additive reinforcement
-                memory_t reinforcement = reinforcementFunction(luma, pixel);
-                state.shortTerm = (state.shortTerm - state.shortTerm * kShortTermPermeability) + reinforcement;
-
-                // Long term learning: Nonlinear; coarse approximation at high distances, resolve finer details once the gap narrows.
-                double r = double(state.shortTerm) - double(state.longTerm);
-                state.longTerm += (r * r * r) * kLongTermPermeability;
+                // Compute covariance incrementally
+                memory_t lSample = ledSample(sparseIndex, effectFrame) * pixelExpectedValue[denseIndex];
+                memory_t reinforcement = cSample * lSample;
+                state = (state - state * kPermeability) + reinforcement;
 
                 *cell = state;
 
                 // Recall
 
-                double acc = motion * motion * state.longTerm;
+                double acc = motion * motion * state;
                 recallAccumulator[sparseIndex] += acc;
                 recallTotal += acc;
             }
@@ -311,8 +346,6 @@ inline void VisualMemory::learnWorker()
 inline void VisualMemory::debug(const char *filename) const
 {
     unsigned denseSize = denseToSparsePixelIndex.size();
-    const Cell *memoryBuffer = mappedMemory;
-    size_t memoryBufferSize = mappedMemorySize;
 
     // Tiled array of camera samples, one per LED. Artificial square grid of LEDs.
     const int ledsWide = int(ceilf(sqrt(denseSize)));
@@ -322,10 +355,10 @@ inline void VisualMemory::debug(const char *filename) const
     std::vector<uint8_t> image;
     image.resize(width * height * 3);
 
-    // Extents, using long-term memory to set expected range
-    memory_t cellMax = memoryBuffer[0].longTerm;
-    for (unsigned c = 1; c < memoryBufferSize; c++) {
-        memory_t l = memoryBuffer[c].longTerm;
+    // Maximum covariance
+    memory_t cellMax = covariance[0];
+    for (unsigned c = 1; c < (CameraSampler8Q::kSamples * denseSize); c++) {
+        memory_t l = covariance[c];
         cellMax = std::max(cellMax, l);
     }
     memory_t cellScale = 1.0 / cellMax;
@@ -341,17 +374,17 @@ inline void VisualMemory::debug(const char *filename) const
             int x = sx + (led % ledsWide) * CameraSampler8Q::kBlocksWide;
             int y = sy + (led / ledsWide) * CameraSampler8Q::kBlocksHigh;
 
-            const Cell &cell = memoryBuffer[ sample * denseSize + led ];
+            memory_t cell = covariance[ sample * denseSize + led ];
             uint8_t *pixel = &image[ 3 * (y * width + x) ];
 
-            memory_t s = cell.shortTerm * cellScale;
-            memory_t l = cell.longTerm * cellScale;
+            // Some cheesy HDR, so we can see more detail
+            memory_t s = cell * cellScale;
+            int l = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
+            s *= 10;
+            int l10 = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
 
-            int shortTermI = std::min<memory_t>(255.5f, s*s*s*s * 255.0f + 0.5f);
-            int longTermI = std::min<memory_t>(255.5f, l*l*l*l * 255.0f + 0.5f);
-
-            pixel[0] = shortTermI;
-            pixel[1] = pixel[2] = longTermI;
+            pixel[0] = pixel[1] = l;
+            pixel[2] = l10;
         }
     }
 

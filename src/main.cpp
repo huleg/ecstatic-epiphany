@@ -90,7 +90,7 @@ static void sdlThread()
         SDL_Flip(screen);
         SDL_LockSurface(screen);
 
-        const VisualMemory::recallVector_t &recall = vismem.recall();
+        const VisualMemory::memoryVector_t &recall = vismem.recall();
         int pitch = screen->pitch / 4;
 
         // Draw camera image with motion detection
@@ -153,13 +153,14 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    mixer.add(&spokes);
+    // mixer.add(&spokes, 0.2);
     // mixer.add(&recallDebug);
-    // mixer.add(&rings);
+    mixer.add(&rings);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
-    runner.setLayout("layouts/window6x12.json");
+    // runner.setLayout("layouts/window6x12.json");
+    runner.setLayout("layouts/grid32x16z.json");
     if (!runner.parseArguments(argc, argv)) {
         return 1;
     }
