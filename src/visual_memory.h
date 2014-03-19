@@ -69,12 +69,12 @@ private:
 
     // Learning parameters
     static const memory_t kMotionLearningThreshold = 3e-2;
-    static const memory_t kPermeability = 1e-4;
+    static const memory_t kPermeability = 1e-5;
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
     static const float kMotionRecallProportion = 0.02;
-    static const memory_t kRecallFilterGain = 0.002;
+    static const memory_t kRecallFilterGain = 0.006;
     static const memory_t kRecallDivisorFilterUpGain = 0.1;
     static const memory_t kRecallDivisorFilterDownGain = 0.05;
     static const memory_t kRecallToleranceGain = 1e-3;
