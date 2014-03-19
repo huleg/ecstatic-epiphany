@@ -155,7 +155,7 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    // mixer.add(&spokes, 0.2);
+    mixer.add(&spokes, 0.2);
     // mixer.add(&recallDebug);
     mixer.add(&rings);
 

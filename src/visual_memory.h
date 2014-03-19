@@ -73,9 +73,10 @@ private:
     static const memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
-    static const float kMotionRecallPercent = 1;
-    static const memory_t kRecallFilterGain = 1e-1;
-    static const memory_t kRecallDivisorFilterGain = 1e-2;
+    static const float kMotionRecallProportion = 0.02;
+    static const memory_t kRecallFilterGain = 0.02;
+    static const memory_t kRecallDivisorFilterUpGain = 0.1;
+    static const memory_t kRecallDivisorFilterDownGain = 0.05;
     static const memory_t kRecallToleranceGain = 1e-3;
 
     // Main loop for learning thread
@@ -282,8 +283,8 @@ inline void VisualMemory::learnWorker()
         // 3. Sort accumulators by total motion
         std::sort(cMotion.begin(), cMotion.end());
 
-        // 4. Remember the blocks within the top kMotionRecallPercent 
-        for (int i = cMotion.size() * (100 - kMotionRecallPercent) / 100; i < cMotion.size(); ++i) {
+        // 4. Remember the blocks within the top kMotionRecallProportion 
+        for (int i = cMotion.size() * (1.0 - kMotionRecallProportion); i < cMotion.size(); ++i) {
             recallFlags[cMotion[i].second] = true;
         }
 
@@ -336,7 +337,7 @@ inline void VisualMemory::learnWorker()
                 *cell = state;
 
                 if (isRecalling) {
-                    double acc = motion * motion * motion * state;
+                    double acc = motion * state;
                     recallAccumulator[sparseIndex] += acc;
                     recallTotal += acc;
                 }
@@ -349,7 +350,10 @@ inline void VisualMemory::learnWorker()
 
         if (recallTotal) {
             double recallDivisorTarget = recallTotal / denseSize;
-            recallDivisor += (recallDivisorTarget - recallDivisor) * kRecallDivisorFilterGain;
+
+            // Asymmetric filter
+            double delta = recallDivisorTarget - recallDivisor;
+            recallDivisor += delta * (delta > 0 ? kRecallDivisorFilterUpGain : kRecallDivisorFilterDownGain);
         }
         double recallScale = 1.0 / recallDivisor;
 
@@ -367,6 +371,8 @@ inline void VisualMemory::learnWorker()
             // Filtered update for tolerance
             recallTolerance[denseIndex] = tol - r * kRecallToleranceGain;
         }
+
+        // printf("scale = %e  total = %e\n", recallScale, recallTotal);
 
         /*
          * Periodic performance stats
