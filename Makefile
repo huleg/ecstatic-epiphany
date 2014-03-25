@@ -1,4 +1,4 @@
-TARGET = imprint
+TARGET = ei
 CPP_FILES = \
 	src/main.cpp \
 	src/lib/camera_somagic.cpp \

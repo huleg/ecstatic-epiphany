@@ -1,5 +1,5 @@
-Imprint
-=======
+Ecstatic Epiphany
+=================
 
 An interactive light art installation.
 
