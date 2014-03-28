@@ -161,8 +161,7 @@ int main(int argc, char **argv)
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
-    // runner.setLayout("layouts/window6x12.json");
-    runner.setLayout("layouts/grid32x16z.json");
+    runner.setLayout("layouts/window6x12.json");
     if (!runner.parseArguments(argc, argv)) {
         return 1;
     }
@@ -172,6 +171,7 @@ int main(int argc, char **argv)
 
     new tthread::thread(debugThread, 0);
     new tthread::thread(effectThread, 0);
-    sdlThread();
+    // sdlThread();
+    while (1) sleep(1);
     return 0;
 }
