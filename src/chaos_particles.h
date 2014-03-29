@@ -21,14 +21,18 @@ public:
     virtual void beginFrame(const FrameInfo &f);
 
 private:
-    static const unsigned numParticles = 1000;
-    static const float agingRate = 0.1;
-    static const float speedGain = 3.0;
-    static const float relativeSize = 0.05;
-    static const float intensity = 1.5;
-    static const float initialSpeed = 0.001;
-    static const float stepSize = 0.002;
-    static const unsigned maxAge = 30000;
+    static const unsigned numParticles = 250;
+    static const float generationScale = 1.0 / 12;
+    static const float speedMin = 0.75;
+    static const float speedMax = 1.5;
+    static const float spinMin = M_PI * 0.4;
+    static const float spinMax = spinMin + M_PI * 0.01;
+    static const float relativeSize = 0.12;
+    static const float intensity = 0.6;
+    static const float intensityExp = 1.0 / 2.5;
+    static const float initialSpeed = 0.004;
+    static const float stepSize = 1.0 / 500;
+    static const unsigned maxAge = 6000;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -38,12 +42,12 @@ private:
         unsigned age;
     };
 
-    Texture temperatureScale;
+    Texture palette;
     std::vector<ParticleDynamics> dynamics;
     float timeDeltaRemainder;
 
     static Vec2 circularRandomVector(PRNG &prng);
-    void updateColor(unsigned i);
+    static Vec2 ringRandomVector(PRNG &prng, Real min, Real max);
     void runStep(const FrameInfo &f);
 };
 
@@ -54,7 +58,7 @@ private:
 
 
 inline ChaosParticles::ChaosParticles()
-    : temperatureScale("data/temperature-scale.png"),
+    : palette("data/bang-palette.png"),
       timeDeltaRemainder(0)
 {
     reseed();
@@ -74,30 +78,38 @@ inline Vec2 ChaosParticles::circularRandomVector(PRNG &prng)
     return Vec2(0, 0);
 }
 
+inline Vec2 ChaosParticles::ringRandomVector(PRNG &prng, Real min, Real max)
+{
+    // Random vector with a length between 'min' and 'max'
+    for (unsigned i = 0; i < 200; i++) {
+        Vec2 v;
+        v[0] = prng.uniform(-1, 1);
+        v[1] = prng.uniform(-1, 1);
+        Real sl = sqrlen(v);
+        if (sl <= max * max && sl >= min * min) {
+            return v;
+        }
+    }
+    return Vec2(0, 0);
+}
+
 inline void ChaosParticles::reseed()
 {
     appearance.resize(numParticles);
     dynamics.resize(numParticles);
 
     PRNG prng;
-    prng.seed(42);
+    prng.seed(rand());
 
     for (unsigned i = 0; i < dynamics.size(); i++) {
         dynamics[i].position = Vec2(0,0);
-        dynamics[i].velocity = circularRandomVector(prng) * initialSpeed;
+        dynamics[i].velocity = ringRandomVector(prng, 0.1, 1.0) * initialSpeed;
         dynamics[i].age = 0;
         dynamics[i].generation = 0;
         dynamics[i].dead = false;
         dynamics[i].escaped = false;
-        updateColor(i);
     }
 }
-
-inline void ChaosParticles::updateColor(unsigned i)
-{
-    appearance[i].color = temperatureScale.sample(dynamics[i].generation * agingRate, 0);
-}
-
 
 inline void ChaosParticles::beginFrame(const FrameInfo &f)
 {    
@@ -116,6 +128,8 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
     PRNG prng;
     prng.seed(19);
 
+    unsigned numLiveParticles = 0;
+
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {
 
@@ -129,14 +143,20 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
             appearance[i].intensity = 0;
             continue;
         }
+        float ageF = dynamics[i].age / (float)maxAge;
+
+        numLiveParticles++;
 
         // XZ plane
         appearance[i].point[0] = dynamics[i].position[0];
         appearance[i].point[2] = dynamics[i].position[1];
 
         // Fade in/out
-        appearance[i].intensity = intensity * sinf(dynamics[i].age * (2.0 * M_PI) / maxAge);
+        appearance[i].intensity = intensity * pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
         appearance[i].radius = f.modelDiameter * relativeSize;
+
+        float c = (dynamics[i].generation + ageF) * generationScale;
+        appearance[i].color = palette.sample(c, 0);
 
         dynamics[i].escaped = f.distanceOutsideBoundingBox(appearance[i].point) > appearance[i].radius;
 
@@ -155,13 +175,26 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
                     dynamics[i] = dynamics[seed];
                     dynamics[i].generation++;
                     dynamics[i].age = 0;
-                    dynamics[i].velocity += circularRandomVector(prng) * len(dynamics[i].velocity) * speedGain;
-                    updateColor(i);
+                    Vec2 &v = dynamics[i].velocity;
+
+                    // Speed modulation
+                    v *= prng.uniform(speedMin, speedMax);
+
+                    // Direction modulation
+                    float t = prng.uniform(spinMin, spinMax);
+                    float c = cosf(t);
+                    float s = sinf(t);
+                    v = Vec2( v[0] * c - v[1] * s ,
+                              v[0] * s + v[1] * c );
 
                     break;
                 }
             }
         }
+    }
+
+    if (!numLiveParticles) {
+        reseed();
     }
 
     ParticleEffect::beginFrame(f);
