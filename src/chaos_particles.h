@@ -52,8 +52,6 @@ private:
     float colorCycle;
     bool running;
 
-    static Vec2 circularRandomVector(PRNG &prng);
-    static Vec2 ringRandomVector(PRNG &prng, Real min, Real max);
     void runStep(const FrameInfo &f);
 };
 
@@ -76,35 +74,6 @@ inline bool ChaosParticles::isRunning()
     return running;
 }
 
-inline Vec2 ChaosParticles::circularRandomVector(PRNG &prng)
-{
-    // Random vector with a uniform circular distribution
-    for (unsigned i = 0; i < 100; i++) {
-        Vec2 v;
-        v[0] = prng.uniform(-1, 1);
-        v[1] = prng.uniform(-1, 1);
-        if (sqrlen(v) <= 1.0) {
-            return v;
-        }
-    }
-    return Vec2(0, 0);
-}
-
-inline Vec2 ChaosParticles::ringRandomVector(PRNG &prng, Real min, Real max)
-{
-    // Random vector with a length between 'min' and 'max'
-    for (unsigned i = 0; i < 200; i++) {
-        Vec2 v;
-        v[0] = prng.uniform(-1, 1);
-        v[1] = prng.uniform(-1, 1);
-        Real sl = sqrlen(v);
-        if (sl <= max * max && sl >= min * min) {
-            return v;
-        }
-    }
-    return Vec2(0, 0);
-}
-
 inline void ChaosParticles::reseed(Vec3 location, unsigned seed)
 {
     running = true;
@@ -117,7 +86,7 @@ inline void ChaosParticles::reseed(Vec3 location, unsigned seed)
 
     for (unsigned i = 0; i < dynamics.size(); i++) {
         dynamics[i].position = Vec2(location[0], location[2]);
-        dynamics[i].velocity = ringRandomVector(prng, 0.01, 1.0) * initialSpeed;
+        dynamics[i].velocity = prng.ringVector(0.01, 1.0) * initialSpeed;
         dynamics[i].age = 0;
         dynamics[i].generation = 0;
         dynamics[i].dead = false;

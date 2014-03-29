@@ -14,6 +14,7 @@
 #include "visual_memory.h"
 #include "reactive_rings.h"
 #include "chaos_particles.h"
+#include "precursor.h"
 #include "spokes.h"
 
 static CameraFramegrab grab;
@@ -23,6 +24,7 @@ static EffectRunner runner;
 static EffectMixer mixer;
 static SpokesEffect spokes;
 static ChaosParticles chaosParticles;
+static Precursor precursor;
 static ReactiveRingsEffect rings("data/glass.png", &vismem);
 static RecallDebugEffect recallDebug(&vismem);
 
@@ -161,8 +163,10 @@ int main(int argc, char **argv)
     // mixer.add(&recallDebug);
     // mixer.add(&rings);
 
-    chaosParticles.reseed(Vec3(-0,0,0), 99);
-    mixer.add(&chaosParticles);
+    // chaosParticles.reseed(Vec3(-0,0,0), 99);
+    // mixer.add(&chaosParticles);
+
+    mixer.add(&precursor);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
