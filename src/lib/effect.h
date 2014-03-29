@@ -114,6 +114,17 @@ public:
 
         // Info for every pixel
         PixelInfoVec pixels;
+
+        // Model axis-aligned bounding box
+        Vec3 modelMin, modelMax;
+
+        // Diameter measured from center
+        Real modelDiameter;
+
+        // Calculated model info
+        Vec3 modelCenter() const;
+        Vec3 modelSize() const;
+        Real distanceOutsideBoundingBox(Vec3 p) const;
     };
 
     // Information passed to debug() callbacks
@@ -177,12 +188,52 @@ inline void Effect::FrameInfo::init(const rapidjson::Value &layout)
     timeDelta = 0;
     pixels.clear();
 
+    // Create PixelInfo instances
+
     for (unsigned i = 0; i < layout.Size(); i++) {
         PixelInfo p(i, &layout[i]);
         pixels.push_back(p);
     }
+
+    // Calculate min/max
+
+    modelMin = modelMax = pixels[0].point;
+    for (unsigned i = 1; i < pixels.size(); i++) {
+        for (unsigned j = 0; j < 3; j++) {
+            modelMin[j] = std::min(modelMin[j], pixels[i].point[j]);
+            modelMax[j] = std::max(modelMax[j], pixels[i].point[j]);
+        }
+    }
+
+    // Calculate diameter
+
+    modelDiameter = 0;
+    for (unsigned i = 0; i < pixels.size(); i++) {
+        modelDiameter = std::max(modelDiameter, len(pixels[i].point - modelCenter()));
+    }
 }
 
+inline Vec3 Effect::FrameInfo::modelCenter() const
+{
+    return (modelMin + modelMax) * 0.5;
+}
+
+inline Vec3 Effect::FrameInfo::modelSize() const
+{
+    return modelMax - modelMin;
+}
+
+inline Real Effect::FrameInfo::distanceOutsideBoundingBox(Vec3 p) const
+{
+    Real d = 0;
+
+    for (unsigned j = 0; j < 3; j++) {
+        d = std::max(d, modelMin[j] - p[j]);
+        d = std::max(d, p[j] - modelMax[j]);
+    }
+
+    return d;
+}
 
 inline Effect::DebugInfo::DebugInfo(EffectRunner &runner)
     : runner(runner) {}
