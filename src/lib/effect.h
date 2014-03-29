@@ -94,10 +94,12 @@ public:
         // Is this pixel being used, or is it a placeholder?
         bool isMapped() const;
 
-	// Look up data from the JSON layout
-	const rapidjson::Value& get(const char *attribute);
-	double getNumber(const char *attribute);
-	double getArrayNumber(const char *attribute, int index);
+    	// Look up data from the JSON layout
+    	const rapidjson::Value& get(const char *attribute) const;
+    	double getNumber(const char *attribute) const;
+    	double getArrayNumber(const char *attribute, int index) const;
+        Vec2 getVec2(const char *attribute) const;
+        Vec3 getVec3(const char *attribute) const;
     };
 
     typedef std::vector<PixelInfo> PixelInfoVec;
@@ -146,9 +148,7 @@ inline Effect::PixelInfo::PixelInfo(unsigned index, const rapidjson::Value* layo
     : index(index), layout(layout)
 {
     if (isMapped()) {
-        for (unsigned i = 0; i < 3; i++) {
-            point[i] = getArrayNumber("point", i);
-        }
+        point = getVec3("point");
     }
 }
 
@@ -157,18 +157,18 @@ inline bool Effect::PixelInfo::isMapped() const
     return layout && layout->IsObject();
 }
 
-inline const rapidjson::Value& Effect::PixelInfo::get(const char *attribute)
+inline const rapidjson::Value& Effect::PixelInfo::get(const char *attribute) const
 {
     return (*layout)[attribute];
 }
 
-inline double Effect::PixelInfo::getNumber(const char *attribute)
+inline double Effect::PixelInfo::getNumber(const char *attribute) const
 {
     const rapidjson::Value& n = get(attribute);
     return n.IsNumber() ? n.GetDouble() : 0.0;
 }
 
-inline double Effect::PixelInfo::getArrayNumber(const char *attribute, int index)
+inline double Effect::PixelInfo::getArrayNumber(const char *attribute, int index) const
 {
     const rapidjson::Value& a = get(attribute);
     if (a.IsArray()) {
@@ -178,6 +178,19 @@ inline double Effect::PixelInfo::getArrayNumber(const char *attribute, int index
         }
     }
     return 0.0;
+}
+
+inline Vec2 Effect::PixelInfo::getVec2(const char *attribute) const
+{
+    return Vec2( getArrayNumber(attribute, 0),
+                 getArrayNumber(attribute, 1) );
+}
+
+inline Vec3 Effect::PixelInfo::getVec3(const char *attribute) const
+{
+    return Vec3( getArrayNumber(attribute, 0),
+                 getArrayNumber(attribute, 1),
+                 getArrayNumber(attribute, 2) );
 }
 
 inline Effect::FrameInfo::FrameInfo()
