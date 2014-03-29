@@ -99,6 +99,7 @@ private:
     float currentDelay;
     float filteredTimeDelta;
     float debugTimer;
+    float speed;
     bool verbose;
     struct timeval lastTime;
 
@@ -118,6 +119,7 @@ inline EffectRunner::EffectRunner()
       currentDelay(0),
       filteredTimeDelta(0),
       debugTimer(0),
+      speed(1.0),
       verbose(false)
 {
     lastTime.tv_sec = 0;
@@ -245,7 +247,8 @@ inline float EffectRunner::doFrame()
 
 inline void EffectRunner::doFrame(float timeDelta)
 {
-    frameInfo.timeDelta = timeDelta;
+    // Effects may get a modified view of time
+    frameInfo.timeDelta = timeDelta * speed;
 
     if (getEffect() && hasLayout()) {
         effect->beginFrame(frameInfo);
@@ -391,6 +394,15 @@ inline bool EffectRunner::parseArgument(int &i, int &argc, char **argv)
         return true;
     }
 
+    if (!strcmp(argv[i], "-speed") && (i+1 < argc)) {
+        speed = atof(argv[++i]);
+        if (speed <= 0) {
+            fprintf(stderr, "Invalid speed\n");
+            return false;
+        }
+        return true;
+    }
+
     if (!strcmp(argv[i], "-layout") && (i+1 < argc)) {
         if (!setLayout(argv[++i])) {
             fprintf(stderr, "Can't load layout from %s\n", argv[i]);
@@ -422,5 +434,5 @@ inline bool EffectRunner::validateArguments()
 
 inline void EffectRunner::argumentUsage()
 {
-    fprintf(stderr, "[-v] [-fps LIMIT] [-layout FILE.json] [-server HOST[:port]]");
+    fprintf(stderr, "[-v] [-fps LIMIT] [-speed MULTIPLIER] [-layout FILE.json] [-server HOST[:port]]");
 }
