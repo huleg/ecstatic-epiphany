@@ -23,15 +23,16 @@ public:
 private:
     static const unsigned numParticles = 500;
     static const float generationScale = 1.0 / 6;
-    static const float speedMin = 0.75;
-    static const float speedMax = 1.5;
-    static const float spinMin = M_PI / 8;
+    static const float speedMin = 0.9;
+    static const float speedMax = 1.9;
+    static const float spinMin = M_PI / 3;
     static const float spinMax = spinMin + M_PI * 0.05;
-    static const float relativeSize = 0.12;
-    static const float intensity = 0.6;
+    static const float relativeSize = 0.14;
+    static const float intensity = 0.2;
     static const float intensityExp = 1.0 / 2.5;
     static const float initialSpeed = 0.004;
     static const float stepSize = 1.0 / 500;
+    static const float colorRate = 0.02;
     static const unsigned maxAge = 6000;
 
     struct ParticleDynamics {
@@ -45,6 +46,7 @@ private:
     Texture palette;
     std::vector<ParticleDynamics> dynamics;
     float timeDeltaRemainder;
+    float colorCycle;
 
     static Vec2 circularRandomVector(PRNG &prng);
     static Vec2 ringRandomVector(PRNG &prng, Real min, Real max);
@@ -59,7 +61,8 @@ private:
 
 inline ChaosParticles::ChaosParticles()
     : palette("data/bang-palette.png"),
-      timeDeltaRemainder(0)
+      timeDeltaRemainder(0),
+      colorCycle(0)
 {
     reseed();
 }
@@ -121,6 +124,8 @@ inline void ChaosParticles::beginFrame(const FrameInfo &f)
         runStep(f);
         steps--;
     }
+
+    colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
 }
 
 inline void ChaosParticles::runStep(const FrameInfo &f)
@@ -157,7 +162,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         appearance[i].radius = f.modelDiameter * relativeSize * fade;
 
         float c = (dynamics[i].generation + ageF) * generationScale;
-        appearance[i].color = palette.sample(c, 0);
+        appearance[i].color = palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
 
         dynamics[i].escaped = f.distanceOutsideBoundingBox(appearance[i].point) > appearance[i].radius;
 
