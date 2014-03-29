@@ -23,12 +23,12 @@ public:
 private:
     static const unsigned numParticles = 1000;
     static const float agingRate = 0.1;
-    static const float speedGain = 1.618;
+    static const float speedGain = 3.0;
     static const float relativeSize = 0.05;
-    static const float intensity = 0.5;
+    static const float intensity = 1.5;
     static const float initialSpeed = 0.001;
     static const float stepSize = 0.002;
-    static const unsigned maxAge = 10000;
+    static const unsigned maxAge = 30000;
 
     struct ParticleDynamics {
         Vec2 position;
