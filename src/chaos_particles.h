@@ -1,5 +1,5 @@
 /*
- * Complex particle system pattern.
+ * Complex particle system, with fractal and chaos inspiration.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/
