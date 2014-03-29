@@ -161,6 +161,7 @@ int main(int argc, char **argv)
     // mixer.add(&recallDebug);
     // mixer.add(&rings);
 
+    chaosParticles.reseed(Vec3(-0,0,0), 99);
     mixer.add(&chaosParticles);
 
     tap.setEffect(&mixer);
