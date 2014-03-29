@@ -21,12 +21,12 @@ public:
     virtual void beginFrame(const FrameInfo &f);
 
 private:
-    static const unsigned numParticles = 250;
-    static const float generationScale = 1.0 / 12;
+    static const unsigned numParticles = 500;
+    static const float generationScale = 1.0 / 6;
     static const float speedMin = 0.75;
     static const float speedMax = 1.5;
-    static const float spinMin = M_PI * 0.4;
-    static const float spinMax = spinMin + M_PI * 0.01;
+    static const float spinMin = M_PI / 8;
+    static const float spinMax = spinMin + M_PI * 0.05;
     static const float relativeSize = 0.12;
     static const float intensity = 0.6;
     static const float intensityExp = 1.0 / 2.5;
@@ -103,7 +103,7 @@ inline void ChaosParticles::reseed()
 
     for (unsigned i = 0; i < dynamics.size(); i++) {
         dynamics[i].position = Vec2(0,0);
-        dynamics[i].velocity = ringRandomVector(prng, 0.1, 1.0) * initialSpeed;
+        dynamics[i].velocity = ringRandomVector(prng, 0.01, 1.0) * initialSpeed;
         dynamics[i].age = 0;
         dynamics[i].generation = 0;
         dynamics[i].dead = false;
@@ -152,8 +152,9 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         appearance[i].point[2] = dynamics[i].position[1];
 
         // Fade in/out
-        appearance[i].intensity = intensity * pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
-        appearance[i].radius = f.modelDiameter * relativeSize;
+        float fade = pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
+        appearance[i].intensity = intensity * fade;
+        appearance[i].radius = f.modelDiameter * relativeSize * fade;
 
         float c = (dynamics[i].generation + ageF) * generationScale;
         appearance[i].color = palette.sample(c, 0);

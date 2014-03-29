@@ -160,6 +160,7 @@ int main(int argc, char **argv)
     // mixer.add(&spokes, 0.2);
     // mixer.add(&recallDebug);
     // mixer.add(&rings);
+
     mixer.add(&chaosParticles);
 
     tap.setEffect(&mixer);
