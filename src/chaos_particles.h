@@ -25,13 +25,13 @@ public:
     virtual void beginFrame(const FrameInfo &f);
 
 private:
-    static const unsigned numParticles = 750;
+    static const unsigned numParticles = 1000;
     static const float generationScale = 1.0 / 6;
     static const float speedMin = 0.9;
     static const float speedMax = 1.4;
     static const float spinMin = M_PI / 6;
     static const float spinMax = spinMin + M_PI * 0.05;
-    static const float relativeSize = 0.12;
+    static const float relativeSize = 0.08;
     static const float intensity = 0.3;
     static const float intensityExp = 1.0 / 2.5;
     static const float initialSpeed = 0.004;
