@@ -242,7 +242,9 @@ inline float EffectRunner::doFrame()
     }
 
     doFrame(delta);
-    return delta;
+
+    // Caller gets the same modified view of time that effects get.
+    return delta * speed;
 }
 
 inline void EffectRunner::doFrame(float timeDelta)

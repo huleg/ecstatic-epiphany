@@ -14,28 +14,32 @@
 #include "lib/effect.h"
 #include "lib/prng.h"
 #include "lib/texture.h"
+#include "lib/noise.h"
 
 
 class Precursor : public Effect
 {
 public:
     Precursor();
-    void reseed();
+    void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo &f);
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
     virtual void debug(const DebugInfo &di);
+
+    float totalSecondsOfDarkness();
 
 private:
     static const float stepSize = 0.001;
     static const float cycleRate = stepSize / (60 * 5);
     static const float speed = stepSize * 1.0;
     static const float potentialBackground = 5e-7;
-    static const float potentialSettle = 0.15;
-    static const float potentialTransfer = 0.1;
-    static const float maxBrightness = 1.8;
+    static const float potentialSettle = 0.5;
+    static const float potentialTransfer = 0.01;
+    static const float maxBrightness = 1.2;
     static const float maxPropagationDistance = 0.1;
     static const float maxPropagationRate = 0.05;
+    static const float energyRateScale = 1.8;
 
     struct PixelState {
         PixelState();
@@ -53,6 +57,7 @@ private:
     std::vector<PixelState> pixelState;
     Texture palette;
     unsigned seed;
+    unsigned darkStepCount;
     float cycle;
     float timeDeltaRemainder;
 
@@ -72,20 +77,25 @@ private:
 inline Precursor::Precursor()
     : palette("data/darkmatter-palette.png"), seed(0), timeDeltaRemainder(0)
 {
-    reseed();
-
+    reseed(42);
 }
 
-inline void Precursor::reseed()
+inline void Precursor::reseed(unsigned seed)
 {
     pixelState.clear();
-    seed ^= 0xFFFF0000;
+    this->seed = seed;
     cycle = 0;
+    darkStepCount = 0;
 }
 
 inline Precursor::PixelState::PixelState()
     : timeAxis(1), potential(potentialBackground), energy(1), generation(0)
 {}
+
+inline float Precursor::totalSecondsOfDarkness()
+{
+    return darkStepCount * stepSize;
+}
 
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
@@ -107,14 +117,16 @@ inline void Precursor::beginFrame(const FrameInfo &f)
 
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
+    bool isDark = true;
+
     PRNG prng;
     prng.seed(seed);
     seed++;
 
     // Propagation rate varies over time, to give it an arc
-    cycle = fmod(cycle + cycleRate, 1.0f);
+    cycle += cycleRate;
     propagationRate = sinf(cycle * M_PI) * maxPropagationRate;
-    energyRate = propagationRate * 2.0;
+    energyRate = propagationRate * energyRateScale;
 
     for (unsigned i = 0; i < pixelState.size(); i++) {
         if (!f.pixels[i].isMapped()) {
@@ -123,7 +135,10 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 
         PixelState &pix = pixelState[i];
 
-        if (pix.timeAxis == 1.0f && pix.energy == 1.0f && prng.uniform() < pix.potential) {
+        // Can restart?
+        if (pix.timeAxis == 1.0f && pix.energy == 1.0f &&
+            prng.uniform() < pix.potential && cycle < 1) {
+            
             // Restart
             pix.timeAxis = 0;
             pix.energy = 0;
@@ -141,6 +156,9 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 
         // Strength curve, fade in and out
         pix.strength = sq(std::max(0.0f, sinf(pix.timeAxis * M_PI)));
+        if (pix.strength > 0) {
+            isDark = false;
+        }
 
         // Propagation
         if (prng.uniform() < pix.strength * propagationRate) {
@@ -180,17 +198,24 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
             }
         }
     }
+
+    if (isDark) {
+        darkStepCount++;
+    }
 }
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 {
     const PixelState &pix = pixelState[p.index];
 
+    // Sample noise with grid square granularity
+    float n = fbm_noise2(p.getVec2("gridXY") * 0.1 + Vec2(cycle, 0), 2);
+
     // Lissajous sampling on palette
-    float t = (pix.generation + pix.timeAxis) * 0.1;
+    float t = (pix.generation + pix.timeAxis) * 1e-5 + n * 1.5;
     float u = 7.3f;
     rgb = palette.sample(0.5 + 0.5 * cos(t),
-                         0.5 + 0.5 * sin(t*u))
+                         0.5 + 0.5 * sin(t*u + seed * 1e-4))
         * (maxBrightness * pix.strength);
 }
 
@@ -199,4 +224,5 @@ inline void Precursor::debug(const DebugInfo &di)
     fprintf(stderr, "\t[precursor] cycle = %f\n", cycle);
     fprintf(stderr, "\t[precursor] propagationRate = %f\n", propagationRate);
     fprintf(stderr, "\t[precursor] seed = 0x%08x\n", seed);
+    fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }

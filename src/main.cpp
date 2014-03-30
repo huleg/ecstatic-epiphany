@@ -10,9 +10,10 @@
 #include "lib/camera.h"
 #include "lib/camera_framegrab.h"
 #include "lib/camera_sampler.h"
+#include "lib/prng.h"
 
 #include "visual_memory.h"
-#include "reactive_rings.h"
+#include "rings.h"
 #include "chaos_particles.h"
 #include "precursor.h"
 #include "spokes.h"
@@ -25,7 +26,7 @@ static EffectMixer mixer;
 static SpokesEffect spokes;
 static ChaosParticles chaosParticles;
 static Precursor precursor;
-static ReactiveRingsEffect rings("data/glass.png", &vismem);
+static RingsEffect rings("data/glass.png");
 static RecallDebugEffect recallDebug(&vismem);
 
 
@@ -62,16 +63,29 @@ static void debugThread(void *)
 
 static void effectThread(void *)
 {
-    float phase = 0;
-    const float rate = 0.1;
+    PRNG prng;
+    prng.seed(time(0));
 
     while (true) {
-        float dt = runner.doFrame();
 
-        phase = fmodf(phase + rate * dt, 2*M_PI);
-        // float f = std::max(0.0, sin(phase));
-        // mixer.setFader(0, f);
-        // mixer.setFader(1, 1 - f);
+        precursor.reseed(prng.uniform32());
+        mixer.set(&precursor);
+        while (precursor.totalSecondsOfDarkness() < 10.0) {
+            runner.doFrame();
+        }
+
+        chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
+        mixer.set(&chaosParticles);
+        while (chaosParticles.isRunning()) {
+            runner.doFrame();
+        }
+
+        mixer.set(&rings);
+        float t = 0;
+        while (t < 1) {
+            mixer.setFader(0, sinf(t * M_PI));
+            t += runner.doFrame() * 0.01;
+        }
     }
 }
 
@@ -158,15 +172,6 @@ static void sdlThread()
 int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
-
-    // mixer.add(&spokes, 0.2);
-    // mixer.add(&recallDebug);
-    // mixer.add(&rings);
-
-    // chaosParticles.reseed(Vec3(-0,0,0), 99);
-    // mixer.add(&chaosParticles);
-
-    mixer.add(&precursor);
 
     tap.setEffect(&mixer);
     runner.setEffect(&tap);
