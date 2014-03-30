@@ -106,8 +106,8 @@ static void effectThread(void *)
         orderParticles.reseed(prng.uniform32());
         mixer.set(&orderParticles);
         for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            // orderParticles.vibration = 0.02 / (1.0 + t * 20.0);
-            orderParticles.symmetry = 6;
+            orderParticles.vibration = 0.02 / (1.0 + t * 20.0);
+            orderParticles.symmetry = 2 + (1 - t) * 12;
             // mixer.setFader(0, sinf(t * M_PI));
         }
     }

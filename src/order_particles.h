@@ -22,16 +22,18 @@ public:
     void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo &f);
+    virtual void shader(Vec3& rgb, const PixelInfo& p) const;
 
+    Texture palette;
     float vibration;
     int symmetry;
 
 private:
     static const unsigned numParticles = 60;
-    static const float relativeSize = 0.08;
+    static const float relativeSize = 0.18;
     // static const unsigned numParticles = 500;
     // static const float relativeSize = 0.04;
-    static const float intensity = 0.4;
+    static const float intensity = 0.2;
     static const float stepSize = 1.0 / 500;
     static const float seedRadius = 1.0;
     static const float interactionSize = 0.2;
@@ -49,7 +51,8 @@ private:
 
 
 inline OrderParticles::OrderParticles()
-    : timeDeltaRemainder(0)
+    : palette("data/biology-palette.png"),
+      timeDeltaRemainder(0)
 {
     reseed(42);
     vibration = 0;
@@ -66,6 +69,9 @@ inline void OrderParticles::reseed(unsigned seed)
     for (unsigned i = 0; i < appearance.size(); i++) {
         Vec2 p = prng.ringVector(1e-4, seedRadius);
         appearance[i].point = Vec3(p[0], 0, p[1]);
+
+        // Assume plain white for now; we do our own coloration in shader()
+        appearance[i].color = Vec3(1,1,1);
     }
 }
 
@@ -93,7 +99,6 @@ inline void OrderParticles::runStep(const FrameInfo &f)
 
         appearance[i].intensity = intensity * fade;
         appearance[i].radius = f.modelDiameter * relativeSize * fade;
-        appearance[i].color = Vec3(1,1,1);
 
         prng.remix(appearance[i].point[0] * 1e8);
         prng.remix(appearance[i].point[2] * 1e8);
@@ -137,4 +142,14 @@ inline void OrderParticles::runStep(const FrameInfo &f)
             }
         }
     }
+}
+
+inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
+{
+    ParticleEffect::shader(rgb, p);
+
+    // Metaball-style shading: Use computed intensity as parameter for a
+    // nonlinear color palette.
+
+    rgb = palette.sample(0.5, rgb[0]);
 }
