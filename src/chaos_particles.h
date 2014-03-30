@@ -26,7 +26,7 @@ public:
 
 private:
     static const unsigned numParticles = 1000;
-    static const float generationScale = 1.0 / 6;
+    static const float generationScale = 1.0 / 14;
     static const float speedMin = 0.9;
     static const float speedMax = 1.7;
     static const float spinMin = M_PI / 6;
