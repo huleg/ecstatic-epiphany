@@ -70,45 +70,51 @@ static void effectThread(void *)
 
     while (true) {
 
-        // precursor.reseed(prng.uniform32());
-        // mixer.set(&precursor);
-        // while (precursor.totalSecondsOfDarkness() < 6.0) {
-        //     runner.doFrame();
-        // }
+        // Order trying to form out of the tiniest sparks; runs for a while, fails.
+        precursor.reseed(prng.uniform32());
+        mixer.set(&precursor);
+        while (precursor.totalSecondsOfDarkness() < 6.0) {
+            runner.doFrame();
+        }
 
-        // chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
-        // mixer.set(&chaosParticles);
-        // while (chaosParticles.isRunning()) {
-        //     runner.doFrame();
-        // }
+        // Bang.
+        chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
+        mixer.set(&chaosParticles);
+        while (chaosParticles.isRunning()) {
+            runner.doFrame();
+        }
 
-        // rings.reseed();
-        // rings.palette.load("data/glass.png");
-        // mixer.set(&rings);
-        // for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-        //     mixer.setFader(0, sinf(t * M_PI));
-        // }
+        // Textures of light
+        rings.reseed();
+        rings.palette.load("data/glass.png");
+        mixer.set(&rings);
+        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+            mixer.setFader(0, sinf(t * M_PI));
+        }
 
-        // rings.reseed();
-        // rings.palette.load("data/succulent-palette.png");
-        // mixer.set(&rings);
-        // for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-        //     mixer.setFader(0, sinf(t * M_PI));
-        // }
+        // Textures of energy
+        rings.reseed();
+        rings.palette.load("data/darkmatter-palette.png");
+        mixer.set(&rings);
+        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+            mixer.setFader(0, sinf(t * M_PI));
+        }
 
-        // rings.reseed();
-        // rings.palette.load("data/darkmatter-palette.png");
-        // mixer.set(&rings);
-        // for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-        //     mixer.setFader(0, sinf(t * M_PI));
-        // }
-
+        // Biology happens, order emerges
         orderParticles.reseed(prng.uniform32());
         mixer.set(&orderParticles);
         for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
             orderParticles.vibration = 0.02 / (1.0 + t * 20.0);
             orderParticles.symmetry = 2 + (1 - t) * 12;
-            // mixer.setFader(0, sinf(t * M_PI));
+            mixer.setFader(0, sinf(t * M_PI));
+        }
+
+        // Textures of biology
+        rings.reseed();
+        rings.palette.load("data/succulent-palette.png");
+        mixer.set(&rings);
+        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+            mixer.setFader(0, sinf(t * M_PI));
         }
     }
 }

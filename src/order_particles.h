@@ -27,17 +27,17 @@ public:
     Texture palette;
     float vibration;
     int symmetry;
+    float colorCycle;
 
 private:
     static const unsigned numParticles = 60;
     static const float relativeSize = 0.18;
-    // static const unsigned numParticles = 500;
-    // static const float relativeSize = 0.04;
     static const float intensity = 0.2;
     static const float stepSize = 1.0 / 500;
     static const float seedRadius = 1.0;
     static const float interactionSize = 0.2;
     static const float angleGain = 0.01;
+    static const float colorRate = 0.4;
 
     float timeDeltaRemainder;
 
@@ -66,6 +66,8 @@ inline void OrderParticles::reseed(unsigned seed)
     PRNG prng;
     prng.seed(seed);
 
+    colorCycle = prng.uniform(0, 2*M_PI);
+
     for (unsigned i = 0; i < appearance.size(); i++) {
         Vec2 p = prng.ringVector(1e-4, seedRadius);
         appearance[i].point = Vec3(p[0], 0, p[1]);
@@ -85,6 +87,8 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
         runStep(f);
         steps--;
     }
+
+    colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
 }
 
 inline void OrderParticles::runStep(const FrameInfo &f)
@@ -151,5 +155,5 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     // Metaball-style shading: Use computed intensity as parameter for a
     // nonlinear color palette.
 
-    rgb = palette.sample(0.5, rgb[0]);
+    rgb = palette.sample(0.5 + 0.5 * sinf(colorCycle), rgb[0]);
 }
