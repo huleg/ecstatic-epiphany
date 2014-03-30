@@ -30,14 +30,12 @@ private:
     static const float stepSize = 0.001;
     static const float cycleRate = stepSize / (60 * 5);
     static const float speed = stepSize * 1.0;
-    static const float potentialBackground = 2e-7;
+    static const float potentialBackground = 5e-7;
     static const float potentialSettle = 0.15;
     static const float potentialTransfer = 0.1;
     static const float maxBrightness = 1.8;
     static const float maxPropagationDistance = 0.1;
-    static const float maxPropagationRate = 0.1;
-    static const float energyDiffusionRate = 0;
-    static const float energyDesynch = 0;
+    static const float maxPropagationRate = 0.05;
 
     struct PixelState {
         PixelState();
@@ -116,7 +114,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
     // Propagation rate varies over time, to give it an arc
     cycle = fmod(cycle + cycleRate, 1.0f);
     propagationRate = sinf(cycle * M_PI) * maxPropagationRate;
-    energyRate = propagationRate;
+    energyRate = propagationRate * 2.0;
 
     for (unsigned i = 0; i < pixelState.size(); i++) {
         if (!f.pixels[i].isMapped()) {
@@ -128,7 +126,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         if (pix.timeAxis == 1.0f && pix.energy == 1.0f && prng.uniform() < pix.potential) {
             // Restart
             pix.timeAxis = 0;
-            pix.energy = prng.uniform() * energyDesynch;
+            pix.energy = 0;
             pix.generation++;
 
             // Approach background potential
@@ -174,11 +172,6 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
                     bestDistSqr = distSqr;
                     best = *iter;
                 }
-
-                // Everyone nearby diffuses energy with this particle
-                float e = (oPix.energy + pix.energy) / 2;
-                pix.energy += (e - pix.energy) * energyDiffusionRate;
-                oPix.energy += (e - oPix.energy) * energyDiffusionRate;
             }
 
             // Transfer potential
