@@ -28,17 +28,17 @@ private:
     static const unsigned numParticles = 1000;
     static const float generationScale = 1.0 / 6;
     static const float speedMin = 0.9;
-    static const float speedMax = 1.4;
+    static const float speedMax = 1.7;
     static const float spinMin = M_PI / 6;
     static const float spinMax = spinMin + M_PI * 0.05;
-    static const float relativeSize = 0.08;
-    static const float intensity = 0.5;
+    static const float relativeSize = 0.09;
+    static const float intensity = 0.6;
     static const float intensityExp = 1.0 / 2.5;
-    static const float initialSpeed = 0.004;
+    static const float initialSpeed = 0.005;
     static const float stepSize = 1.0 / 500;
     static const float colorRate = 0.02;
-    static const float outsideMargin = 15.0;
-    static const unsigned maxAge = 6000;
+    static const float outsideMargin = 8.0;
+    static const unsigned maxAge = 8000;
 
     struct ParticleDynamics {
         Vec2 position;
