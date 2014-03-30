@@ -1,6 +1,7 @@
 TARGET = ei
 CPP_FILES = \
 	src/main.cpp \
+	src/narrator.cpp \
 	src/lib/camera_somagic.cpp \
 	src/lib/jpge.cpp \
 	src/lib/lodepng.cpp

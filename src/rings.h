@@ -23,9 +23,7 @@
 class RingsEffect : public Effect
 {
 public:
-    RingsEffect(const char *palette)
-        : palette(palette)
-    {
+    RingsEffect() {
         reseed();
     }
 

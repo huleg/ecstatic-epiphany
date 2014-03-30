@@ -69,7 +69,7 @@ private:
  *****************************************************************************************/
 
 
-EffectTap::EffectTap()
+inline EffectTap::EffectTap()
     : next (0)
 {
     // Default buffer size, quite large.

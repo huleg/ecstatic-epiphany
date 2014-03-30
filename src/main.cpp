@@ -11,25 +11,10 @@
 #include "lib/camera_framegrab.h"
 #include "lib/camera_sampler.h"
 #include "lib/prng.h"
-
-#include "visual_memory.h"
-#include "rings.h"
-#include "chaos_particles.h"
-#include "order_particles.h"
-#include "precursor.h"
-#include "spokes.h"
+#include "narrator.h"
 
 static CameraFramegrab grab;
-static VisualMemory vismem;
-static EffectTap tap;
-static EffectRunner runner;
-static EffectMixer mixer;
-static SpokesEffect spokes;
-static ChaosParticles chaosParticles;
-static OrderParticles orderParticles;
-static Precursor precursor;
-static RingsEffect rings("data/glass.png");
-static RecallDebugEffect recallDebug(&vismem);
+static Narrator narrator;
 
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
@@ -37,7 +22,7 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
     if (grab.isGrabbing()) {
         grab.process(video);
     }
-    vismem.process(video);
+    narrator.vismem.process(video);
 }
 
 
@@ -56,7 +41,7 @@ static void debugThread(void *)
         grab.begin(buffer);
 
         strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-memory.png", &tm);
-        vismem.debug(buffer);
+        narrator.vismem.debug(buffer);
 
         counter++;
         sleep(10);
@@ -65,58 +50,7 @@ static void debugThread(void *)
 
 static void effectThread(void *)
 {
-    PRNG prng;
-    prng.seed(time(0));
-
-    while (true) {
-
-        // Order trying to form out of the tiniest sparks; runs for a while, fails.
-        precursor.reseed(prng.uniform32());
-        mixer.set(&precursor);
-        while (precursor.totalSecondsOfDarkness() < 6.0) {
-            runner.doFrame();
-        }
-
-        // Bang.
-        chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
-        mixer.set(&chaosParticles);
-        while (chaosParticles.isRunning()) {
-            runner.doFrame();
-        }
-
-        // Textures of light
-        rings.reseed();
-        rings.palette.load("data/glass.png");
-        mixer.set(&rings);
-        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            mixer.setFader(0, sinf(t * M_PI));
-        }
-
-        // Textures of energy
-        rings.reseed();
-        rings.palette.load("data/darkmatter-palette.png");
-        mixer.set(&rings);
-        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            mixer.setFader(0, sinf(t * M_PI));
-        }
-
-        // Biology happens, order emerges
-        orderParticles.reseed(prng.uniform32());
-        mixer.set(&orderParticles);
-        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            orderParticles.vibration = 0.02 / (1.0 + t * 20.0);
-            orderParticles.symmetry = 2 + (1 - t) * 12;
-            mixer.setFader(0, sinf(t * M_PI));
-        }
-
-        // Textures of biology
-        rings.reseed();
-        rings.palette.load("data/succulent-palette.png");
-        mixer.set(&rings);
-        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            mixer.setFader(0, sinf(t * M_PI));
-        }
-    }
+    narrator.run();
 }
 
 static void sdlThread()
@@ -145,10 +79,10 @@ static void sdlThread()
             int x = 1 + CameraSampler8Q::sampleX(i);
             int y = 1 + CameraSampler8Q::sampleY(i);
 
-            uint8_t s = vismem.luminance.buffer[i];
+            uint8_t s = narrator.vismem.luminance.buffer[i];
             //uint8_t m = std::min(255, std::max<int>(0, 0.1 * vismem.sobel.motion[i]));
-            uint8_t l = vismem.learnFlags[i] ? 0xFF : 0;
-            uint8_t m = vismem.recallFlags[CameraSampler8Q::blockIndex(i)] ? 0xFF : 0;
+            uint8_t l = narrator.vismem.learnFlags[i] ? 0xFF : 0;
+            uint8_t m = narrator.vismem.recallFlags[CameraSampler8Q::blockIndex(i)] ? 0xFF : 0;
 
             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
 
@@ -163,10 +97,10 @@ static void sdlThread()
         unsigned left = 750;
         unsigned top = 400;
 
-        for (unsigned i = 0; i < runner.getPixelInfo().size(); i++) {
+        for (unsigned i = 0; i < narrator.runner.getPixelInfo().size(); i++) {
 
             // Convert to RGB color
-            float r = vismem.recall(i);
+            float r = narrator.vismem.recall(i);
             unsigned s = r * 255; 
             uint32_t bgra = (s << 24) | (s << 16) | (s << 8);
 
@@ -180,7 +114,7 @@ static void sdlThread()
             }
 
             // XZ plane
-            Vec3 point = runner.getPixelInfo()[i].point;
+            Vec3 point = narrator.runner.getPixelInfo()[i].point;
             int scale = -80;
             int x = screen->w/2 + point[0] * scale;
             int y = (screen->h + top) / 2 + point[2] * scale;
@@ -203,15 +137,13 @@ int main(int argc, char **argv)
 {
     Camera::start(videoCallback);
 
-    tap.setEffect(&mixer);
-    runner.setEffect(&tap);
-    runner.setLayout("layouts/window6x12.json");
-    if (!runner.parseArguments(argc, argv)) {
+    narrator.runner.setLayout("layouts/window6x12.json");
+    if (!narrator.runner.parseArguments(argc, argv)) {
         return 1;
     }
 
     // Init visual memory, now that the layout is known
-    vismem.start("imprint.mem", &runner, &tap);
+    narrator.vismem.start("imprint.mem", &narrator.runner, &narrator.tap);
 
     new tthread::thread(debugThread, 0);
     new tthread::thread(effectThread, 0);

@@ -133,11 +133,11 @@ public:
  *****************************************************************************************/
 
 
-ParticleEffect::ParticleEffect()
+inline ParticleEffect::ParticleEffect()
     : index(*this)
 {}
 
-ParticleEffect::Index::Index(ParticleEffect &e)
+inline ParticleEffect::Index::Index(ParticleEffect &e)
     : aabbMin(0, 0, 0),
       aabbMax(0, 0, 0),
       radiusMax(0),
