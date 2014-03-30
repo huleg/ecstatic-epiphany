@@ -15,6 +15,7 @@
 #include "visual_memory.h"
 #include "rings.h"
 #include "chaos_particles.h"
+#include "order_particles.h"
 #include "precursor.h"
 #include "spokes.h"
 
@@ -25,6 +26,7 @@ static EffectRunner runner;
 static EffectMixer mixer;
 static SpokesEffect spokes;
 static ChaosParticles chaosParticles;
+static OrderParticles orderParticles;
 static Precursor precursor;
 static RingsEffect rings("data/glass.png");
 static RecallDebugEffect recallDebug(&vismem);
@@ -68,37 +70,45 @@ static void effectThread(void *)
 
     while (true) {
 
-        precursor.reseed(prng.uniform32());
-        mixer.set(&precursor);
-        while (precursor.totalSecondsOfDarkness() < 6.0) {
-            runner.doFrame();
-        }
+        // precursor.reseed(prng.uniform32());
+        // mixer.set(&precursor);
+        // while (precursor.totalSecondsOfDarkness() < 6.0) {
+        //     runner.doFrame();
+        // }
 
-        chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
-        mixer.set(&chaosParticles);
-        while (chaosParticles.isRunning()) {
-            runner.doFrame();
-        }
+        // chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
+        // mixer.set(&chaosParticles);
+        // while (chaosParticles.isRunning()) {
+        //     runner.doFrame();
+        // }
 
-        rings.reseed();
-        rings.palette.load("data/glass.png");
-        mixer.set(&rings);
+        // rings.reseed();
+        // rings.palette.load("data/glass.png");
+        // mixer.set(&rings);
+        // for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+        //     mixer.setFader(0, sinf(t * M_PI));
+        // }
+
+        // rings.reseed();
+        // rings.palette.load("data/succulent-palette.png");
+        // mixer.set(&rings);
+        // for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+        //     mixer.setFader(0, sinf(t * M_PI));
+        // }
+
+        // rings.reseed();
+        // rings.palette.load("data/darkmatter-palette.png");
+        // mixer.set(&rings);
+        // for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+        //     mixer.setFader(0, sinf(t * M_PI));
+        // }
+
+        orderParticles.reseed(prng.uniform32());
+        mixer.set(&orderParticles);
         for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            mixer.setFader(0, sinf(t * M_PI));
-        }
-
-        rings.reseed();
-        rings.palette.load("data/succulent-palette.png");
-        mixer.set(&rings);
-        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            mixer.setFader(0, sinf(t * M_PI));
-        }
-
-        rings.reseed();
-        rings.palette.load("data/darkmatter-palette.png");
-        mixer.set(&rings);
-        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
-            mixer.setFader(0, sinf(t * M_PI));
+            // orderParticles.vibration = 0.02 / (1.0 + t * 20.0);
+            orderParticles.symmetry = 6;
+            // mixer.setFader(0, sinf(t * M_PI));
         }
     }
 }

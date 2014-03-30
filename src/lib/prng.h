@@ -85,10 +85,13 @@ inline Vec2 PRNG::circularVector()
 inline Vec2 PRNG::ringVector(Real min, Real max)
 {
     // Random vector with a length between 'min' and 'max'
+
+    float extent = std::max(std::max(-min, min), std::max(-max, max));
+
     for (unsigned i = 0; i < 200; i++) {
         Vec2 v;
-        v[0] = uniform(-1, 1);
-        v[1] = uniform(-1, 1);
+        v[0] = uniform(-extent, extent);
+        v[1] = uniform(-extent, extent);
         Real sl = sqrlen(v);
         if (sl <= max * max && sl >= min * min) {
             return v;
