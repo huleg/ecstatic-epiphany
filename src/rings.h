@@ -39,13 +39,13 @@ public:
     static const float wanderSpeed = 0.03;
     static const float wanderSize = 2.5;
     static const float brightnessContrast = 4;
-    static const float colorContrast = 4.0;
+    static const float colorContrast = 1.2;
     static const float targetBrightness = 0.2;
     static const float thresholdGain = 0.1;
     static const float thresholdStepLimit = 0.02;
     static const float initialThreshold = -1.0f;
-    static const unsigned brightnessOctaves = 4;
-    static const unsigned colorOctaves = 2;
+    static const unsigned brightnessOctaves = 6;
+    static const unsigned colorOctaves = 3;
 
     // Sample colors along a curved path through a texture
     Texture palette;
@@ -217,7 +217,6 @@ public:
         fprintf(stderr, "\t[rings] threshold = %f\n", threshold);
     }
 
-private:
     // Totally reinitialize our state variables. We do this periodically
     // during normal operation, during blank periods.
 
@@ -237,6 +236,8 @@ private:
         // Initial threshold gives us time to fade in
         threshold = initialThreshold;
     }
+
+private:
 
     // Do our state variables need resetting? This is like a watchdog timer,
     // keeping an eye on the simulation parameters. If we need to start over,

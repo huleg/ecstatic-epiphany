@@ -80,14 +80,20 @@ static void effectThread(void *)
             runner.doFrame();
         }
 
+        rings.reseed();
+        rings.palette.load("data/glass.png");
         mixer.set(&rings);
-        float t = 0;
-        while (t < 1) {
+        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
             mixer.setFader(0, sinf(t * M_PI));
-            t += runner.doFrame() * 0.01;
         }
 
-        // Other palettes for 'rings'
+        rings.reseed();
+        rings.palette.load("data/succulent-palette.png");
+        mixer.set(&rings);
+        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+            mixer.setFader(0, sinf(t * M_PI));
+        }
+
     }
 }
 
