@@ -31,7 +31,7 @@ public:
 
 private:
     static const float stepSize = 0.001;
-    static const float cycleRate = stepSize / (60 * 5);
+    static const float cycleRate = stepSize / (60 * 3);
     static const float speed = stepSize * 1.0;
     static const float potentialBackground = 5e-7;
     static const float potentialSettle = 0.5;

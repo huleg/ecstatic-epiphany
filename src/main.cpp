@@ -70,7 +70,7 @@ static void effectThread(void *)
 
         precursor.reseed(prng.uniform32());
         mixer.set(&precursor);
-        while (precursor.totalSecondsOfDarkness() < 10.0) {
+        while (precursor.totalSecondsOfDarkness() < 6.0) {
             runner.doFrame();
         }
 
@@ -86,6 +86,8 @@ static void effectThread(void *)
             mixer.setFader(0, sinf(t * M_PI));
             t += runner.doFrame() * 0.01;
         }
+
+        // Other palettes for 'rings'
     }
 }
 

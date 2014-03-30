@@ -29,17 +29,17 @@ public:
         reseed();
     }
 
-    static const float xyzSpeed = 0.4;
+    static const float xyzSpeed = 0.2;
     static const float xyzScale = 0.42;
-    static const float wSpeed = 0.6;
+    static const float wSpeed = 0.2;
     static const float wRate = 0.015;
-    static const float ringScale = 1.5;
-    static const float ringScaleRate = 0.01;
-    static const float ringDepth = 0.2;
-    static const float wanderSpeed = 0.04;
+    static const float ringScale = 2.5;
+    static const float ringScaleRate = 0.02;
+    static const float ringDepth = 0.4;
+    static const float wanderSpeed = 0.03;
     static const float wanderSize = 2.5;
-    static const float brightnessContrast = 6;
-    static const float colorContrast = 8.0;
+    static const float brightnessContrast = 4;
+    static const float colorContrast = 4.0;
     static const float targetBrightness = 0.2;
     static const float thresholdGain = 0.1;
     static const float thresholdStepLimit = 0.02;
