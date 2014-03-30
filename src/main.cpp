@@ -94,6 +94,12 @@ static void effectThread(void *)
             mixer.setFader(0, sinf(t * M_PI));
         }
 
+        rings.reseed();
+        rings.palette.load("data/darkmatter-palette.png");
+        mixer.set(&rings);
+        for (float t = 0; t < 1; t += runner.doFrame() / 100.0f) {
+            mixer.setFader(0, sinf(t * M_PI));
+        }
     }
 }
 
