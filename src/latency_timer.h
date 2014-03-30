@@ -1,5 +1,7 @@
 /*
- * LED to Camera latency measurement tool
+ * A tool to measure time.
+ * Round trips, signals from LED to Camera.
+ * For calibrating memory.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/

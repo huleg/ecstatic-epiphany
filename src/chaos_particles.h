@@ -1,5 +1,7 @@
 /*
- * Complex particle system, with fractal and chaos inspiration.
+ * Complex particle system.
+ * Inspired by fractals,
+ * leading to chaos.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/

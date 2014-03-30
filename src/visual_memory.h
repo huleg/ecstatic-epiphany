@@ -1,8 +1,8 @@
 /*
- * Experimental learning algorithm
- *
- *   - Motion-seeking stochastic update method
- *   - Estimates covariance matrix between LED and camera luminance
+ * Experimental learning.
+ * Likes motion, driven by randomness.
+ * Estimates covariance, as a way to sense the environment.
+ * Learns a relationship, LEDs to Camera and back.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/
