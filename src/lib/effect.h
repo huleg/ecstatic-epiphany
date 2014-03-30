@@ -94,10 +94,10 @@ public:
         // Is this pixel being used, or is it a placeholder?
         bool isMapped() const;
 
-    	// Look up data from the JSON layout
-    	const rapidjson::Value& get(const char *attribute) const;
-    	double getNumber(const char *attribute) const;
-    	double getArrayNumber(const char *attribute, int index) const;
+        // Look up data from the JSON layout
+        const rapidjson::Value& get(const char *attribute) const;
+        double getNumber(const char *attribute) const;
+        double getArrayNumber(const char *attribute, int index) const;
         Vec2 getVec2(const char *attribute) const;
         Vec3 getVec3(const char *attribute) const;
     };
