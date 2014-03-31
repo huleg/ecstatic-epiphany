@@ -31,11 +31,16 @@ float Narrator::doFrame()
 
 void Narrator::crossfade(Effect *to, float duration)
 {
-    mixer.add(to);
-    for (float t = 0; t < duration; t += doFrame()) {
-        float q = t / duration;
-        mixer.setFader(0, 1 - q);
-        mixer.setFader(1, q);
+    int n = mixer.numChannels();
+    if (n > 0) {
+        mixer.add(to);
+        for (float t = 0; t < duration; t += doFrame()) {
+            float q = t / duration;
+            for (int i = 0; i < n; i++) {
+                mixer.setFader(i, 1 - q);
+            }
+            mixer.setFader(n, q);
+        }
     }
     mixer.set(to);
 }
@@ -51,7 +56,7 @@ void Narrator::loop(PRNG &prng)
 {
     // Order trying to form out of the tiniest sparks; runs for a while, fails.
     precursor.reseed(prng.uniform32());
-    mixer.set(&precursor);
+    crossfade(&precursor, 15);
     while (precursor.totalSecondsOfDarkness() < 6.0) {
         doFrame();
     }
@@ -91,8 +96,4 @@ void Narrator::loop(PRNG &prng)
     ringsA.palette.load("data/succulent-palette.png");
     crossfade(&ringsA, 20);
     delay(30);
-
-    // Gradually reset
-    precursor.reseed(prng.uniform32());
-    crossfade(&precursor, 15);
 }

@@ -31,10 +31,10 @@ public:
 
 private:
     static const float stepSize = 0.001;
-    static const float cycleRate = stepSize / (60 * 3);
-    static const float speed = stepSize * 1.0;
+    static const float cycleRate = stepSize / (60 * 2);
+    static const float speed = stepSize * 1.3;
     static const float potentialBackground = 5e-7;
-    static const float potentialSettle = 0.5;
+    static const float potentialSettle = 0.2;
     static const float potentialTransfer = 0.01;
     static const float maxBrightness = 1.2;
     static const float maxPropagationDistance = 0.1;
@@ -125,7 +125,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 
     // Propagation rate varies over time, to give it an arc
     cycle += cycleRate;
-    propagationRate = sinf(cycle * M_PI) * maxPropagationRate;
+    propagationRate = sq(sinf(cycle * M_PI)) * maxPropagationRate;
     energyRate = propagationRate * energyRateScale;
 
     for (unsigned i = 0; i < pixelState.size(); i++) {
@@ -136,13 +136,14 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         PixelState &pix = pixelState[i];
 
         // Can restart?
-        if (pix.timeAxis == 1.0f && pix.energy == 1.0f &&
-            prng.uniform() < pix.potential && cycle < 1) {
-            
-            // Restart
-            pix.timeAxis = 0;
-            pix.energy = 0;
-            pix.generation++;
+        if (pix.timeAxis == 1.0f && prng.uniform() < pix.potential && cycle < 1) {
+
+            if (pix.energy == 1.0f) {
+                // Restart
+                pix.timeAxis = 0;
+                pix.energy = 0;
+                pix.generation++;
+            }
 
             // Approach background potential
             pix.potential += (potentialBackground - pix.potential) * potentialSettle;
