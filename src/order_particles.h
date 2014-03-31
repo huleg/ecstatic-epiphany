@@ -30,14 +30,14 @@ public:
     float colorCycle;
 
 private:
-    static const unsigned numParticles = 60;
+    static const unsigned numParticles = 50;
     static const float relativeSize = 0.18;
-    static const float intensity = 0.2;
+    static const float intensity = 0.3;
     static const float stepSize = 1.0 / 500;
-    static const float seedRadius = 1.0;
+    static const float seedRadius = 0.5;
     static const float interactionSize = 0.2;
     static const float angleGain = 0.01;
-    static const float colorRate = 0.4;
+    static const float colorRate = 0.2;
 
     float timeDeltaRemainder;
 
@@ -127,6 +127,12 @@ inline void OrderParticles::runStep(const FrameInfo &f)
         unsigned numHits = index.tree.radiusSearch(&p[0], searchRadius2, hits, params);
 
         for (unsigned i = 0; i < numHits; i++) {
+            if (hits[i].first <= i) {
+                // Only count each interaction once
+                continue;
+            }
+
+            // Check distance
             ParticleAppearance &hit = appearance[hits[i].first];
             float q2 = hits[i].second / searchRadius2;
             if (q2 < 1.0f) {
