@@ -24,6 +24,7 @@ public:
 
     Pixelator();
 
+    void clear();
     unsigned width() const;
     unsigned height() const;
     unsigned pixelIndex(int x, int y) const;
@@ -53,6 +54,11 @@ private:
 inline Pixelator::Pixelator()
     : bufferWidth(0), bufferHeight(0), noiseZ(0)
 {}
+
+inline void Pixelator::clear()
+{
+    memset(&appearanceBuffer[0], 0, appearanceBuffer.size() * sizeof appearanceBuffer[0]);
+}
 
 inline unsigned Pixelator::width() const
 {
@@ -112,7 +118,7 @@ inline void Pixelator::beginFrame(const FrameInfo& f)
         bufferWidth = newWidth;
         bufferHeight = newHeight;
         appearanceBuffer.resize(newWidth * newHeight);
-        memset(&appearanceBuffer[0], 0, appearanceBuffer.size() * sizeof appearanceBuffer[0]);
+        clear();
     }
 }
 

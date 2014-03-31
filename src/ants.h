@@ -60,6 +60,7 @@ inline Ants::Ants()
 inline void Ants::reseed()
 {
     stepSize = 1;
+    clear();
     ant.reseed();
 }
 
