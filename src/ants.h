@@ -11,9 +11,9 @@
 #include "pixelator.h"
 
 
-class Automata : public Pixelator {
+class Ants : public Pixelator {
 public:
-    Automata();
+    Ants();
     void reseed();
 
     virtual void beginFrame(const FrameInfo& f);
@@ -27,7 +27,7 @@ private:
     struct Ant {
         int x, y, direction;
         void reseed();
-        void update(Automata &world);
+        void update(Ants &world);
     };
 
     Ant ant;
@@ -51,19 +51,19 @@ static inline int umod(int a, int b)
     return c;
 }
 
-inline Automata::Automata()
+inline Ants::Ants()
     : timeDeltaRemainder(0)
 {
     reseed();
 }
 
-inline void Automata::reseed()
+inline void Ants::reseed()
 {
     stepSize = 1;
     ant.reseed();
 }
 
-inline void Automata::beginFrame(const FrameInfo& f)
+inline void Ants::beginFrame(const FrameInfo& f)
 {
     Pixelator::beginFrame(f);
 
@@ -78,14 +78,14 @@ inline void Automata::beginFrame(const FrameInfo& f)
     }
 }
 
-inline void Automata::Ant::reseed()
+inline void Ants::Ant::reseed()
 {
     x = 2;
     y = 5;
     direction = 2;
 }
 
-inline void Automata::Ant::update(Automata &world)
+inline void Ants::Ant::update(Ants &world)
 {
     static const Vec3 onColor = Vec3(0.8, 0.7, 0.9);
     static const Vec3 offColor = Vec3(0, 0.2, 0.5);
@@ -102,10 +102,9 @@ inline void Automata::Ant::update(Automata &world)
         direction++;
         a.color = onColor;
 
-        a.angle += 0.01;
+        a.angle += 0.1;
         a.contrast = 0.5;
-        a.noise = 0.9;
-        a.angle = -20.0;
+        a.noise = 0.5;
     }
 
     direction = umod(direction, 4);
@@ -117,7 +116,7 @@ inline void Automata::Ant::update(Automata &world)
     }
 }
 
-inline void Automata::runStep(const FrameInfo &f)
+inline void Ants::runStep(const FrameInfo &f)
 {
     ant.update(*this);
 
@@ -126,7 +125,6 @@ inline void Automata::runStep(const FrameInfo &f)
             PixelAppearance &a = pixelAppearance(x, y);
 
             a.noise *= 1.0 - noiseFadeRate;
-            a.angle *= 1.0 - noiseFadeRate;
             a.color *= 1.0 - colorFadeRate;
         }
     }

@@ -35,7 +35,7 @@ public:
     virtual void debug(const DebugInfo& d);
 
 private:
-    static const float noiseRate = 3.5;
+    static const float noiseRate = 1.5;
     static const float noiseScale = 6.0;
 
     PixelAppearance nullAppearance;

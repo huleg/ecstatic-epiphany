@@ -18,7 +18,7 @@
 #include "order_particles.h"
 #include "precursor.h"
 #include "spokes.h"
-#include "automata.h"
+#include "ants.h"
 
 
 class Narrator
@@ -37,7 +37,7 @@ public:
     OrderParticles orderParticles;
     Precursor precursor;
     RingsEffect ringsA, ringsB;
-    Automata automata;
+    Ants ants;
 
 private:
     void loop(PRNG &prng);
