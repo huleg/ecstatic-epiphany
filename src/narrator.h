@@ -18,6 +18,7 @@
 #include "order_particles.h"
 #include "precursor.h"
 #include "spokes.h"
+#include "pixelator.h"
 
 
 class Narrator
@@ -36,6 +37,7 @@ public:
     OrderParticles orderParticles;
     Precursor precursor;
     RingsEffect ringsA, ringsB;
+    Pixelator pixelator;
 
 private:
     void loop(PRNG &prng);
