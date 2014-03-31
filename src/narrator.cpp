@@ -54,20 +54,6 @@ void Narrator::delay(float seconds)
 
 void Narrator::loop(PRNG &prng)
 {
-    mixer.set(&pixelator);
-    delay(0.1);
-    for (unsigned y = 0; y < pixelator.height(); y++) {
-        for (unsigned x = 0; x < pixelator.width(); x++) {
-            if ((x+y) & 1) {
-                pixelator.pixelAppearance(x,y).color = Vec3(0.5,0.7,0.5);
-                pixelator.pixelAppearance(x,y).contrast = 0.8;
-                pixelator.pixelAppearance(x,y).angle = (x+y) * 0.4;
-                pixelator.pixelAppearance(x,y).noise = x * 0.1;
-            }
-        }
-    }
-    delay(1000);
-
     // Order trying to form out of the tiniest sparks; runs for a while, fails.
     precursor.reseed(prng.uniform32());
     crossfade(&precursor, 15);
@@ -110,4 +96,16 @@ void Narrator::loop(PRNG &prng)
     ringsA.palette.load("data/succulent-palette.png");
     crossfade(&ringsA, 20);
     delay(30);
+
+    // Langton's Ant
+    automata.reseed();
+    automata.stepSize = 1.0;
+    crossfade(&automata, 4);
+    delay(30);
+    automata.stepSize = 0.1;
+    delay(30);
+    automata.stepSize = 0.01;
+    delay(30);
+    automata.stepSize = 0.002;
+    delay(5);
 }
