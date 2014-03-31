@@ -29,52 +29,70 @@ float Narrator::doFrame()
     return runner.doFrame();
 }
 
+void Narrator::crossfade(Effect *to, float duration)
+{
+    mixer.add(to);
+    for (float t = 0; t < duration; t += doFrame()) {
+        float q = t / duration;
+        mixer.setFader(0, 1 - q);
+        mixer.setFader(1, q);
+    }
+    mixer.set(to);
+}
+
+void Narrator::delay(float seconds)
+{
+    while (seconds > 0) {
+        seconds -= doFrame();
+    }
+}
+
 void Narrator::loop(PRNG &prng)
 {
-    // // Order trying to form out of the tiniest sparks; runs for a while, fails.
-    // precursor.reseed(prng.uniform32());
-    // mixer.set(&precursor);
-    // while (precursor.totalSecondsOfDarkness() < 6.0) {
-    //     doFrame();
-    // }
+    // Order trying to form out of the tiniest sparks; runs for a while, fails.
+    precursor.reseed(prng.uniform32());
+    mixer.set(&precursor);
+    while (precursor.totalSecondsOfDarkness() < 6.0) {
+        doFrame();
+    }
 
-    // // Bang.
-    // chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
-    // mixer.set(&chaosParticles);
-    // while (chaosParticles.isRunning()) {
-    //     doFrame();
-    // }
+    // Bang.
+    chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
+    mixer.set(&chaosParticles);
+    while (chaosParticles.isRunning()) {
+        doFrame();
+    }
 
-    // // Textures of light
-    // rings.reseed();
-    // rings.palette.load("data/glass.png");
-    // mixer.set(&rings);
-    // for (float t = 0; t < 1; t += doFrame() / 100.0f) {
-    //     mixer.setFader(0, sinf(t * M_PI));
-    // }
+    // Textures of light
+    ringsA.reseed();
+    ringsA.palette.load("data/glass.png");
+    crossfade(&ringsA, 10);
+    delay(30);
 
-    // // Textures of energy
-    // rings.reseed();
-    // rings.palette.load("data/darkmatter-palette.png");
-    // mixer.set(&rings);
-    // for (float t = 0; t < 1; t += doFrame() / 100.0f) {
-    //     mixer.setFader(0, sinf(t * M_PI));
-    // }
+    // Textures of energy
+    ringsB.reseed();
+    ringsB.palette.load("data/darkmatter-palette.png");
+    crossfade(&ringsB, 10);
+    delay(30);
 
     // Biology happens, order emerges
     orderParticles.reseed(prng.uniform32());
-    mixer.set(&orderParticles);
-    for (float t = 0; t < 1; t += doFrame() / 100.0f) {
-        orderParticles.vibration = 0.05 / (1.0 + t * 100.0);
-        orderParticles.symmetry = 2 + (1 - t) * 12;
-        mixer.setFader(0, sinf(t * M_PI));
+    orderParticles.vibration = 0.01;
+    orderParticles.symmetry = 12;
+    crossfade(&orderParticles, 15);
+    while (orderParticles.symmetry > 1) {
+        delay(5);
+        orderParticles.symmetry--;
+        orderParticles.vibration *= 0.5;
     }
 
     // Textures of biology
-    rings.reseed();
-    rings.palette.load("data/succulent-palette.png");
-    mixer.set(&rings);
-    for (float t = 0; t < 1; t += doFrame() / 100.0f) {
-        mixer.setFader(0, sinf(t * M_PI));
-    }
+    ringsA.reseed();
+    ringsA.palette.load("data/succulent-palette.png");
+    crossfade(&ringsA, 20);
+    delay(30);
+
+    // Gradually reset
+    precursor.reseed(prng.uniform32());
+    crossfade(&precursor, 15);
 }

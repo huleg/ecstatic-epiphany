@@ -27,9 +27,6 @@ public:
 
     void run();
 
-    void loop(PRNG &prng);
-    float doFrame();
-
     VisualMemory vismem;
     EffectTap tap;
     EffectRunner runner;
@@ -38,5 +35,11 @@ public:
     ChaosParticles chaosParticles;
     OrderParticles orderParticles;
     Precursor precursor;
-    RingsEffect rings;
+    RingsEffect ringsA, ringsB;
+
+private:
+    void loop(PRNG &prng);
+    float doFrame();
+    void crossfade(Effect *to, float duration);
+    void delay(float seconds);
 };

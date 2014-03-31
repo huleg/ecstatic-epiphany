@@ -55,12 +55,13 @@ inline OrderParticles::OrderParticles()
       timeDeltaRemainder(0)
 {
     reseed(42);
-    vibration = 0;
-    symmetry = 3;
 }
 
 inline void OrderParticles::reseed(unsigned seed)
 {
+    vibration = 0;
+    symmetry = 1000;
+
     appearance.resize(numParticles);
 
     PRNG prng;
