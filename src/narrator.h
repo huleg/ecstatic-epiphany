@@ -13,12 +13,6 @@
 #include "lib/prng.h"
 
 #include "visual_memory.h"
-#include "rings.h"
-#include "chaos_particles.h"
-#include "order_particles.h"
-#include "precursor.h"
-#include "spokes.h"
-#include "ants.h"
 
 
 class Narrator
@@ -44,14 +38,8 @@ public:
     NEffectRunner runner;
     EffectMixer mixer;
 
-    ChaosParticles chaosParticles;
-    OrderParticles orderParticles;
-    Precursor precursor;
-    RingsEffect ringsA, ringsB;
-    Ants ants;
-
 private:
-    int doState(int st, PRNG &prng);
+    int script(int st, PRNG &prng);
     float doFrame();
 
     void crossfade(Effect *to, float duration);

@@ -6,10 +6,23 @@
  */
 
 #include "narrator.h"
+#include "chaos_particles.h"
+#include "order_particles.h"
+#include "precursor.h"
+#include "rings.h"
+#include "ants.h"
+#include "temporal_convolution.h"
 
 
-int Narrator::doState(int st, PRNG &prng)
+int Narrator::script(int st, PRNG &prng)
 {
+    static ChaosParticles chaosParticles;
+    static OrderParticles orderParticles;
+    static Precursor precursor;
+    static RingsEffect ringsA, ringsB;
+    static Ants ants;
+
+
     switch (st) {
 
         default:
@@ -66,12 +79,12 @@ int Narrator::doState(int st, PRNG &prng)
             // Textures of biology
             ringsA.reseed();
             ringsA.palette.load("data/succulent-palette.png");
-            crossfade(&ringsA, 20);
+            crossfade(&ringsA, 15);
             delay(30);
             return 70;
 
         case 70:
-            // Langton's Ant
+            // Langton's ant
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
             crossfade(&ants, 10);

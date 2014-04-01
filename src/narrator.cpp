@@ -29,7 +29,7 @@ void Narrator::run()
             fprintf(stderr, "narrator: state %d\n", currentState);
         }
 
-        int nextState = doState(currentState, prng);
+        int nextState = script(currentState, prng);
 
         if (nextState == runner.initialState) {
             totalLoops++;
