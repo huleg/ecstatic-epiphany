@@ -6,6 +6,9 @@ CPP_FILES = \
 	src/lib/jpge.cpp \
 	src/lib/lodepng.cpp
 
+# Use a recent toolchain (Linux)
+CXX := gcc-4.8 -std=c++11 -fpermissive
+
 # Important optimization options
 CPPFLAGS = -O3 -ffast-math
 
@@ -17,7 +20,7 @@ CPPFLAGS += $(shell sdl-config --cflags)
 LDFLAGS += $(shell sdl-config --libs)
 
 # Debugging
-CPPFLAGS += -g -Wall -Wno-tautological-constant-out-of-range-compare -Wno-gnu-static-float-init
+CPPFLAGS += -g -Wall
 LDFLAGS += -g
 
 # Dependency generation

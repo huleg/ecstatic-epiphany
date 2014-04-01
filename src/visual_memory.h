@@ -12,6 +12,7 @@
 
 #include <string>
 #include <vector>
+#include <bitset>
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <fcntl.h>
