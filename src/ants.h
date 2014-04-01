@@ -100,7 +100,7 @@ inline void Ants::filterColor(int x, int y)
     static const Vec3 colors[] = {
         Vec3(0, 0, 0),
         Vec3(0.251, 0.804, 0.765),
-        Vec3(0.118, 0.141, 0.329)
+        Vec3(0.078, 0.090, 0.153)
     };
 
     PixelAppearance &a = pixelAppearance(x, y);
