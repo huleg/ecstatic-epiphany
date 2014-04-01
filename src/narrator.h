@@ -1,5 +1,5 @@
 /*
- * Tell a story with some lights.
+ * Infrastructure to tell a story with some lights.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/
@@ -24,13 +24,24 @@
 class Narrator
 {
 public:
+
+    class NEffectRunner : public EffectRunner
+    {   
+    public:
+        NEffectRunner();
+        int initialState;
+    protected:
+        virtual bool parseArgument(int &i, int &argc, char **argv);
+        virtual void argumentUsage();
+    };
+
     Narrator();
 
     void run();
 
     VisualMemory vismem;
     EffectTap tap;
-    EffectRunner runner;
+    NEffectRunner runner;
     EffectMixer mixer;
 
     ChaosParticles chaosParticles;
@@ -40,8 +51,16 @@ public:
     Ants ants;
 
 private:
-    void loop(PRNG &prng);
+    int doState(int st, PRNG &prng);
     float doFrame();
+
     void crossfade(Effect *to, float duration);
     void delay(float seconds);
+
+    void formatTime(double s);
+
+    unsigned totalLoops;
+    double totalTime;
+    std::map<int, double> singleStateTime;
+    int currentState;
 };

@@ -1,5 +1,5 @@
 /*
- * Tell a story with some lights.
+ * Infrastructure to tell a story with some lights.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/
@@ -17,16 +17,54 @@ Narrator::Narrator()
 void Narrator::run()
 {
     PRNG prng;
+
+    totalTime = 0;
+    totalLoops = 0;
     prng.seed(time(0));
 
+    currentState = runner.initialState;
+
     while (true) {
-        loop(prng);
+        if (runner.isVerbose()) {
+            fprintf(stderr, "narrator: state %d\n", currentState);
+        }
+
+        int nextState = doState(currentState, prng);
+
+        if (nextState == runner.initialState) {
+            totalLoops++;
+            if (runner.isVerbose()) {
+                fprintf(stderr, "narrator: ------------------- Summary ------------------\n");
+                fprintf(stderr, "narrator: Total loops: %d\n", totalLoops);
+                fprintf(stderr, "narrator:       loop total "); formatTime(totalTime); 
+                fprintf(stderr, "  average ");
+                formatTime(totalTime / totalLoops);
+                fprintf(stderr, "\n");
+
+                for (std::map<int, double>::iterator it = singleStateTime.begin(); it != singleStateTime.end(); it++) {
+                    fprintf(stderr, "narrator: state %-3d  total ", it->first);
+                    formatTime(it->second);
+                    fprintf(stderr, "  average ");
+                    formatTime(it->second / totalLoops);
+                    fprintf(stderr, "\n");
+                } 
+
+                fprintf(stderr, "narrator: ----------------------------------------------\n");
+            }
+        }
+
+        currentState = nextState;
     }
 }
 
 float Narrator::doFrame()
 {
-    return runner.doFrame();
+    float t = runner.doFrame();
+
+    totalTime += t;
+    singleStateTime[currentState] += t;
+
+    return t;
 }
 
 void Narrator::crossfade(Effect *to, float duration)
@@ -52,57 +90,26 @@ void Narrator::delay(float seconds)
     }
 }
 
-void Narrator::loop(PRNG &prng)
+void Narrator::formatTime(double s)
 {
-    // Order trying to form out of the tiniest sparks; runs for a while, fails.
-    precursor.reseed(prng.uniform32());
-    crossfade(&precursor, 15);
-    while (precursor.totalSecondsOfDarkness() < 6.0) {
-        doFrame();
+    fprintf(stderr, "%02d:%02d:%05.2f", (int)s / (60*60), (int)s / 60, fmod(s, 60));
+} 
+
+Narrator::NEffectRunner::NEffectRunner()
+    : initialState(0)
+{}
+
+bool Narrator::NEffectRunner::parseArgument(int &i, int &argc, char **argv)
+{
+    if (!strcmp(argv[i], "-state") && (i+1 < argc)) {
+        initialState = atoi(argv[++i]);
+        return true;
     }
+    return EffectRunner::parseArgument(i, argc, argv);
+}
 
-    // Bang.
-    chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
-    mixer.set(&chaosParticles);
-    while (chaosParticles.isRunning()) {
-        doFrame();
-    }
-
-    // Textures of light
-    ringsA.reseed();
-    ringsA.palette.load("data/glass.png");
-    crossfade(&ringsA, 10);
-    delay(30);
-
-    // Textures of energy
-    ringsB.reseed();
-    ringsB.palette.load("data/darkmatter-palette.png");
-    crossfade(&ringsB, 10);
-    delay(30);
-
-    // Biology happens, order emerges
-    orderParticles.reseed(prng.uniform32());
-    orderParticles.vibration = 0.01;
-    orderParticles.symmetry = 12;
-    crossfade(&orderParticles, 4);
-    while (orderParticles.symmetry > 1) {
-        delay(5);
-        orderParticles.symmetry--;
-        orderParticles.vibration *= 0.5;
-    }
-
-    // Langton's Ant
-    ants.reseed(prng.uniform32());
-    ants.stepSize = 0.5;
-    crossfade(&ants, 10);
-    delay(1);
-    ants.stepSize = 0.1;
-    delay(20);
-    ants.stepSize = 0.01;
-
-    // Textures of biology
-    ringsA.reseed();
-    ringsA.palette.load("data/succulent-palette.png");
-    crossfade(&ringsA, 20);
-    delay(30);
+void Narrator::NEffectRunner::argumentUsage()
+{
+    EffectRunner::argumentUsage();
+    fprintf(stderr, " [-state ST]");
 }
