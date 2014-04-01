@@ -54,56 +54,55 @@ void Narrator::delay(float seconds)
 
 void Narrator::loop(PRNG &prng)
 {
-    // // Order trying to form out of the tiniest sparks; runs for a while, fails.
-    // precursor.reseed(prng.uniform32());
-    // crossfade(&precursor, 15);
-    // while (precursor.totalSecondsOfDarkness() < 6.0) {
-    //     doFrame();
-    // }
+    // Order trying to form out of the tiniest sparks; runs for a while, fails.
+    precursor.reseed(prng.uniform32());
+    crossfade(&precursor, 15);
+    while (precursor.totalSecondsOfDarkness() < 6.0) {
+        doFrame();
+    }
 
-    // // Bang.
-    // chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
-    // mixer.set(&chaosParticles);
-    // while (chaosParticles.isRunning()) {
-    //     doFrame();
-    // }
+    // Bang.
+    chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
+    mixer.set(&chaosParticles);
+    while (chaosParticles.isRunning()) {
+        doFrame();
+    }
 
-    // // Textures of light
-    // ringsA.reseed();
-    // ringsA.palette.load("data/glass.png");
-    // crossfade(&ringsA, 10);
-    // delay(30);
+    // Textures of light
+    ringsA.reseed();
+    ringsA.palette.load("data/glass.png");
+    crossfade(&ringsA, 10);
+    delay(30);
 
-    // // Textures of energy
-    // ringsB.reseed();
-    // ringsB.palette.load("data/darkmatter-palette.png");
-    // crossfade(&ringsB, 10);
-    // delay(30);
+    // Textures of energy
+    ringsB.reseed();
+    ringsB.palette.load("data/darkmatter-palette.png");
+    crossfade(&ringsB, 10);
+    delay(30);
 
-    // // Biology happens, order emerges
-    // orderParticles.reseed(prng.uniform32());
-    // orderParticles.vibration = 0.01;
-    // orderParticles.symmetry = 12;
-    // crossfade(&orderParticles, 15);
-    // while (orderParticles.symmetry > 1) {
-    //     delay(5);
-    //     orderParticles.symmetry--;
-    //     orderParticles.vibration *= 0.5;
-    // }
-
-    // // Textures of biology
-    // ringsA.reseed();
-    // ringsA.palette.load("data/succulent-palette.png");
-    // crossfade(&ringsA, 20);
-    // delay(30);
+    // Biology happens, order emerges
+    orderParticles.reseed(prng.uniform32());
+    orderParticles.vibration = 0.01;
+    orderParticles.symmetry = 12;
+    crossfade(&orderParticles, 4);
+    while (orderParticles.symmetry > 1) {
+        delay(5);
+        orderParticles.symmetry--;
+        orderParticles.vibration *= 0.5;
+    }
 
     // Langton's Ant
-    ants.reseed();
-    ants.stepSize = 1.0;
-    crossfade(&ants, 4);
-    delay(25);
+    ants.reseed(prng.uniform32());
+    ants.stepSize = 0.5;
+    crossfade(&ants, 10);
+    delay(1);
     ants.stepSize = 0.1;
-    delay(30);
-    ants.stepSize = 0.008;
     delay(20);
+    ants.stepSize = 0.01;
+
+    // Textures of biology
+    ringsA.reseed();
+    ringsA.palette.load("data/succulent-palette.png");
+    crossfade(&ringsA, 20);
+    delay(30);
 }

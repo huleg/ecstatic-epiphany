@@ -30,11 +30,11 @@ public:
     float colorCycle;
 
 private:
-    static const unsigned numParticles = 50;
+    static const unsigned numParticles = 120;
     static const float relativeSize = 0.18;
     static const float intensity = 0.3;
     static const float stepSize = 1.0 / 500;
-    static const float seedRadius = 0.5;
+    static const float seedRadius = 2.0;
     static const float interactionSize = 0.2;
     static const float angleGain = 0.01;
     static const float colorRate = 0.2;

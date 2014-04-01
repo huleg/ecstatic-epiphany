@@ -9,24 +9,26 @@
 #pragma once
 
 #include "pixelator.h"
+#include "lib/prng.h"
 
 
 class Ants : public Pixelator {
 public:
     Ants();
-    void reseed();
+    void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo& f);
 
     float stepSize;
 
 private:
-    static const float noiseFadeRate = 0.002;
+    static const float noiseFadeRate = 0.004;
     static const float colorFadeRate = 0.01;
+    static const float angleRate = 10.0;
 
     struct Ant {
         int x, y, direction;
-        void reseed();
+        void reseed(PRNG &prng);
         void update(Ants &world);
     };
 
@@ -35,6 +37,7 @@ private:
     std::vector<unsigned> state;
 
     void runStep(const FrameInfo &f);
+    void filterColor(int x, int y);
 };
 
 
@@ -55,15 +58,18 @@ static inline int umod(int a, int b)
 inline Ants::Ants()
     : timeDeltaRemainder(0)
 {
-    reseed();
+    reseed(42);
 }
 
-inline void Ants::reseed()
+inline void Ants::reseed(unsigned seed)
 {
     stepSize = 1;
     clear();
     memset(&state[0], 0, state.size() * sizeof state[0]);
-    ant.reseed();
+
+    PRNG prng;
+    prng.seed(seed);
+    ant.reseed(prng);
 }
 
 inline void Ants::beginFrame(const FrameInfo& f)
@@ -81,37 +87,46 @@ inline void Ants::beginFrame(const FrameInfo& f)
         steps--;
     }
 
-    // Visual updates
-
-    static const Vec3 colors[] = {
-        Vec3(0, 0, 0),
-        Vec3(0.8, 0.7, 0.9),
-        Vec3(0.0, 0.1, 0.4)
-    };
-
+    // Visual updates, at least once per device frame
     for (unsigned y = 0; y < height(); y++) {
         for (unsigned x = 0; x < width(); x++) {
-            PixelAppearance &a = pixelAppearance(x, y);
-            unsigned &st = state[pixelIndex(x, y)];
-            Vec3 targetColor = colors[st];
-
-            a.color += (targetColor - a.color) * colorFadeRate;
-            a.noise *= 1.0 - noiseFadeRate;
+            filterColor(x, y);
         }
     }
 }
 
-inline void Ants::Ant::reseed()
+inline void Ants::filterColor(int x, int y)
 {
-    x = 2;
-    y = 5;
-    direction = 2;
+    static const Vec3 colors[] = {
+        Vec3(0, 0, 0),
+        Vec3(0.251, 0.804, 0.765),
+        Vec3(0.118, 0.141, 0.329)
+    };
+
+    PixelAppearance &a = pixelAppearance(x, y);
+    unsigned &st = state[pixelIndex(x, y)];
+    Vec3 targetColor = colors[st];
+
+    a.color += (targetColor - a.color) * colorFadeRate;
+    a.noise *= 1.0 - noiseFadeRate;
+}
+
+inline void Ants::Ant::reseed(PRNG &prng)
+{
+    x = prng.uniform(1, 4);
+    y = prng.uniform(1, 10);
+    direction = prng.uniform(0, 10);
 }
 
 inline void Ants::Ant::update(Ants &world)
 {
     x = umod(x, world.width());
     y = umod(y, world.height());
+
+    // Also update color here, in case our step rate is much faster than
+    // the device frame rate
+    world.filterColor(x, y);
+
     PixelAppearance &a = world.pixelAppearance(x, y);
     unsigned &st = world.state[world.pixelIndex(x, y)];
 
@@ -123,7 +138,7 @@ inline void Ants::Ant::update(Ants &world)
         direction++;
         st = 1;
 
-        a.angle += 0.1;
+        a.angle += world.stepSize * angleRate;
         a.contrast = 0.5;
         a.noise = 0.5;
     }
