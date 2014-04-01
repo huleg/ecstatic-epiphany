@@ -46,7 +46,7 @@ public:
 
     void resizeBuffer(unsigned numFrames);
 
-    // Look up the frame that was happening 'timeDelta' seconds in the past.
+    // Look up the frame that was happening 'age' seconds in the past.
     // If that's beyond the end of our buffer, returns NULL.
     const Frame* get(float age) const;
 
