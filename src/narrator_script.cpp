@@ -12,6 +12,7 @@
 #include "rings.h"
 #include "ants.h"
 #include "temporal_convolution.h"
+#include "color_field.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -21,7 +22,8 @@ int Narrator::script(int st, PRNG &prng)
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
     static Ants ants;
-
+    static TemporalConvolution tconv;
+    static ColorField field;
 
     switch (st) {
 
@@ -90,8 +92,24 @@ int Narrator::script(int st, PRNG &prng)
             crossfade(&ants, 10);
             delay(1);
             ants.stepSize = 0.1;
-            delay(20);
-            ants.stepSize = 0.01;
-            return 0;
+            delay(5);
+            ants.stepSize = 0.05;
+            delay(5);
+            ants.stepSize = 0.025;
+            delay(5);
+            ants.stepSize = 0.0125;
+            delay(5);
+            ants.stepSize = 0.00625;
+            return 80;
+
+        case 80:
+            // Sample and hold, capture a still-life from the noisy ant.
+            tconv.setTap(&tap);
+            tconv.setGaussian(8, 0.3, 0.0);
+            crossfade(&tconv, 8);
+            field.set(runner, tap);
+            crossfade(&field, 2);
+            delay(1000);
+            return 70;
     }
 }

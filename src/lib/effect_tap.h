@@ -42,6 +42,8 @@ public:
         float timeDelta;
 
         std::vector<Vec3> colors;
+
+        Vec3 averageColor(const PixelInfoVec& pixels) const;
     };
 
     void resizeBuffer(unsigned numFrames);
@@ -146,4 +148,19 @@ inline const EffectTap::Frame* EffectTap::get(float age) const
 
     } while (index < fifoValid && index != firstIndex && fifo[index].timeDelta != 0.0f);
     return NULL;
+}
+
+inline Vec3 EffectTap::Frame::averageColor(const PixelInfoVec& pixels) const
+{
+    Vec3 accumulator = Vec3(0,0,0);
+    unsigned total = 0;
+
+    for (unsigned i = 0; i < pixels.size(); i++) {
+        if (pixels[i].isMapped()) {
+            total++;
+            accumulator += colors[i];
+        }
+    }
+
+    return total ? accumulator * (1.0f / total) : accumulator;
 }
