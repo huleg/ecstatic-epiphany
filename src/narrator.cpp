@@ -101,11 +101,9 @@ void Narrator::loop(PRNG &prng)
     ants.reseed();
     ants.stepSize = 1.0;
     crossfade(&ants, 4);
-    delay(20);
+    delay(25);
     ants.stepSize = 0.1;
-    delay(15);
-    ants.stepSize = 0.01;
     delay(30);
-    ants.stepSize = 0.002;
-    delay(5);
+    ants.stepSize = 0.008;
+    delay(20);
 }

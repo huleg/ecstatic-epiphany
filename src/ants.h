@@ -21,8 +21,8 @@ public:
     float stepSize;
 
 private:
-    static const float noiseFadeRate = 0.1;
-    static const float colorFadeRate = 0.02;
+    static const float noiseFadeRate = 0.002;
+    static const float colorFadeRate = 0.01;
 
     struct Ant {
         int x, y, direction;
@@ -32,6 +32,7 @@ private:
 
     Ant ant;
     float timeDeltaRemainder;
+    std::vector<unsigned> state;
 
     void runStep(const FrameInfo &f);
 };
@@ -61,12 +62,14 @@ inline void Ants::reseed()
 {
     stepSize = 1;
     clear();
+    memset(&state[0], 0, state.size() * sizeof state[0]);
     ant.reseed();
 }
 
 inline void Ants::beginFrame(const FrameInfo& f)
 {
     Pixelator::beginFrame(f);
+    state.resize(width() * height());
 
     // Fixed timestep
     float t = f.timeDelta + timeDeltaRemainder;
@@ -76,6 +79,25 @@ inline void Ants::beginFrame(const FrameInfo& f)
     while (steps > 0) {
         runStep(f);
         steps--;
+    }
+
+    // Visual updates
+
+    static const Vec3 colors[] = {
+        Vec3(0, 0, 0),
+        Vec3(0.8, 0.7, 0.9),
+        Vec3(0.0, 0.1, 0.4)
+    };
+
+    for (unsigned y = 0; y < height(); y++) {
+        for (unsigned x = 0; x < width(); x++) {
+            PixelAppearance &a = pixelAppearance(x, y);
+            unsigned &st = state[pixelIndex(x, y)];
+            Vec3 targetColor = colors[st];
+
+            a.color += (targetColor - a.color) * colorFadeRate;
+            a.noise *= 1.0 - noiseFadeRate;
+        }
     }
 }
 
@@ -88,20 +110,18 @@ inline void Ants::Ant::reseed()
 
 inline void Ants::Ant::update(Ants &world)
 {
-    static const Vec3 onColor = Vec3(0.8, 0.7, 0.9);
-    static const Vec3 offColor = Vec3(0, 0.2, 0.5);
-
     x = umod(x, world.width());
     y = umod(y, world.height());
     PixelAppearance &a = world.pixelAppearance(x, y);
+    unsigned &st = world.state[world.pixelIndex(x, y)];
 
-    if (a.color[0]) {
+    if (st == 1) {
         direction--;
-        a.color = offColor;
+        st = 2;
 
     } else {
         direction++;
-        a.color = onColor;
+        st = 1;
 
         a.angle += 0.1;
         a.contrast = 0.5;
@@ -120,13 +140,4 @@ inline void Ants::Ant::update(Ants &world)
 inline void Ants::runStep(const FrameInfo &f)
 {
     ant.update(*this);
-
-    for (unsigned y = 0; y < height(); y++) {
-        for (unsigned x = 0; x < width(); x++) {
-            PixelAppearance &a = pixelAppearance(x, y);
-
-            a.noise *= 1.0 - noiseFadeRate;
-            a.color *= 1.0 - colorFadeRate;
-        }
-    }
 }
