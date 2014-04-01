@@ -6,8 +6,7 @@ CPP_FILES = \
 	src/lib/jpge.cpp \
 	src/lib/lodepng.cpp
 
-# Use a recent toolchain (Linux)
-CXX := gcc-4.8 -std=c++11 -fpermissive
+UNAME := $(shell uname)
 
 # Important optimization options
 CPPFLAGS = -O3 -ffast-math
@@ -25,6 +24,15 @@ LDFLAGS += -g
 
 # Dependency generation
 CPPFLAGS += -MMD
+
+ifeq ($(UNAME), Linux)
+	# Use a recent toolchain (Linux)
+	CXX := gcc-4.8 -std=c++11 -fpermissive
+endif
+
+ifeq ($(UNAME), Darwin)
+	CPPFLAGS += -Wno-gnu-static-float-init
+endif
 
 OBJS := $(CPP_FILES:.cpp=.o) 
 
