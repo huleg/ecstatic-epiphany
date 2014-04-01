@@ -30,7 +30,7 @@ public:
     float totalSecondsOfDarkness();
 
 private:
-    static const float stepSize = 0.001;
+    static const float stepSize = 0.002;
     static const float cycleRate = stepSize / (60 * 2);
     static const float speed = stepSize * 1.3;
     static const float potentialBackground = 5e-7;
@@ -38,7 +38,7 @@ private:
     static const float potentialTransfer = 0.01;
     static const float maxBrightness = 1.2;
     static const float maxPropagationDistance = 0.1;
-    static const float maxPropagationRate = 0.05;
+    static const float maxPropagationRate = 0.1;
     static const float energyRateScale = 1.8;
 
     struct PixelState {
@@ -136,7 +136,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         PixelState &pix = pixelState[i];
 
         // Can restart?
-        if (pix.timeAxis == 1.0f && prng.uniform() < pix.potential && cycle < 1) {
+        if (pix.timeAxis == 1.0f && prng.uniform() < pix.potential && cycle < 1.0f) {
 
             if (pix.energy == 1.0f) {
                 // Restart
@@ -154,6 +154,12 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 
         // Energy refill
         pix.energy = std::min(1.0f, pix.energy + energyRate * speed);
+
+        // Early out for dead cells
+        if (pix.timeAxis <= 0.0f || pix.timeAxis >= 1.0f) {
+            pix.strength = 0.0f;
+            continue;
+        }
 
         // Strength curve, fade in and out
         pix.strength = sq(std::max(0.0f, sinf(pix.timeAxis * M_PI)));
