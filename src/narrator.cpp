@@ -33,24 +33,23 @@ void Narrator::run()
 
         if (nextState == runner.initialState) {
             totalLoops++;
-            if (runner.isVerbose()) {
-                fprintf(stderr, "narrator: ------------------- Summary ------------------\n");
-                fprintf(stderr, "narrator: Total loops: %d\n", totalLoops);
-                fprintf(stderr, "narrator:       loop total "); formatTime(totalTime); 
+
+            fprintf(stderr, "narrator: ------------------- Summary ------------------\n");
+            fprintf(stderr, "narrator: Total loops: %d\n", totalLoops);
+            fprintf(stderr, "narrator:       loop total "); formatTime(totalTime); 
+            fprintf(stderr, "  average ");
+            formatTime(totalTime / totalLoops);
+            fprintf(stderr, "\n");
+
+            for (std::map<int, double>::iterator it = singleStateTime.begin(); it != singleStateTime.end(); it++) {
+                fprintf(stderr, "narrator: state %-3d  total ", it->first);
+                formatTime(it->second);
                 fprintf(stderr, "  average ");
-                formatTime(totalTime / totalLoops);
+                formatTime(it->second / totalLoops);
                 fprintf(stderr, "\n");
+            } 
 
-                for (std::map<int, double>::iterator it = singleStateTime.begin(); it != singleStateTime.end(); it++) {
-                    fprintf(stderr, "narrator: state %-3d  total ", it->first);
-                    formatTime(it->second);
-                    fprintf(stderr, "  average ");
-                    formatTime(it->second / totalLoops);
-                    fprintf(stderr, "\n");
-                } 
-
-                fprintf(stderr, "narrator: ----------------------------------------------\n");
-            }
+            fprintf(stderr, "narrator: ----------------------------------------------\n");
         }
 
         currentState = nextState;

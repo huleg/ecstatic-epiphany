@@ -49,7 +49,7 @@ int Narrator::script(int st, PRNG &prng)
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
             crossfade(&ringsA, 10);
-            delay(30);
+            delay(60);
             return 40;
 
         case 40:
@@ -57,7 +57,7 @@ int Narrator::script(int st, PRNG &prng)
             ringsB.reseed();
             ringsB.palette.load("data/darkmatter-palette.png");
             crossfade(&ringsB, 10);
-            delay(30);
+            delay(60);
             return 50;
 
         case 50:
@@ -78,7 +78,7 @@ int Narrator::script(int st, PRNG &prng)
             ringsA.reseed();
             ringsA.palette.load("data/succulent-palette.png");
             crossfade(&ringsA, 15);
-            delay(30);
+            delay(60);
             return 70;
 
         case 70:
@@ -168,6 +168,6 @@ int Narrator::script(int st, PRNG &prng)
                 delay(1);
             }
 
-            return 90;
+            return 0;
     }
 }
