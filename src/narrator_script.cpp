@@ -12,7 +12,6 @@
 #include "rings.h"
 #include "ants.h"
 #include "temporal_convolution.h"
-#include "color_field.h"
 #include "planar_waves.h"
 
 
@@ -24,11 +23,7 @@ int Narrator::script(int st, PRNG &prng)
     static RingsEffect ringsA, ringsB;
     static Ants ants;
     static TemporalConvolution temporalConvolution;
-    static ColorField colorField;
     static PlanarWaves planarWaves;
-
-    // Default color for when we're jumping past Ants
-    colorField.set(Vec3(0.169, 0.467, 0.476));
 
     switch (st) {
 
@@ -39,18 +34,14 @@ int Narrator::script(int st, PRNG &prng)
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 15);
-            while (precursor.totalSecondsOfDarkness() < 6.0) {
-                doFrame();
-            }
+            do { doFrame(); } while (precursor.totalSecondsOfDarkness() < 6.1);
             return 20;
 
         case 20:
             // Bang. Explosive energy, hints of self-organization
             chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
             mixer.set(&chaosParticles);
-            while (chaosParticles.isRunning()) {
-                doFrame();
-            }
+            do { doFrame(); } while (chaosParticles.isRunning());
             return 30;
 
         case 30:
@@ -108,21 +99,75 @@ int Narrator::script(int st, PRNG &prng)
             return 80;
 
         case 80:
-            // Sample and hold, capture a still-life from the noisy ant.
-            temporalConvolution.setTap(&tap);
-            temporalConvolution.setGaussian(8, 0.3, 0.0);
-            crossfade(&temporalConvolution, 8);
-            colorField.set(runner, tap);
-            crossfade(&colorField, 2);
+            // Blank canvas for wave patterns
+            planarWaves.reset();
+            planarWaves.waves.resize(4);
+            crossfade(&planarWaves, 5);
+            delay(2);
+
+            // Simple start; one wave pulses
+            planarWaves.waves[0].frequency = 2.0;
+            planarWaves.waves[0].set();
+            planarWaves.waves[0].amplitude = 0.4;
+            delay(2);
+
+            // Perpendicular wave pulses
+            planarWaves.waves[1].frequency = 2.0;
+            planarWaves.waves[1].angle = M_PI/2;
+            planarWaves.waves[1].set();
+            planarWaves.waves[1].amplitude = 0.4;
+            delay(2);
+
+            // In proximity
+            planarWaves.waves[0].amplitude = 0.4;
+            delay(0.1);
+            planarWaves.waves[1].amplitude = 0.4;
+            delay(2);
+
+            // Both stick on
+            planarWaves.waves[0].targetAmplitude = 0.4;
+            planarWaves.waves[1].targetAmplitude = 0.4;
+            delay(2);
+
+            // Zoom out, adjust colors
+            planarWaves.waves[0].targetFrequency = 3.0;
+            planarWaves.waves[1].targetFrequency = 3.0;
+            planarWaves.targetColorParam = 0.5;
+            delay(2);
+
+            // Zoom out more, start moving
+            planarWaves.waves[0].targetFrequency = 6.0;
+            planarWaves.waves[1].targetFrequency = 6.0;
+            planarWaves.targetColorParam = 1.0;
+            planarWaves.speedTarget = Vec2(0, 0.0002);
+            delay(2);
+
+            // Third wave
+            planarWaves.waves[0].targetFrequency = 7.0;
+            planarWaves.waves[1].targetFrequency = 7.0;
+            planarWaves.waves[2].targetAmplitude = 0.4;
+            planarWaves.waves[0].targetAmplitude = 0.4;
+            planarWaves.waves[1].targetAmplitude = 0.4;
+            planarWaves.waves[2].targetAmplitude = 0.4;
+            planarWaves.waves[2].targetAngle = M_PI/3;
+            planarWaves.waves[2].targetFrequency = 8.0;
+            delay(1);
+
+            // Fourth wave
+            planarWaves.waves[0].targetAmplitude = 0.3;
+            planarWaves.waves[1].targetAmplitude = 0.3;
+            planarWaves.waves[2].targetAmplitude = 0.3;
+            planarWaves.waves[3].targetAmplitude = 0.3;
+            planarWaves.waves[3].targetAngle = M_PI * 3.15;
+            planarWaves.waves[3].targetFrequency = 7.3;
+            delay(1);
+
+            // Keep changing angle
+            for (unsigned i = 0; i < 60; i++) {
+                planarWaves.waves[i % 4].targetAngle += prng.uniform(-M_PI/8, M_PI/8);
+                delay(1);
+            }
+
             return 90;
-
-        case 90:
-            // Wave patterns build up
-            planarWaves.reseed(prng.uniform32());
-            mixer.set(&colorField);
-            mixer.add(&planarWaves);
-            delay(100);
-            return 100;
-
     }
 }

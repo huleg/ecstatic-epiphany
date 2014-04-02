@@ -9,25 +9,54 @@
 
 #include "lib/prng.h"
 #include "lib/effect.h"
+#include "lib/texture.h"
 
 
 class PlanarWaves : public Effect {
 public:
     PlanarWaves();
-    void reseed(unsigned seed);
+
+    void reset();
 
     virtual void beginFrame(const FrameInfo &f);
     virtual void shader(Vec3& rgb, const PixelInfo& p) const;
 
-private:
     struct Wave {
-        float amplitude, frequency, angle, phase;
-        float eval(const PixelInfo &p) const;
-        void reseed(PRNG &prng);
-        void update(const FrameInfo &f);
+        float targetAmplitude;
+        float targetFrequency;
+        float targetAngle;
+        float targetPhase;
+
+        float amplitude;
+        float frequency;
+        float angle;
+        float phase;
+
+        Wave();
+
+        float eval(Vec2 p) const;
+        void step(const FrameInfo &f);
+        void set();
     };
 
+    // Y axis on palette
+    float targetColorParam;
+    float colorParam;
+
+    Vec2 speed;
+    Vec2 speedTarget;
+    Vec2 center;
+
     std::vector<Wave> waves;
+
+private:
+    static const float stepSize = 1.0 / 500;
+    static const float easingRate = 0.01;
+
+    Texture palette;
+    float timeDeltaRemainder;
+
+    void runStep(const FrameInfo &f);
 };
 
 
@@ -37,57 +66,82 @@ private:
 
 
 inline PlanarWaves::PlanarWaves()
-{
-    reseed(12);
-}
+    : palette("data/wave-palette.png"),
+      timeDeltaRemainder(0)
+{}
 
-inline void PlanarWaves::reseed(unsigned seed)
+inline void PlanarWaves::reset()
 {
-    PRNG prng;
-    prng.seed(seed);
-
-    waves.resize(8);
-    for (unsigned i = 0; i < waves.size(); i++) {
-        waves[i].reseed(prng);
-    }
+    colorParam = targetColorParam = 0;
+    speed = Vec2(0,0);
+    center = Vec2(0,0);
+    waves.clear();
 }
 
 inline void PlanarWaves::beginFrame(const FrameInfo &f)
 {
-    for (unsigned i = 0; i < waves.size(); i++) {
-        waves[i].update(f);
+    float t = f.timeDelta + timeDeltaRemainder;
+    int steps = t / stepSize;
+    timeDeltaRemainder = t - steps * stepSize;
+
+    while (steps > 0) {
+        runStep(f);
+        steps--;
     }
 }
 
 inline void PlanarWaves::shader(Vec3& rgb, const PixelInfo& p) const
 {
-    float a = 0;
+    Vec2 pt = Vec2(p.point[0], p.point[2]) - center;
+    float a = 0.5;
+
     for (unsigned i = 0; i < waves.size(); i++) {
-        a += waves[i].eval(p);
+        a += waves[i].eval(pt);
     }
-    rgb = Vec3(1,1,1) * (a*a*a);
+
+    rgb = palette.sample(a, colorParam);
 }
 
-inline float PlanarWaves::Wave::eval(const PixelInfo &p) const
+inline void PlanarWaves::Wave::set()
+{
+    targetAmplitude = amplitude;
+    targetPhase = phase;
+    targetFrequency = frequency;
+    targetAngle = angle;
+}
+
+inline float PlanarWaves::Wave::eval(Vec2 p) const
 {
     // Rotate in XZ plane
-    float x = p.point[0] * cos(angle) - p.point[2] * sin(angle);
+    float x = p[0] * cos(angle) - p[1] * sin(angle);
 
     // Stationary point at the origin, for predictable transition in
     return amplitude * sin(x * frequency + phase);
 }
 
-inline void PlanarWaves::Wave::reseed(PRNG &prng)
+inline void PlanarWaves::runStep(const FrameInfo &f)
 {
-    amplitude = prng.uniform(0.1, 0.4);
-    frequency = 0;
-    angle = prng.uniform(0, M_PI*2);
-    phase = prng.uniform(0, M_PI*2);
+    colorParam += (targetColorParam - colorParam) * easingRate;
+    speed += (speedTarget - speed) * easingRate;
+    center += speed;
+
+    for (unsigned i = 0; i < waves.size(); i++) {
+        waves[i].step(f);
+    }
 }
 
-inline void PlanarWaves::Wave::update(const FrameInfo &f)
+inline void PlanarWaves::Wave::step(const FrameInfo &f)
 {
-    // amplitude *= 0.999;
-    frequency += 0.001;
-    angle *= 1.0001;
+    amplitude += (targetAmplitude - amplitude) * easingRate;
+    frequency += (targetFrequency - frequency) * easingRate;
+    angle += (targetAngle - angle) * easingRate;
+    phase += (targetPhase - phase) * easingRate;
+}
+
+inline PlanarWaves::Wave::Wave()
+{
+    targetAmplitude = amplitude = 0;
+    targetFrequency = frequency = 0;
+    targetAngle = angle = 0;
+    targetPhase = phase = 0;
 }
