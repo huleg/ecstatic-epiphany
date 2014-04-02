@@ -156,7 +156,7 @@ inline Vec3 EffectTap::Frame::averageColor(const PixelInfoVec& pixels) const
     unsigned total = 0;
 
     for (unsigned i = 0; i < pixels.size(); i++) {
-        if (pixels[i].isMapped()) {
+        if (pixels[i].isMapped() && i < colors.size()) {
             total++;
             accumulator += colors[i];
         }

@@ -13,6 +13,7 @@
 #include "ants.h"
 #include "temporal_convolution.h"
 #include "color_field.h"
+#include "planar_waves.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -22,8 +23,12 @@ int Narrator::script(int st, PRNG &prng)
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
     static Ants ants;
-    static TemporalConvolution tconv;
-    static ColorField field;
+    static TemporalConvolution temporalConvolution;
+    static ColorField colorField;
+    static PlanarWaves planarWaves;
+
+    // Default color for when we're jumping past Ants
+    colorField.set(Vec3(0.169, 0.467, 0.476));
 
     switch (st) {
 
@@ -104,12 +109,20 @@ int Narrator::script(int st, PRNG &prng)
 
         case 80:
             // Sample and hold, capture a still-life from the noisy ant.
-            tconv.setTap(&tap);
-            tconv.setGaussian(8, 0.3, 0.0);
-            crossfade(&tconv, 8);
-            field.set(runner, tap);
-            crossfade(&field, 2);
-            delay(1000);
-            return 70;
+            temporalConvolution.setTap(&tap);
+            temporalConvolution.setGaussian(8, 0.3, 0.0);
+            crossfade(&temporalConvolution, 8);
+            colorField.set(runner, tap);
+            crossfade(&colorField, 2);
+            return 90;
+
+        case 90:
+            // Wave patterns build up
+            planarWaves.reseed(prng.uniform32());
+            mixer.set(&colorField);
+            mixer.add(&planarWaves);
+            delay(100);
+            return 100;
+
     }
 }
