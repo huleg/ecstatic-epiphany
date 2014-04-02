@@ -108,25 +108,25 @@ int Narrator::script(int st, PRNG &prng)
             // Simple start; one wave pulses
             planarWaves.waves[0].frequency = 2.0;
             planarWaves.waves[0].set();
-            planarWaves.waves[0].amplitude = 0.4;
+            planarWaves.waves[0].amplitude = 0.1;
             delay(2);
 
             // Perpendicular wave pulses
             planarWaves.waves[1].frequency = 2.0;
             planarWaves.waves[1].angle = M_PI/2;
             planarWaves.waves[1].set();
-            planarWaves.waves[1].amplitude = 0.4;
+            planarWaves.waves[1].amplitude = 0.15;
             delay(2);
 
             // In proximity
-            planarWaves.waves[0].amplitude = 0.4;
+            planarWaves.waves[0].amplitude = 0.2;
             delay(0.1);
-            planarWaves.waves[1].amplitude = 0.4;
+            planarWaves.waves[1].amplitude = 0.2;
             delay(2);
 
             // Both stick on
-            planarWaves.waves[0].targetAmplitude = 0.4;
-            planarWaves.waves[1].targetAmplitude = 0.4;
+            planarWaves.waves[0].targetAmplitude = 0.3;
+            planarWaves.waves[1].targetAmplitude = 0.3;
             delay(2);
 
             // Zoom out, adjust colors
