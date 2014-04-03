@@ -1,14 +1,42 @@
 /*
- * Model creation script for more complex layout, a window display
- * made from a 6x12 grid of architectural glass blocks.
+ * Model creation script for the full 6x12 window, with 72 glass blocks.
  *
- * Each block is backed by a square ring of 40 LEDs, organized
- * clockwise from the top-left. This string is connected to a
- * dedicated Fadecandy output channel.
+ * Each glass block is backed by a folded diffuser containing a ring
+ * of 36 LEDs, 9 per side in a square. The diffuser spreads light
+ * inward, then the glass block re-texturizes it.
  *
- * These blocks are organized into panels of 2x4, each controlled
- * by a separate Fadecandy board. These boards are then arranged in
- * a 3x3 grid, left-to-right top-to-bottom.
+ * The full installation is made from six modules, each with 6x2 blocks.
+ * Each module uses one Fadecandy controller, with a max power consumption
+ * of about 21 Amps.
+ *
+ * Each module is a 2x2 grid of repeating patterns, a 3-block chain which
+ * is wired to use two Fadecandy channels with a minimum of extra wire. Each
+ * channel drives six block edges.
+ *
+ * 3x1 Chain, first Fadecandy channel:
+ *
+ *        +--------+  +--------+  +--------+      
+ *        |        |--|        |--|        |      
+ *        |       v|  |^      v|  |^       |      
+ *        |       v|  |^      v|  |^       |      
+ *        |        |  | <<<<<< |  | <<<<<< | <- Input      
+ *        +--------+  +--------+  +--------+
+ *
+ * Second Fadecandy channel:
+ *
+ *        +--------+  +--------+  +--------+      
+ *        | <<<<<< |--| <<<<<< |--| <<<<<< |      
+ *        |v       |  |        |  |       ^|      
+ *        |v       |  |        |  |       ^|      
+ *        | >>>>>> |  |        |  |        | <- Input      
+ *        +--------+  +--------+  +--------+
+ *
+ * 6x2 Module, stacking vertically, with chain of FC boards on the right edge:
+ *
+ *          .......      .......
+ *        [ Chain 1 ]  [ Chain 0 ]  [FC]
+ *        [ Chain 3 ]  [ Chain 2 ]  
+ *          .......      .......
  *
  * The JSON for this layout includes multiple kinds of data about
  * each LED. Each LED has the following fields:
@@ -21,7 +49,7 @@
  *   blockAngle: Angle within the block, in radians. Zero is +Y.
  *
  * 2014 Micah Elizabeth Scott
- * This file is released into the public domain.
+ * http://creativecommons.org/licenses/by/3.0/
  */
 
 var model = []
@@ -29,20 +57,23 @@ var blockSize = 0.3;
 var centerX = blockSize * 6/2;
 var centerY = blockSize * 12/2;
 
-function blockEdge(index, gridXY, angle)
+function blockEdge(index, gridXY, side, ccw)
 {
-    // Lay out one LED strip corresponding to a block edge
+    // Lay out one LED strip corresponding to a block edge.
+    // side: 0=top, 1=left, 2=bottom, 3=right
+    // ccw: 0=clockwise, 1=counterclockwise
 
-    var count = 10;        // How many LEDs?
-    var y = 0.75;          // Distance from center, in model
+    var count = 9;        // How many LEDs?
+    var y = 0.75;         // Distance from center, in model
 
     var spacing = 2 * y / (count + 1);
+    var angle = side * Math.PI / 2;
     var s = Math.sin(angle);
     var c = Math.cos(angle);
 
     for (var i = 0; i < count; i++) {
         // Distance from vertical Y axis
-        var x = (i - (count-1)/2.0) * spacing;
+        var x = ((ccw ? (count - 1 - i) : i) - (count-1)/2.0) * spacing;
 
         // Rotated XY
         var rx = x * c - y * s;
@@ -61,33 +92,33 @@ function blockEdge(index, gridXY, angle)
     }
 }
 
-function block(index, gridXY)
+function chain(index, gridXY)
 {
-    for (var i = 0; i < 4; i++) {
-        blockEdge(index + i * 10, gridXY, i * -Math.PI / 2);
-    }
+    blockEdge(index + 9 * 0 + 64 * 0, [ gridXY[0] + 2, gridXY[1] ], 2, 0);
+    blockEdge(index + 9 * 1 + 64 * 0, [ gridXY[0] + 2, gridXY[1] ], 1, 0);
+    blockEdge(index + 9 * 2 + 64 * 0, [ gridXY[0] + 1, gridXY[1] ], 3, 0);
+    blockEdge(index + 9 * 3 + 64 * 0, [ gridXY[0] + 1, gridXY[1] ], 2, 0);
+    blockEdge(index + 9 * 4 + 64 * 0, [ gridXY[0] + 1, gridXY[1] ], 1, 0);
+    blockEdge(index + 9 * 5 + 64 * 0, [ gridXY[0] + 0, gridXY[1] ], 3, 0);
+
+    blockEdge(index + 9 * 0 + 64 * 1, [ gridXY[0] + 2, gridXY[1] ], 3, 1);
+    blockEdge(index + 9 * 1 + 64 * 1, [ gridXY[0] + 2, gridXY[1] ], 0, 1);
+    blockEdge(index + 9 * 2 + 64 * 1, [ gridXY[0] + 1, gridXY[1] ], 0, 1);
+    blockEdge(index + 9 * 3 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 0, 1);
+    blockEdge(index + 9 * 4 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 1, 1);
+    blockEdge(index + 9 * 5 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 2, 1);
 }
 
-function blockModule(index, gridXY, width, height)
+function module(index, gridXY)
 {
-    for (var y = 0; y < height; y++) {
-        for (var x = 0; x < width; x++) {
-            block(index, [gridXY[0] + x, gridXY[1] + y]);
-            index += 64;
-        }
-    }
+    chain(index + 128 * 0, [ gridXY[0] + 3, gridXY[1] + 0 ]);
+    chain(index + 128 * 1, [ gridXY[0] + 0, gridXY[1] + 0 ]);
+    chain(index + 128 * 2, [ gridXY[0] + 3, gridXY[1] + 1 ]);
+    chain(index + 128 * 3, [ gridXY[0] + 0, gridXY[1] + 1 ]);
 }
 
-function moduleGrid(index, width, height, modWidth, modHeight)
-{
-    for (var y = 0; y < height; y++) {
-        for (var x = 0; x < width; x++) {
-            blockModule(index, [x * modWidth, y * modHeight], modWidth, modHeight);
-            index += 512;
-        }
-    }
+for (var i = 0; i < 6; i++) {
+    module(512 * i, [ 0, 2 * i ]);
 }
-
-moduleGrid(0, 3, 3, 2, 4);
 
 console.log(JSON.stringify(model));

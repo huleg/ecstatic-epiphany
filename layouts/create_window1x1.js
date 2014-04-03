@@ -1,14 +1,5 @@
 /*
- * Model creation script for more complex layout, a window display
- * made from a 6x12 grid of architectural glass blocks.
- *
- * Each block is backed by a square ring of 40 LEDs, organized
- * clockwise from the top-left. This string is connected to a
- * dedicated Fadecandy output channel.
- *
- * These blocks are organized into panels of 2x4, each controlled
- * by a separate Fadecandy board. These boards are then arranged in
- * a 3x3 grid, left-to-right top-to-bottom.
+ * Early prototype, single square (1x1) with 10 LEDs per side.
  *
  * The JSON for this layout includes multiple kinds of data about
  * each LED. Each LED has the following fields:
