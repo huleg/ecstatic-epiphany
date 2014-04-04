@@ -15,20 +15,22 @@
  *
  * 3x1 Chain, first Fadecandy channel:
  *
+ *         A           B           C
  *        +--------+  +--------+  +--------+      
  *        |        |--|        |--|        |      
  *        |       v|  |^      v|  |^       |      
  *        |       v|  |^      v|  |^       |      
- *        |        |  | <<<<<< |  | <<<<<< | <- Input      
+ *        |        |  | <<<<<< |  | <<<<<< | <- Input 0
  *        +--------+  +--------+  +--------+
  *
  * Second Fadecandy channel:
  *
+ *         A           B           C
  *        +--------+  +--------+  +--------+      
  *        | <<<<<< |--| <<<<<< |--| <<<<<< |      
  *        |v       |  |        |  |       ^|      
  *        |v       |  |        |  |       ^|      
- *        | >>>>>> |  |        |  |        | <- Input      
+ *        | >>>>>> |  |        |  |        | <- Input 1    
  *        +--------+  +--------+  +--------+
  *
  * 6x2 Module, stacking vertically, with chain of FC boards on the right edge:
@@ -37,6 +39,49 @@
  *        [ Chain 1 ]  [ Chain 0 ]  [FC]
  *        [ Chain 3 ]  [ Chain 2 ]  
  *          .......      .......
+ *
+ * Chains 2 and 3 are VERTICALLY MIRRORED, so that all inputs originate at the
+ * right-middle of the module, where the FC board is. This means that the chains
+ * 2 and 3 corresponding to FC channels 4-7 look like:
+ *
+ *         D           E           F
+ *        +--------+  +--------+  +--------+      
+ *        |        |  | <<<<<< |  | <<<<<< | <- Input 0   
+ *        |       ^|  |v      ^|  |v       |      
+ *        |       ^|  |v      ^|  |v       |      
+ *        |        |--|        |--|        |      
+ *        +--------+  +--------+  +--------+
+ *
+ * And:
+ *
+ *         D           E           F
+ *        +--------+  +--------+  +--------+      
+ *        | >>>>>> |  |        |  |        | <- Input 1    
+ *        |^       |  |        |  |       v|      
+ *        |^       |  |        |  |       v|      
+ *        | <<<<<< |--| <<<<<< |--| <<<<<< |      
+ *        +--------+  +--------+  +--------+
+ *
+ * There are 6 distinct wiring layouts for a single block, named A through F:
+ *
+ *     A: +--------+  B: +--------+  C: +--------+  
+ *        |* <<<<  |     |  <<<<  |     |  <<<< *|   
+ *        |v      v|     |^      v|     |^      ^|   
+ *        |v      v|     |^      v|     |^      ^|   
+ *        |* >>>>  |     |* <<<< *|     |* <<<<  |   
+ *        +--------+     +--------+     +--------+  
+ *
+ *     D: +--------+  E: +--------+  F: +--------+  
+ *        |* >>>>  |     |* <<<< *|     |* <<<<  |   
+ *        |^      ^|     |v      ^|     |v      v|   
+ *        |^      ^|     |v      ^|     |v      v|   
+ *        |* <<<<  |     |  <<<<  |     |  <<<< *|   
+ *        +--------+     +--------+     +--------+  
+ *
+ * These different blocks come together to make a 6x2 module:
+ *
+ *     [A  B  C] [A  B  C] [Fc]
+ *     [D  E  F] [D  E  F]
  *
  * The JSON for this layout includes multiple kinds of data about
  * each LED. Each LED has the following fields:
@@ -92,7 +137,7 @@ function blockEdge(index, gridXY, side, ccw)
     }
 }
 
-function chain(index, gridXY)
+function chainABC(index, gridXY)
 {
     blockEdge(index + 9 * 0 + 64 * 0, [ gridXY[0] + 2, gridXY[1] ], 2, 0);
     blockEdge(index + 9 * 1 + 64 * 0, [ gridXY[0] + 2, gridXY[1] ], 1, 0);
@@ -109,12 +154,29 @@ function chain(index, gridXY)
     blockEdge(index + 9 * 5 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 2, 1);
 }
 
+function chainDEF(index, gridXY)
+{
+    blockEdge(index + 9 * 0 + 64 * 0, [ gridXY[0] + 2, gridXY[1] ], 0, 1);
+    blockEdge(index + 9 * 1 + 64 * 0, [ gridXY[0] + 2, gridXY[1] ], 1, 1);
+    blockEdge(index + 9 * 2 + 64 * 0, [ gridXY[0] + 1, gridXY[1] ], 3, 1);
+    blockEdge(index + 9 * 3 + 64 * 0, [ gridXY[0] + 1, gridXY[1] ], 0, 1);
+    blockEdge(index + 9 * 4 + 64 * 0, [ gridXY[0] + 1, gridXY[1] ], 1, 1);
+    blockEdge(index + 9 * 5 + 64 * 0, [ gridXY[0] + 0, gridXY[1] ], 3, 1);
+
+    blockEdge(index + 9 * 0 + 64 * 1, [ gridXY[0] + 2, gridXY[1] ], 3, 0);
+    blockEdge(index + 9 * 1 + 64 * 1, [ gridXY[0] + 2, gridXY[1] ], 2, 0);
+    blockEdge(index + 9 * 2 + 64 * 1, [ gridXY[0] + 1, gridXY[1] ], 2, 0);
+    blockEdge(index + 9 * 3 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 2, 0);
+    blockEdge(index + 9 * 4 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 1, 0);
+    blockEdge(index + 9 * 5 + 64 * 1, [ gridXY[0] + 0, gridXY[1] ], 0, 0);
+}
+
 function module(index, gridXY)
 {
-    chain(index + 128 * 0, [ gridXY[0] + 3, gridXY[1] + 0 ]);
-    chain(index + 128 * 1, [ gridXY[0] + 0, gridXY[1] + 0 ]);
-    chain(index + 128 * 2, [ gridXY[0] + 3, gridXY[1] + 1 ]);
-    chain(index + 128 * 3, [ gridXY[0] + 0, gridXY[1] + 1 ]);
+    chainABC(index + 128 * 0, [ gridXY[0] + 3, gridXY[1] + 0 ]);
+    chainABC(index + 128 * 1, [ gridXY[0] + 0, gridXY[1] + 0 ]);
+    chainDEF(index + 128 * 2, [ gridXY[0] + 3, gridXY[1] + 1 ]);
+    chainDEF(index + 128 * 3, [ gridXY[0] + 0, gridXY[1] + 1 ]);
 }
 
 for (var i = 0; i < 6; i++) {
