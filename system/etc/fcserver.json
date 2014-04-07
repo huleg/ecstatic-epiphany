@@ -8,11 +8,26 @@
     },
 
     "devices": [
+
         {
             "type": "fadecandy",
             "led": false,
+            "serial": "UWZHOWFZLHGJADCT",
+            "heatshrink_color": "white",
+            "index": 0,
             "map": [
-                [ 0, 1024, 0, 512 ]
+                [ 0, 0, 0, 512 ]
+            ]
+        },
+
+        {
+            "type": "fadecandy",
+            "led": false,
+            "serial": "RVKKVPHLPBWZGPCT",
+            "heatshrink_color": "red",
+            "index": 1,
+            "map": [
+                [ 0, 512, 0, 512 ]
             ]
         }
     ]
