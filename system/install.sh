@@ -4,7 +4,7 @@
 # (x86 Linux)
 #
 
-sudo apt-get install supervisor
+sudo apt-get install supervisor lighttpd
 
 sudo cp -r etc usr /
 sudo update-rc.d fcserver defaults
