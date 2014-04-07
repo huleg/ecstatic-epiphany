@@ -44,7 +44,7 @@ static void debugThread(void *)
         narrator.vismem.debug(buffer);
 
         counter++;
-        sleep(10);
+        sleep(60 * 5);
     }
 }
 
