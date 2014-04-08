@@ -140,7 +140,7 @@ inline void Ants::Ant::update(Ants &world)
 
         a.angle += world.stepSize * angleRate;
         a.contrast = 0.5;
-        a.noise = 0.5;
+        a.noise = 1.5;
     }
 
     direction = umod(direction, 4);

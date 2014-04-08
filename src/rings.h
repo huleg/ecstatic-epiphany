@@ -38,7 +38,8 @@ public:
     static const float wanderSize = 2.5;
     static const float brightnessContrast = 6;
     static const float colorContrast = 1.2;
-    static const float targetBrightness = 0.2;
+    static const float colorShiftRate = 0.12;
+    static const float targetBrightness = 0.15;
     static const float thresholdGain = 0.1;
     static const float thresholdStepLimit = 0.02;
     static const float initialThreshold = -1.0f;
@@ -83,7 +84,7 @@ public:
                       noise2(timer * wanderSpeed, seed + 51.7)) * wanderSize;
 
         // Wander around the color palette
-        colorParam = seed + timer * 0.05f;
+        colorParam = seed + timer * colorShiftRate;
 
         // Reset pixel total accumulators, used for the brightness calc in endFrame
         pixelTotalNumerator = 0;

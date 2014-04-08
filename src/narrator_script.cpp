@@ -57,7 +57,7 @@ int Narrator::script(int st, PRNG &prng)
             ringsB.reseed();
             ringsB.palette.load("data/darkmatter-palette.png");
             crossfade(&ringsB, 10);
-            delay(120);
+            delay(180);
             return 50;
 
         case 50:
@@ -67,7 +67,7 @@ int Narrator::script(int st, PRNG &prng)
             orderParticles.symmetry = 12;
             crossfade(&orderParticles, 4);
             while (orderParticles.symmetry > 1) {
-                delay(5);
+                delay(10);
                 orderParticles.symmetry--;
                 orderParticles.vibration *= 0.5;
             }
@@ -77,8 +77,8 @@ int Narrator::script(int st, PRNG &prng)
             // Textures of biology
             ringsA.reseed();
             ringsA.palette.load("data/succulent-palette.png");
-            crossfade(&ringsA, 15);
-            delay(120);
+            crossfade(&ringsA, 6);
+            delay(180);
             return 70;
 
         case 70:
@@ -86,18 +86,19 @@ int Narrator::script(int st, PRNG &prng)
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
             crossfade(&ants, 10);
-            delay(1);
+            delay(4);
             ants.stepSize = 0.1;
-            delay(5);
+            delay(10);
             ants.stepSize = 0.05;
-            delay(5);
+            delay(10);
             ants.stepSize = 0.025;
-            delay(5);
+            delay(10);
             ants.stepSize = 0.0125;
-            delay(5);
+            delay(10);
             ants.stepSize = 0.00625;
             return 80;
 
+#if 0
         case 80:
             // Blank canvas for wave patterns
             planarWaves.reset();
@@ -108,25 +109,25 @@ int Narrator::script(int st, PRNG &prng)
             // Simple start; one wave pulses
             planarWaves.waves[0].frequency = 2.0;
             planarWaves.waves[0].set();
-            planarWaves.waves[0].amplitude = 0.1;
+            planarWaves.waves[0].amplitude = 0.05;
             delay(2);
 
             // Perpendicular wave pulses
             planarWaves.waves[1].frequency = 2.0;
             planarWaves.waves[1].angle = M_PI/2;
             planarWaves.waves[1].set();
-            planarWaves.waves[1].amplitude = 0.15;
+            planarWaves.waves[1].amplitude = 0.05;
             delay(2);
 
             // In proximity
-            planarWaves.waves[0].amplitude = 0.2;
+            planarWaves.waves[0].amplitude = 0.05;
             delay(0.1);
-            planarWaves.waves[1].amplitude = 0.2;
+            planarWaves.waves[1].amplitude = 0.05;
             delay(2);
 
             // Both stick on
-            planarWaves.waves[0].targetAmplitude = 0.3;
-            planarWaves.waves[1].targetAmplitude = 0.3;
+            planarWaves.waves[0].targetAmplitude = 0.1;
+            planarWaves.waves[1].targetAmplitude = 0.1;
             delay(2);
 
             // Zoom out, adjust colors
@@ -167,6 +168,7 @@ int Narrator::script(int st, PRNG &prng)
                 planarWaves.waves[i % 4].targetAngle += prng.uniform(-M_PI/8, M_PI/8);
                 delay(1);
             }
+#endif
 
             return 0;
     }
