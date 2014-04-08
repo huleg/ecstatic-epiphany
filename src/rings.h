@@ -36,7 +36,7 @@ public:
     static const float ringDepth = 0.4;
     static const float wanderSpeed = 0.03;
     static const float wanderSize = 2.5;
-    static const float brightnessContrast = 4;
+    static const float brightnessContrast = 6;
     static const float colorContrast = 1.2;
     static const float targetBrightness = 0.2;
     static const float thresholdGain = 0.1;
