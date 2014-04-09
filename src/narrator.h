@@ -9,10 +9,11 @@
 
 #include "lib/effect.h"
 #include "lib/effect_mixer.h"
+#include "lib/effect_runner.h"
 #include "lib/effect_tap.h"
 #include "lib/prng.h"
 
-#include "visual_memory.h"
+// #include "visual_memory.h"
 
 
 class Narrator
@@ -33,7 +34,7 @@ public:
 
     void run();
 
-    VisualMemory vismem;
+    // VisualMemory vismem;
     EffectTap tap;
     NEffectRunner runner;
     EffectMixer mixer;
