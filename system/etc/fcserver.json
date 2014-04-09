@@ -29,6 +29,20 @@
             "map": [
                 [ 0, 512, 0, 512 ]
             ]
+        },
+
+        {
+            "type": "fadecandy",
+            "led": false,
+            "serial": "BDCMLZTTLZADMHIN",
+            "heatshrink_color": "yellow",
+            "index": 2,
+            "map": [
+                [ 0, 1024, 0, 512 ]
+            ]
         }
+
+
+        
     ]
 }
