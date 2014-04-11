@@ -32,7 +32,7 @@ public:
 private:
     static const float stepSize = 0.01;
     static const float cycleRate = stepSize / (60 * 1);
-    static const float speed = stepSize * 1.6;
+    static const float speed = stepSize * 0.4;
     static const float potentialBackground = 5e-6;
     static const float potentialSettle = 0.2;
     static const float potentialTransfer = 0.1;
@@ -220,7 +220,7 @@ inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 
     // Lissajous sampling on palette
     float t = (pix.generation + pix.timeAxis) * 1e-5 + n * 1.5;
-    float u = 7.3f;
+    float u = 2.3f;
     rgb = palette.sample(0.5 + 0.5 * cos(t),
                          0.5 + 0.5 * sin(t*u + seed * 1e-4))
         * (maxBrightness * pix.strength);
