@@ -36,8 +36,8 @@ public:
     virtual void debug(const DebugInfo& d);
 
 private:
-    static const float noiseRate = 1.5;
-    static const float noiseScale = 6.0;
+    static const float noiseRate = 1.75;
+    static const float noiseScale = 2.0;
 
     PixelAppearance nullAppearance;
     std::vector<PixelAppearance> appearanceBuffer;

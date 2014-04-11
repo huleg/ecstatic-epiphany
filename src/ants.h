@@ -22,8 +22,9 @@ public:
     float stepSize;
 
 private:
-    static const float noiseFadeRate = 0.004;
-    static const float colorFadeRate = 0.01;
+    static const float noiseMax = 1.5;
+    static const float noiseFadeRate = 0.007;
+    static const float colorFadeRate = 0.015;
     static const float angleRate = 10.0;
 
     struct Ant {
@@ -139,8 +140,8 @@ inline void Ants::Ant::update(Ants &world)
         st = 1;
 
         a.angle += world.stepSize * angleRate;
-        a.contrast = 0.5;
-        a.noise = 1.5;
+        a.contrast = 0.4;
+        a.noise = noiseMax;
     }
 
     direction = umod(direction, 4);
