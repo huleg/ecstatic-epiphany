@@ -29,7 +29,7 @@ public:
 
     static const float xyzSpeed = 0.2;
     static const float xyzScale = 0.42;
-    static const float wSpeed = 0.2;
+    static const float wSpeed = 0.1;
     static const float wRate = 0.015;
     static const float ringScale = 2.5;
     static const float ringScaleRate = 0.02;
