@@ -11,8 +11,8 @@
 #include "precursor.h"
 #include "rings.h"
 #include "ants.h"
-#include "temporal_convolution.h"
 #include "planar_waves.h"
+#include "partner_dance.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -22,8 +22,8 @@ int Narrator::script(int st, PRNG &prng)
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
     static Ants ants;
-    static TemporalConvolution temporalConvolution;
-    static PlanarWaves planarWaves;
+    static PartnerDance partnerDance;
+
 
     switch (st) {
 
@@ -115,6 +115,13 @@ int Narrator::script(int st, PRNG &prng)
             crossfade(&ringsA, prng.uniform(15, 30));
             delay(prng.uniform(60*1, 60*3));
             return 80;
+
+        case 80:
+            // Work in progress
+            partnerDance.reseed(prng.uniform32());
+            crossfade(&partnerDance, prng.uniform(5, 20));
+            delay(prng.uniform(60*1, 60*3));
+            return 90;
 
     }
 }
