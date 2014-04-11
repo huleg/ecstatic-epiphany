@@ -64,15 +64,15 @@ int Narrator::script(int st, PRNG &prng)
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
             crossfade(&ringsA, 10);
-            delay(120);
+            delay(prng.uniform(60*1, 60*2));
             return 40;
 
         case 40:
-            // Textures of energy
+            // Textures of energy, slow crossfade in
             ringsB.reseed();
             ringsB.palette.load("data/darkmatter-palette.png");
-            crossfade(&ringsB, 10);
-            delay(180);
+            crossfade(&ringsB, prng.uniform(30, 90));
+            delay(prng.uniform(60*1, 60*3));
             return 50;
 
         case 50:
