@@ -30,16 +30,16 @@ public:
     float totalSecondsOfDarkness();
 
 private:
-    static const float stepSize = 0.002;
-    static const float cycleRate = stepSize / (60 * 2);
-    static const float speed = stepSize * 1.3;
-    static const float potentialBackground = 5e-7;
+    static const float stepSize = 0.01;
+    static const float cycleRate = stepSize / (60 * 1);
+    static const float speed = stepSize * 1.6;
+    static const float potentialBackground = 5e-6;
     static const float potentialSettle = 0.2;
-    static const float potentialTransfer = 0.01;
+    static const float potentialTransfer = 0.1;
     static const float maxBrightness = 1.2;
     static const float maxPropagationDistance = 0.1;
-    static const float maxPropagationRate = 0.1;
-    static const float energyRateScale = 1.8;
+    static const float maxPropagationRate = 0.05;
+    static const float energyRateScale = 10.5;
 
     struct PixelState {
         PixelState();
