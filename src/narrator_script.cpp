@@ -38,9 +38,15 @@ int Narrator::script(int st, PRNG &prng)
             return 20;
 
         case 20:
-            // Bang. Explosive energy, hints of self-organization
-            chaosParticles.reseed(Vec3(0,0,0), prng.uniform32());
+            // Bang, repeatedly.
             mixer.set(&chaosParticles);
+            for (int i = 0; i < prng.uniform(1, 6); i++) {
+                chaosParticles.reseed(prng.ringVector(0.65, 1.0), prng.uniform32());
+                delay((1 << i) * 0.25f);
+            }
+
+            // Centered, follow through. Explosive energy, hints of self-organization
+            chaosParticles.reseed(Vec2(0,0), prng.uniform32());
             do { doFrame(); } while (chaosParticles.isRunning());
             return 30;
 
