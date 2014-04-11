@@ -59,7 +59,7 @@ private:
 
 
 inline PartnerDance::PartnerDance()
-    : palette("data/ocean-palette.png"),
+    : palette("data/shoreline-palette.png"),
       timeDeltaRemainder(0)
 {
     reseed(42);
@@ -82,9 +82,13 @@ inline void PartnerDance::reseed(uint32_t seed)
     for (unsigned dancer = 0; dancer < numDancers; dancer++) {
         for (unsigned i = 0; i < particlesPerDancer; i++, pa++, pd++) {
 
-            pd->position = prng.circularVector() * 3.0 + Vec2(4, 0);
+            pd->position = prng.circularVector() * 3.0 + (dancer ? Vec2(4, 0) : Vec2(-4, 0));
             pd->target = prng.circularVector() * 0.1;
             pd->velocity = prng.circularVector() * 0.1;
+
+            pa->intensity = 0.4;
+            pa->radius = 0.5;
+            pa->color = dancer ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
         }
     }
 }
@@ -134,9 +138,6 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             pd->position += v;
 
             pa->point = Vec3(pd->position[0], 0, pd->position[1]);
-            pa->intensity = 0.8;
-            pa->radius = 0.3;
-            pa->color = Vec3(1, 1, 1);
 
             if (sqrlen(v) < sq(0.001)) {
                 pd->position = prng.circularVector() * 3.0 + Vec2(4, 0);
@@ -148,9 +149,5 @@ inline void PartnerDance::runStep(const FrameInfo &f)
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
 {
     ParticleEffect::shader(rgb, p);
-
-    // Metaball-style shading: Use computed intensity as parameter for a
-    // nonlinear color palette.
-
-    rgb = palette.sample(0.5 + 0.5 * sinf(colorCycle), sq(sq(rgb[0])));
+    rgb = palette.sample(rgb[0], rgb[1]);
 }
