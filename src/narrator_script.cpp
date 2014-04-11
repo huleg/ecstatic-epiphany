@@ -35,13 +35,17 @@ int Narrator::script(int st, PRNG &prng)
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 15);
             do { doFrame(); } while (precursor.totalSecondsOfDarkness() < 6.1);
+
+            // Make sure we get a little bit of quiet before the bang
+            mixer.setFader(0, 0.0f);
+            delay(1.0);
             return 20;
 
         case 20:
             // Bang, repeatedly.
             mixer.set(&chaosParticles);
             for (int i = 0; i < prng.uniform(1, 6); i++) {
-                chaosParticles.reseed(prng.ringVector(0.65, 1.0), prng.uniform32());
+                chaosParticles.reseed(prng.ringVector(0.65, 0.8), prng.uniform32());
                 delay((1 << i) * 0.25f);
             }
 
