@@ -20,9 +20,12 @@ class ChaosParticles : public ParticleEffect
 public:
     ChaosParticles();
     void reseed(Vec2 location, unsigned seed);
+
     bool isRunning();
+    float getTotalIntensity();
 
     virtual void beginFrame(const FrameInfo &f);
+    virtual void debug(const DebugInfo &di);
 
 private:
     static const unsigned numParticles = 1000;
@@ -52,6 +55,7 @@ private:
     std::vector<ParticleDynamics> dynamics;
     float timeDeltaRemainder;
     float colorCycle;
+    float totalIntensity;
     bool running;
 
     void runStep(const FrameInfo &f);
@@ -76,9 +80,15 @@ inline bool ChaosParticles::isRunning()
     return running;
 }
 
+inline float ChaosParticles::getTotalIntensity()
+{
+    return totalIntensity;
+}
+
 inline void ChaosParticles::reseed(Vec2 location, unsigned seed)
 {
     running = true;
+    totalIntensity = nanf("");
 
     appearance.resize(numParticles);
     dynamics.resize(numParticles);
@@ -116,12 +126,19 @@ inline void ChaosParticles::beginFrame(const FrameInfo &f)
     colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
 }
 
+inline void ChaosParticles::debug(const DebugInfo &di)
+{
+    fprintf(stderr, "\t[chaos-particles] running = %d\n", running);
+    fprintf(stderr, "\t[chaos-particles] totalIntensity = %f\n", totalIntensity);
+}
+
 inline void ChaosParticles::runStep(const FrameInfo &f)
 {
     PRNG prng;
     prng.seed(19);
 
     unsigned numLiveParticles = 0;
+    float intensityAccumulator = 0;
 
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {
@@ -138,16 +155,18 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         }
         float ageF = dynamics[i].age / (float)maxAge;
 
-        numLiveParticles++;
-
         // XZ plane
         appearance[i].point[0] = dynamics[i].position[0];
         appearance[i].point[2] = dynamics[i].position[1];
 
         // Fade in/out
         float fade = pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
-        appearance[i].intensity = intensity * fade;
+        float particleIntensity = intensity * fade;
+        appearance[i].intensity = particleIntensity;
         appearance[i].radius = f.modelDiameter * relativeSize * fade;
+
+        numLiveParticles++;
+        intensityAccumulator += particleIntensity;
 
         float c = (dynamics[i].generation + ageF) * generationScale;
         appearance[i].color = palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
@@ -188,6 +207,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         }
     }
 
+    totalIntensity = intensityAccumulator;
     if (!numLiveParticles) {
         running = false;
     }

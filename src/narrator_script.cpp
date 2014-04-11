@@ -51,7 +51,12 @@ int Narrator::script(int st, PRNG &prng)
 
             // Centered, follow through. Explosive energy, hints of self-organization
             chaosParticles.reseed(Vec2(0,0), prng.uniform32());
-            do { doFrame(); } while (chaosParticles.isRunning());
+
+            // Run for at least 20 secs, to bootstrap
+            delay(20);
+
+            // Keep going as long as it's bright, then crossfade
+            do { doFrame(); } while (!(chaosParticles.getTotalIntensity() < 200));
             return 30;
 
         case 30:
