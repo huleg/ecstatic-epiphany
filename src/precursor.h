@@ -60,6 +60,7 @@ private:
     unsigned seed;
     unsigned darkStepCount;
     float cycle;
+    float noiseCycle;
     float timeDeltaRemainder;
 
     // Calculated
@@ -86,6 +87,7 @@ inline void Precursor::reseed(unsigned seed)
     pixelState.clear();
     this->seed = seed;
     resetCycle();
+    noiseCycle = 0;
     darkStepCount = 0;
 }
 
@@ -131,6 +133,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 
     // Propagation rate varies over time, to give it an arc
     cycle += cycleRate;
+    noiseCycle += cycleRate;
     propagationRate = sq(sinf(cycle * M_PI)) * maxPropagationRate;
     energyRate = propagationRate * energyRateScale;
 
@@ -222,7 +225,7 @@ inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
     const PixelState &pix = pixelState[p.index];
 
     // Sample noise with grid square granularity
-    float n = fbm_noise2(p.getVec2("gridXY") * 0.1 + Vec2(cycle, 0), 2);
+    float n = fbm_noise2(p.getVec2("gridXY") * 0.1 + Vec2(noiseCycle, 0), 2);
 
     // Lissajous sampling on palette
     float t = (pix.generation + pix.timeAxis) * 1e-5 + n * 1.5;
@@ -235,6 +238,7 @@ inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 inline void Precursor::debug(const DebugInfo &di)
 {
     fprintf(stderr, "\t[precursor] cycle = %f\n", cycle);
+    fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[precursor] propagationRate = %f\n", propagationRate);
     fprintf(stderr, "\t[precursor] seed = 0x%08x\n", seed);
     fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
