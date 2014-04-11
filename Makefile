@@ -15,10 +15,6 @@ CPPFLAGS = -O3 -ffast-math
 # Libraries
 LDFLAGS = -lm -lstdc++ -lusb-1.0
 
-# SDL (For debugging)
-CPPFLAGS += $(shell sdl-config --cflags)
-LDFLAGS += $(shell sdl-config --libs)
-
 # Debugging
 CPPFLAGS += -g -Wall
 LDFLAGS += -g

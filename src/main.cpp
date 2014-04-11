@@ -1,7 +1,6 @@
 // XXX hacky test code
 
 #include <time.h>
-#include <SDL/SDL.h>
 
 #include "lib/effect.h"
 #include "lib/effect_runner.h"
@@ -25,133 +24,15 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
     // narrator.vismem.process(video);
 }
 
-
-// static void debugThread(void *)
-// {
-//     char buffer[1024];
-//     unsigned counter = 0;
-//     struct tm tm;
-//     time_t clk;
-
-//     while (true) {
-//         clk = time(NULL);
-//         localtime_r(&clk, &tm);
-
-//         strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-camera.jpeg", &tm);
-//         grab.begin(buffer);
-
-//         strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-memory.png", &tm);
-//         // narrator.vismem.debug(buffer);
-
-//         counter++;
-//         sleep(60 * 5);
-//     }
-// }
-
-static void effectThread(void *)
-{
-    narrator.run();
-}
-
-// static void sdlThread()
-// {
-//     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-//         perror("SDL init failed");
-//         return;
-//     }
-
-//     SDL_Surface *screen = SDL_SetVideoMode(1024, 768, 32, 0);
-//     if (!screen) {
-//         perror("SDL failed to set video mode");
-//         return;
-//     }
-
-//     SDL_Event event;
-//     do {
-
-//         SDL_Flip(screen);
-//         SDL_LockSurface(screen);
-
-//         int pitch = screen->pitch / 4;
-
-//         // Draw camera image with motion detection
-//         for (unsigned i = 0; i < CameraSampler8Q::kSamples; i++) {
-//             int x = 1 + CameraSampler8Q::sampleX(i);
-//             int y = 1 + CameraSampler8Q::sampleY(i);
-
-//             uint8_t s = narrator.vismem.luminance.buffer[i];
-//             //uint8_t m = std::min(255, std::max<int>(0, 0.1 * vismem.sobel.motion[i]));
-//             uint8_t l = narrator.vismem.learnFlags[i] ? 0xFF : 0;
-//             uint8_t m = narrator.vismem.recallFlags[CameraSampler8Q::blockIndex(i)] ? 0xFF : 0;
-
-//             uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-
-//             // Pack lots of debug info into RGB channels...
-//             uint32_t bgra = (m << 8) | (l << 16) | (s << 24);
-
-//             // Splat
-//             pixel[-pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[pitch] = bgra;
-//         }
-
-//         // Draw recall buffer
-//         unsigned left = 750;
-//         unsigned top = 400;
-
-//         for (unsigned i = 0; i < narrator.runner.getPixelInfo().size(); i++) {
-
-//             // Convert to RGB color
-//             float r = narrator.vismem.recall(i);
-//             unsigned s = r * 255; 
-//             uint32_t bgra = (s << 24) | (s << 16) | (s << 8);
-
-//             // Bars
-//             if (i < screen->h) {
-//                 uint32_t *pixel = pitch*i + (uint32_t*)screen->pixels;
-//                 unsigned bar = std::min(float(screen->w), (screen->w - left) * r + left);
-//                 for (unsigned x = left; x < screen->w; x++) {
-//                     pixel[x] = x < bar ? bgra : 0;
-//                 }
-//             }
-
-//             // XZ plane
-//             Vec3 point = narrator.runner.getPixelInfo()[i].point;
-//             int scale = -80;
-//             int x = screen->w/2 + point[0] * scale;
-//             int y = (screen->h + top) / 2 + point[2] * scale;
-//             if (x > 1 && x < screen->w - 1 && y > 1 && y < screen->h - 1) {
-//                 uint32_t *pixel = x + pitch*y + (uint32_t*)screen->pixels;
-            
-//                 // Splat
-//                 pixel[-pitch] = pixel[1] = pixel[0] = pixel[-1] = pixel[pitch] = bgra;
-//             }
-//         }
-
-//         SDL_UnlockSurface(screen);
-//         usleep(10000);
-
-//         while (SDL_PollEvent(&event) && event.type != SDL_QUIT);
-//     } while (event.type != SDL_QUIT);
-// }
-
 int main(int argc, char **argv)
 {
-    Camera::start(videoCallback);
+    // Camera::start(videoCallback);
 
     narrator.runner.setLayout("layouts/window6x12.json");
     if (!narrator.runner.parseArguments(argc, argv)) {
         return 1;
     }
 
-    // Init visual memory, now that the layout is known
-    // narrator.vismem.start("imprint.mem", &narrator.runner, &narrator.tap);
-
-    // new tthread::thread(debugThread, 0);
-    // new tthread::thread(effectThread, 0);
-    // sdlThread();
-    // while (1) sleep(1);
-
-    // Effects back on main thread for now...
     narrator.run();
-
     return 0;
 }
