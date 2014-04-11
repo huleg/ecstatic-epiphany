@@ -79,17 +79,20 @@ int Narrator::script(int st, PRNG &prng)
             orderParticles.vibration = 0.001;
             orderParticles.symmetry = 16;
             crossfade(&orderParticles, 15);
-            while (orderParticles.symmetry > 1) {
+
+            // Run until we have square grid symmetry
+            while (orderParticles.symmetry > 4) {
                 delay(prng.uniform(2, 15));
                 orderParticles.symmetry--;
             }
+            delay(prng.uniform(2, 15));
             return 60;
 
         case 60:
             // Langton's ant
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
-            crossfade(&ants, prng.uniform(10, 20));
+            crossfade(&ants, prng.uniform(5, 20));
             delay(prng.uniform(3, 6));
             ants.stepSize = 0.1;
             delay(prng.uniform(15, 45));
