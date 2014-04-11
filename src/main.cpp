@@ -26,27 +26,27 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
 }
 
 
-static void debugThread(void *)
-{
-    char buffer[1024];
-    unsigned counter = 0;
-    struct tm tm;
-    time_t clk;
+// static void debugThread(void *)
+// {
+//     char buffer[1024];
+//     unsigned counter = 0;
+//     struct tm tm;
+//     time_t clk;
 
-    while (true) {
-        clk = time(NULL);
-        localtime_r(&clk, &tm);
+//     while (true) {
+//         clk = time(NULL);
+//         localtime_r(&clk, &tm);
 
-        strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-camera.jpeg", &tm);
-        grab.begin(buffer);
+//         strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-camera.jpeg", &tm);
+//         grab.begin(buffer);
 
-        strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-memory.png", &tm);
-        // narrator.vismem.debug(buffer);
+//         strftime(buffer, sizeof buffer, "output/%Y%m%d-%H%M%S-memory.png", &tm);
+//         // narrator.vismem.debug(buffer);
 
-        counter++;
-        sleep(60 * 5);
-    }
-}
+//         counter++;
+//         sleep(60 * 5);
+//     }
+// }
 
 static void effectThread(void *)
 {
@@ -145,9 +145,13 @@ int main(int argc, char **argv)
     // Init visual memory, now that the layout is known
     // narrator.vismem.start("imprint.mem", &narrator.runner, &narrator.tap);
 
-    new tthread::thread(debugThread, 0);
-    new tthread::thread(effectThread, 0);
+    // new tthread::thread(debugThread, 0);
+    // new tthread::thread(effectThread, 0);
     // sdlThread();
-    while (1) sleep(1);
+    // while (1) sleep(1);
+
+    // Effects back on main thread for now...
+    narrator.run();
+
     return 0;
 }
