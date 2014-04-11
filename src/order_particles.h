@@ -23,6 +23,7 @@ public:
 
     virtual void beginFrame(const FrameInfo &f);
     virtual void shader(Vec3& rgb, const PixelInfo& p) const;
+    virtual void debug(const DebugInfo &di);
 
     Texture palette;
     float vibration;
@@ -30,14 +31,14 @@ public:
     float colorCycle;
 
 private:
-    static const unsigned numParticles = 120;
-    static const float relativeSize = 0.18;
-    static const float intensity = 0.3;
+    static const unsigned numParticles = 180;
+    static const float relativeSize = 0.3;
+    static const float intensity = 0.06;
     static const float stepSize = 1.0 / 500;
     static const float seedRadius = 2.0;
-    static const float interactionSize = 0.2;
-    static const float angleGain = 0.01;
-    static const float colorRate = 0.2;
+    static const float interactionSize = 0.5;
+    static const float angleGain = 0.002;
+    static const float colorRate = 0.03;
 
     float timeDeltaRemainder;
 
@@ -51,7 +52,7 @@ private:
 
 
 inline OrderParticles::OrderParticles()
-    : palette("data/biology-palette.png"),
+    : palette("data/mars-palette.png"),
       timeDeltaRemainder(0)
 {
     reseed(42);
@@ -153,6 +154,13 @@ inline void OrderParticles::runStep(const FrameInfo &f)
             }
         }
     }
+}
+
+inline void OrderParticles::debug(const DebugInfo &di)
+{
+    fprintf(stderr, "\t[order-particles] symmetry = %d\n", symmetry);
+    fprintf(stderr, "\t[order-particles] vibration = %f\n", vibration);
+    fprintf(stderr, "\t[order-particles] colorCycle = %f\n", colorCycle);
 }
 
 inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const

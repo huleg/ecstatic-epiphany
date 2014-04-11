@@ -76,13 +76,12 @@ int Narrator::script(int st, PRNG &prng)
         case 50:
             // Biology happens, order emerges
             orderParticles.reseed(prng.uniform32());
-            orderParticles.vibration = 0.01;
-            orderParticles.symmetry = 8;
-            crossfade(&orderParticles, 4);
+            orderParticles.vibration = 0.001;
+            orderParticles.symmetry = 16;
+            crossfade(&orderParticles, 15);
             while (orderParticles.symmetry > 1) {
-                delay(10);
+                delay(prng.uniform(2, 15));
                 orderParticles.symmetry--;
-                orderParticles.vibration *= 0.5;
             }
             return 60;
 
@@ -90,7 +89,7 @@ int Narrator::script(int st, PRNG &prng)
             // Langton's ant
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
-            crossfade(&ants, 10);
+            crossfade(&ants, prng.uniform(10, 20));
             delay(prng.uniform(3, 6));
             ants.stepSize = 0.1;
             delay(prng.uniform(15, 45));
