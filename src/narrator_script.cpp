@@ -28,6 +28,9 @@ int Narrator::script(int st, PRNG &prng)
     switch (st) {
 
         default:
+            return 0;
+
+        case 0:
             return 10;
 
         case 10:
@@ -54,14 +57,14 @@ int Narrator::script(int st, PRNG &prng)
             delay(20);
 
             // Keep going as long as it's bright, then crossfade
-            do { doFrame(); } while (!(chaosParticles.getTotalIntensity() < 200));
+            do { doFrame(); } while (!(chaosParticles.getTotalIntensity() < 190));
             return 30;
 
         case 30:
             // Textures of light, slow crossfade in
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
-            crossfade(&ringsA, 20);
+            crossfade(&ringsA, prng.uniform(20, 35));
             delay(prng.uniform(60*1, 60*2));
             return 40;
 
