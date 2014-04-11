@@ -19,7 +19,7 @@ class ChaosParticles : public ParticleEffect
 {
 public:
     ChaosParticles();
-    void reseed(Vec3 location, unsigned seed);
+    void reseed(Vec2 location, unsigned seed);
     bool isRunning();
 
     virtual void beginFrame(const FrameInfo &f);
@@ -31,8 +31,8 @@ private:
     static const float speedMax = 1.7;
     static const float spinMin = M_PI / 6;
     static const float spinMax = spinMin + M_PI * 0.05;
-    static const float relativeSize = 0.12;
-    static const float intensity = 0.7;
+    static const float relativeSize = 0.17;
+    static const float intensity = 0.5;
     static const float intensityExp = 1.0 / 2.5;
     static const float initialSpeed = 0.005;
     static const float stepSize = 1.0 / 500;
@@ -68,7 +68,7 @@ inline ChaosParticles::ChaosParticles()
       timeDeltaRemainder(0),
       colorCycle(0)
 {
-    reseed(Vec3(0,0,0), 42);
+    reseed(Vec2(0,0), 42);
 }
 
 inline bool ChaosParticles::isRunning()
@@ -76,7 +76,7 @@ inline bool ChaosParticles::isRunning()
     return running;
 }
 
-inline void ChaosParticles::reseed(Vec3 location, unsigned seed)
+inline void ChaosParticles::reseed(Vec2 location, unsigned seed)
 {
     running = true;
 
@@ -86,8 +86,10 @@ inline void ChaosParticles::reseed(Vec3 location, unsigned seed)
     PRNG prng;
     prng.seed(seed);
 
+    colorCycle = prng.uniform(0, M_PI * 2);
+
     for (unsigned i = 0; i < dynamics.size(); i++) {
-        dynamics[i].position = Vec2(location[0], location[2]);
+        dynamics[i].position = location;
         dynamics[i].velocity = prng.ringVector(0.01, 1.0) * initialSpeed;
         dynamics[i].age = 0;
         dynamics[i].generation = 0;
