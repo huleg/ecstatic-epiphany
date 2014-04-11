@@ -28,7 +28,7 @@ private:
     static const float noiseFadeRate = 0.007;
     static const float colorFadeRate = 0.015;
     static const float angleRate = 10.0;
-    static const float colorParamRate = 0.02;
+    static const float colorParamRate = 0.08;
 
     struct Ant {
         int x, y, direction;
@@ -72,22 +72,29 @@ inline Ants::Ants()
 inline void Ants::reseed(unsigned seed)
 {
     stepSize = 1;
-    colorParam = 0;
 
     clear();
-    memset(&state[0], 0, state.size() * sizeof state[0]);
-    memset(&targetColors[0], 0, targetColors.size() * sizeof targetColors[0]);
+    state.clear();
+    targetColors.clear();
 
     PRNG prng;
     prng.seed(seed);
     ant.reseed(prng);
+
+    colorParam = prng.uniform(0, M_PI * 2);
 }
 
 inline void Ants::beginFrame(const FrameInfo& f)
 {
     Pixelator::beginFrame(f);
-    state.resize(width() * height());
-    targetColors.resize(width() * height());
+
+    if (state.size() != width() * height()) {
+        // Resize and erase parallel arrays, now that we know size
+        state.resize(width() * height());
+        targetColors.resize(width() * height());
+        memset(&state[0], 0, state.size() * sizeof state[0]);
+        memset(&targetColors[0], 0, targetColors.size() * sizeof targetColors[0]);
+    }
 
     colorParam += f.timeDelta * colorParamRate;
 
@@ -120,12 +127,12 @@ inline void Ants::filterColor(int x, int y)
 
 inline Vec3 Ants::targetColorForState(unsigned st)
 {
-    static float brightness[] = { 0, 2.0, 0.3 };
-    float r = 0.45 / (1 + colorParam * 5.0);
+    static float brightness[] = { 0, 2.0, 0.4 };
+    float r = 0.65 / (1 + colorParam * 0.2);
     float t = colorParam;
     float br = st < 3 ? brightness[st] : 0;
-    return palette.sample(cosf(colorParam) * r + 0.5,
-                          sinf(colorParam) * r + 0.5) * br;
+    return palette.sample(cosf(t) * r + 0.5,
+                          sinf(t) * r + 0.5) * br;
 }
 
 inline void Ants::Ant::reseed(PRNG &prng)

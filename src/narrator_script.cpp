@@ -77,7 +77,7 @@ int Narrator::script(int st, PRNG &prng)
             // Biology happens, order emerges
             orderParticles.reseed(prng.uniform32());
             orderParticles.vibration = 0.01;
-            orderParticles.symmetry = 12;
+            orderParticles.symmetry = 8;
             crossfade(&orderParticles, 4);
             while (orderParticles.symmetry > 1) {
                 delay(10);
@@ -87,28 +87,28 @@ int Narrator::script(int st, PRNG &prng)
             return 60;
 
         case 60:
-            // Textures of biology
-            ringsA.reseed();
-            ringsA.palette.load("data/succulent-palette.png");
-            crossfade(&ringsA, 6);
-            delay(180);
-            return 70;
-
-        case 70:
             // Langton's ant
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
             crossfade(&ants, 10);
-            delay(4);
+            delay(prng.uniform(3, 6));
             ants.stepSize = 0.1;
-            delay(10);
+            delay(prng.uniform(15, 45));
             ants.stepSize = 0.05;
-            delay(10);
+            delay(prng.uniform(15, 45));
             ants.stepSize = 0.025;
-            delay(10);
+            delay(2);
             ants.stepSize = 0.0125;
-            delay(10);
+            delay(2);
             ants.stepSize = 0.00625;
+            return 70;
+
+        case 70:
+            // Fast ant slowly crossfades into rings with same palette
+            ringsA.reseed();
+            ringsA.palette.load("data/succulent-palette.png");
+            crossfade(&ringsA, prng.uniform(15, 30));
+            delay(prng.uniform(60*1, 60*3));
             return 80;
 
 #if 0
