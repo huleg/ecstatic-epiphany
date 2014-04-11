@@ -28,7 +28,8 @@ private:
     static const float noiseFadeRate = 0.007;
     static const float colorFadeRate = 0.015;
     static const float angleRate = 10.0;
-    static const float colorParamRate = 0.08;
+    static const float colorParamRate = 0.29;
+    static const float spiralRate = 0.08;
 
     struct Ant {
         int x, y, direction;
@@ -127,8 +128,8 @@ inline void Ants::filterColor(int x, int y)
 
 inline Vec3 Ants::targetColorForState(unsigned st)
 {
-    static float brightness[] = { 0, 1.65, 0.3 };
-    float r = 0.65 / (1 + colorParam * 0.2);
+    static float brightness[] = { 0, 2.0, 0.4 };
+    float r = 0.65 / (1 + colorParam * spiralRate);
     float t = colorParam;
     float br = st < 3 ? brightness[st] : 0;
     return palette.sample(cosf(t) * r + 0.5,

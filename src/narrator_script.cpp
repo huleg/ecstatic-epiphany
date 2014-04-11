@@ -33,9 +33,9 @@ int Narrator::script(int st, PRNG &prng)
         case 10:
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
-            crossfade(&precursor, 15);
+            crossfade(&precursor, 20);
+            precursor.resetCycle();
             do { doFrame(); } while (precursor.totalSecondsOfDarkness() < 6.1);
-
             // Make sure we get a little bit of quiet before the bang
             mixer.setFader(0, 0.0f);
             delay(1.0);
@@ -95,9 +95,9 @@ int Narrator::script(int st, PRNG &prng)
             crossfade(&ants, prng.uniform(5, 20));
             delay(prng.uniform(3, 6));
             ants.stepSize = 0.1;
-            delay(prng.uniform(15, 45));
+            delay(prng.uniform(15, 60));
             ants.stepSize = 0.05;
-            delay(prng.uniform(15, 45));
+            delay(prng.uniform(15, 90));
             ants.stepSize = 0.025;
             delay(2);
             ants.stepSize = 0.0125;

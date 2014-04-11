@@ -22,6 +22,7 @@ class Precursor : public Effect
 public:
     Precursor();
     void reseed(unsigned seed);
+    void resetCycle();
 
     virtual void beginFrame(const FrameInfo &f);
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
@@ -84,8 +85,13 @@ inline void Precursor::reseed(unsigned seed)
 {
     pixelState.clear();
     this->seed = seed;
-    cycle = 0;
+    resetCycle();
     darkStepCount = 0;
+}
+
+inline void Precursor::resetCycle()
+{
+    cycle = 0;
 }
 
 inline Precursor::PixelState::PixelState()
