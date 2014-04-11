@@ -40,8 +40,18 @@
             "map": [
                 [ 0, 1024, 0, 512 ]
             ]
-        }
+        },
 
+        {
+            "type": "fadecandy",
+            "led": false,
+            "serial": "HHSWHNQWPRURCNYB",
+            "heatshrink_color": "green",
+            "index": 3,
+            "map": [
+                [ 0, 1536, 0, 512 ]
+            ]
+        }
 
         
     ]
