@@ -10,6 +10,7 @@
 
 #include "pixelator.h"
 #include "lib/prng.h"
+#include "lib/texture.h"
 
 
 class Ants : public Pixelator {
@@ -20,12 +21,14 @@ public:
     virtual void beginFrame(const FrameInfo& f);
 
     float stepSize;
+    float colorParam;
 
 private:
     static const float noiseMax = 1.5;
     static const float noiseFadeRate = 0.007;
     static const float colorFadeRate = 0.015;
     static const float angleRate = 10.0;
+    static const float colorParamRate = 0.02;
 
     struct Ant {
         int x, y, direction;
@@ -36,9 +39,12 @@ private:
     Ant ant;
     float timeDeltaRemainder;
     std::vector<unsigned> state;
+    std::vector<Vec3> targetColors;
+    Texture palette;
 
     void runStep(const FrameInfo &f);
     void filterColor(int x, int y);
+    Vec3 targetColorForState(unsigned st);
 };
 
 
@@ -57,7 +63,8 @@ static inline int umod(int a, int b)
 }
 
 inline Ants::Ants()
-    : timeDeltaRemainder(0)
+    : timeDeltaRemainder(0),
+      palette("data/succulent-palette.png")
 {
     reseed(42);
 }
@@ -65,8 +72,11 @@ inline Ants::Ants()
 inline void Ants::reseed(unsigned seed)
 {
     stepSize = 1;
+    colorParam = 0;
+
     clear();
     memset(&state[0], 0, state.size() * sizeof state[0]);
+    memset(&targetColors[0], 0, targetColors.size() * sizeof targetColors[0]);
 
     PRNG prng;
     prng.seed(seed);
@@ -77,6 +87,9 @@ inline void Ants::beginFrame(const FrameInfo& f)
 {
     Pixelator::beginFrame(f);
     state.resize(width() * height());
+    targetColors.resize(width() * height());
+
+    colorParam += f.timeDelta * colorParamRate;
 
     // Fixed timestep
     float t = f.timeDelta + timeDeltaRemainder;
@@ -98,18 +111,21 @@ inline void Ants::beginFrame(const FrameInfo& f)
 
 inline void Ants::filterColor(int x, int y)
 {
-    static const Vec3 colors[] = {
-        Vec3(0, 0, 0),
-        Vec3(0.251, 0.804, 0.765),
-        Vec3(0.078, 0.090, 0.153)
-    };
-
     PixelAppearance &a = pixelAppearance(x, y);
-    unsigned &st = state[pixelIndex(x, y)];
-    Vec3 targetColor = colors[st];
+    Vec3 targetColor = targetColors[pixelIndex(x, y)];
 
     a.color += (targetColor - a.color) * colorFadeRate;
     a.noise *= 1.0 - noiseFadeRate;
+}
+
+inline Vec3 Ants::targetColorForState(unsigned st)
+{
+    static float brightness[] = { 0, 2.0, 0.3 };
+    float r = 0.45 / (1 + colorParam * 5.0);
+    float t = colorParam;
+    float br = st < 3 ? brightness[st] : 0;
+    return palette.sample(cosf(colorParam) * r + 0.5,
+                          sinf(colorParam) * r + 0.5) * br;
 }
 
 inline void Ants::Ant::reseed(PRNG &prng)
@@ -143,6 +159,8 @@ inline void Ants::Ant::update(Ants &world)
         a.contrast = 0.4;
         a.noise = noiseMax;
     }
+
+    world.targetColors[world.pixelIndex(x, y)] = world.targetColorForState(st);
 
     direction = umod(direction, 4);
     switch (direction) {

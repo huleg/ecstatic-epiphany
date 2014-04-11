@@ -42,15 +42,13 @@ int Narrator::script(int st, PRNG &prng)
             return 20;
 
         case 20:
-            // Bang, repeatedly.
+            // Bang. Explosive energy, hints of self-organization
+
             mixer.set(&chaosParticles);
-            for (int i = 0; i < prng.uniform(1, 6); i++) {
-                chaosParticles.reseed(prng.ringVector(0.65, 0.8), prng.uniform32());
+            for (int i = 0; i < prng.uniform(1, 4); i++) {
+                chaosParticles.reseed(prng.circularVector() * 0.5, prng.uniform32());
                 delay((1 << i) * 0.25f);
             }
-
-            // Centered, follow through. Explosive energy, hints of self-organization
-            chaosParticles.reseed(Vec2(0,0), prng.uniform32());
 
             // Run for at least 20 secs, to bootstrap
             delay(20);
@@ -60,10 +58,10 @@ int Narrator::script(int st, PRNG &prng)
             return 30;
 
         case 30:
-            // Textures of light
+            // Textures of light, slow crossfade in
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
-            crossfade(&ringsA, 10);
+            crossfade(&ringsA, 20);
             delay(prng.uniform(60*1, 60*2));
             return 40;
 
