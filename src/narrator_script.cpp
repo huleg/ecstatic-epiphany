@@ -60,11 +60,15 @@ int Narrator::script(int st, PRNG &prng)
                 std::swap(pChaosA, pChaosB);
             }
 
-            // Run for at least 20 secs, to bootstrap
-            delay(20);
+            // Run unconditionally to bootstrap particle intensity
+            delay(30);
 
-            // Keep going as long as it's bright, then crossfade
-            do { doFrame(); } while (!(pChaosB->getTotalIntensity() < 190));
+            // Keep going as long as it's fairly bright, with an upper limit
+            float timeLimit = 4*60;
+            do {
+                timeLimit -= doFrame();
+            } while (timeLimit > 0 && !(pChaosB->getTotalIntensity() < 500));
+
             return 30;
         }
 
@@ -72,7 +76,7 @@ int Narrator::script(int st, PRNG &prng)
             // Textures of light, slow crossfade in
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
-            crossfade(&ringsA, prng.uniform(20, 35));
+            crossfade(&ringsA, prng.uniform(15, 25));
             delay(prng.uniform(60*1, 60*2));
             return 40;
         }

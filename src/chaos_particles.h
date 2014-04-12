@@ -35,8 +35,8 @@ private:
     static const float speedMax = 1.8;
     static const float spinMin = M_PI / 6;
     static const float spinMax = spinMin + M_PI * 0.08;
-    static const float relativeSize = 0.32;
-    static const float intensity = 1.8;
+    static const float relativeSize = 0.36;
+    static const float intensity = 1.4;
     static const float intensityExp = 1.0 / 2.5;
     static const float initialSpeed = 0.008;
     static const float stepSize = 1.0 / 200;
