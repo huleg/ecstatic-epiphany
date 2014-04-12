@@ -99,10 +99,10 @@ int Narrator::script(int st, PRNG &prng)
 
             // Run until we have square grid symmetry
             while (orderParticles.symmetry > 4) {
-                delay(prng.uniform(2, 15));
+                delay(prng.uniform(2, 90));
                 orderParticles.symmetry--;
             }
-            delay(prng.uniform(2, 15));
+            delay(prng.uniform(10, 25));
             return 60;
         }
 
