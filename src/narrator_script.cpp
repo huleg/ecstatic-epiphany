@@ -77,7 +77,7 @@ int Narrator::script(int st, PRNG &prng)
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
             crossfade(&ringsA, prng.uniform(15, 25));
-            delay(prng.uniform(60*1, 60*2));
+            delay(prng.uniform(25, 90));
             return 40;
         }
 
@@ -86,7 +86,7 @@ int Narrator::script(int st, PRNG &prng)
             ringsB.reseed();
             ringsB.palette.load("data/darkmatter-palette.png");
             crossfade(&ringsB, prng.uniform(30, 90));
-            delay(prng.uniform(60*1, 60*3));
+            delay(prng.uniform(25, 160));
             return 50;
         }
 
