@@ -64,7 +64,7 @@ int Narrator::script(int st, PRNG &prng)
             delay(20);
 
             // Keep going as long as it's bright, then crossfade
-            do { doFrame(); } while (!(pChaosA->getTotalIntensity() < 190));
+            do { doFrame(); } while (!(pChaosB->getTotalIntensity() < 190));
             return 30;
         }
 
