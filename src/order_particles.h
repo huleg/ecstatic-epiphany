@@ -34,6 +34,7 @@ private:
     static const unsigned numParticles = 50;
     static const float relativeSize = 0.35;
     static const float intensity = 0.15;
+    static const float brightness = 1.65;
     static const float stepSize = 1.0 / 500;
     static const float seedRadius = 2.0;
     static const float interactionSize = 0.5;
@@ -170,5 +171,5 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     // Metaball-style shading: Use computed intensity as parameter for a
     // nonlinear color palette.
 
-    rgb = palette.sample(0.5 + 0.5 * sinf(colorCycle), rgb[0]);
+    rgb = brightness * palette.sample(0.5 + 0.5 * sinf(colorCycle), rgb[0]);
 }
