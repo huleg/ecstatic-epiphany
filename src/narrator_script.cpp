@@ -17,7 +17,7 @@
 
 int Narrator::script(int st, PRNG &prng)
 {
-    static ChaosParticles chaosParticles;
+    static ChaosParticles chaosParticles[2];
     static OrderParticles orderParticles;
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
@@ -27,13 +27,15 @@ int Narrator::script(int st, PRNG &prng)
 
     switch (st) {
 
-        default:
+        default: {
             return 0;
+        }
 
-        case 0:
+        case 0: {
             return 10;
+        }
 
-        case 10:
+        case 10: {
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 20);
@@ -43,40 +45,48 @@ int Narrator::script(int st, PRNG &prng)
             mixer.setFader(0, 0.0f);
             delay(1.0);
             return 20;
+        }
 
-        case 20:
+        case 20: {
             // Bang. Explosive energy, hints of self-organization
 
-            mixer.set(&chaosParticles);
-            for (int i = 0; i < prng.uniform(1, 4); i++) {
-                chaosParticles.reseed(prng.circularVector() * 0.5, prng.uniform32());
-                delay((1 << i) * 0.25f);
+            ChaosParticles *pChaosA = &chaosParticles[0];
+            ChaosParticles *pChaosB = &chaosParticles[1];
+
+            for (int i = 0; i < prng.uniform(1, 5); i++) {
+                pChaosA->reseed(prng.circularVector() * 0.6, prng.uniform32());
+                crossfade(pChaosA, 0.25);
+                delay((1 << i) * 0.5f);
+                std::swap(pChaosA, pChaosB);
             }
 
             // Run for at least 20 secs, to bootstrap
             delay(20);
 
             // Keep going as long as it's bright, then crossfade
-            do { doFrame(); } while (!(chaosParticles.getTotalIntensity() < 190));
+            do { doFrame(); } while (!(pChaosA->getTotalIntensity() < 190));
             return 30;
+        }
 
-        case 30:
+        case 30: {
             // Textures of light, slow crossfade in
             ringsA.reseed();
             ringsA.palette.load("data/glass.png");
             crossfade(&ringsA, prng.uniform(20, 35));
             delay(prng.uniform(60*1, 60*2));
             return 40;
+        }
 
-        case 40:
+        case 40: {
             // Textures of energy, slow crossfade in
             ringsB.reseed();
             ringsB.palette.load("data/darkmatter-palette.png");
             crossfade(&ringsB, prng.uniform(30, 90));
             delay(prng.uniform(60*1, 60*3));
             return 50;
+        }
 
-        case 50:
+        case 50: {
             // Biology happens, order emerges
             orderParticles.reseed(prng.uniform32());
             orderParticles.vibration = 0.001;
@@ -90,8 +100,9 @@ int Narrator::script(int st, PRNG &prng)
             }
             delay(prng.uniform(2, 15));
             return 60;
+        }
 
-        case 60:
+        case 60: {
             // Langton's ant
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
@@ -107,21 +118,23 @@ int Narrator::script(int st, PRNG &prng)
             delay(2);
             ants.stepSize = 0.00625;
             return 70;
+        }
 
-        case 70:
+        case 70: {
             // Fast ant slowly crossfades into rings with same palette
             ringsA.reseed();
             ringsA.palette.load("data/succulent-palette.png");
             crossfade(&ringsA, prng.uniform(15, 30));
             delay(prng.uniform(60*1, 60*3));
             return 80;
+        }
 
-        case 80:
+        case 80: {
             // Work in progress
             partnerDance.reseed(prng.uniform32());
             crossfade(&partnerDance, prng.uniform(5, 20));
             delay(prng.uniform(60*1, 60*3));
             return 90;
-
+        }
     }
 }

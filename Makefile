@@ -25,6 +25,8 @@ CPPFLAGS += -MMD
 ifeq ($(UNAME), Linux)
 	# Use a recent toolchain (Linux)
 	CXX := gcc-4.8 -std=c++11 -fpermissive
+	CPPFLAGS += -march=native
+	LDFLAGS += -march=native
 endif
 
 ifeq ($(UNAME), Darwin)
