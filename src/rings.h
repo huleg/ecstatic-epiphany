@@ -43,7 +43,7 @@ public:
     static const float thresholdGain = 0.1;
     static const float thresholdStepLimit = 0.02;
     static const float initialThreshold = -1.0f;
-    static const unsigned brightnessOctaves = 6;
+    static const unsigned brightnessOctaves = 7;
     static const unsigned colorOctaves = 3;
 
     // Sample colors along a curved path through a texture
