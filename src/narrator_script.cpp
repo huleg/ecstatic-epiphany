@@ -39,8 +39,15 @@ int Narrator::script(int st, PRNG &prng)
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 20);
+
+            // Some quiet
             precursor.resetCycle();
+            delay(4);
+            precursor.resetCycle();
+
+            // Run for a randomly determined amount of time
             do { doFrame(); } while (precursor.totalSecondsOfDarkness() < 6.1);
+
             // Make sure we get a little bit of quiet before the bang
             mixer.setFader(0, 0.0f);
             delay(1.0);
@@ -125,7 +132,7 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 70: {
-            // Fast ant slowly crossfades into rings with same palette
+            // Fast ant slowly crossfades into rings with same palette; meta
             ringsA.reseed();
             ringsA.palette.load("data/succulent-palette.png");
             crossfade(&ringsA, prng.uniform(15, 30));
@@ -133,12 +140,27 @@ int Narrator::script(int st, PRNG &prng)
             return 80;
         }
 
+        case 80: {
+            // Two partners, populations of particles.
+            // Act one, spiralling inwards. Depression.
 
-        case 100: {
-            // Work in progress
             partnerDance.reseed(prng.uniform32());
-            crossfade(&partnerDance, prng.uniform(5, 20));
+
+            // Start out slow during the crossfade
+            partnerDance.targetGain = 0.00004;
+            partnerDance.targetSpin = 0.000002;
+            partnerDance.damping = 0.004;
+
+            crossfade(&partnerDance, prng.uniform(1, 20));
+            delay(prng.uniform(1, 15));
+
+            // Normal speed
+            partnerDance.targetGain = 0.0004;
+            partnerDance.targetSpin = 0.00015;
+            partnerDance.damping = 0.012;
+
             delay(prng.uniform(60*1, 60*3));
+
             return 90;
         }
     }

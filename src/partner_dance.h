@@ -26,15 +26,16 @@ public:
 
     Texture palette;
 
+    float targetGain;
+    float targetSpin;
+    float damping;
+
 private:
     static const unsigned particlesPerDancer = 20;
     static const unsigned numDancers = 2;
     static const unsigned numParticles = numDancers * particlesPerDancer;
     static const float stepSize = 1.0 / 200;
 
-    static const float targetGain = 0.0004;
-    static const float targetSpin = 0.00015;
-    static const float damping = 0.012;
     static const float colorRate = 0.8;
     static const float noiseRate = 0.1;
 
@@ -60,6 +61,7 @@ private:
 
 inline PartnerDance::PartnerDance()
     : palette("data/beach-palette.png"),
+      targetGain(0), targetSpin(0), damping(0),
       timeDeltaRemainder(0)
 {
     reseed(42);
