@@ -133,7 +133,8 @@ int Narrator::script(int st, PRNG &prng)
             return 80;
         }
 
-        case 80: {
+
+        case 100: {
             // Work in progress
             partnerDance.reseed(prng.uniform32());
             crossfade(&partnerDance, prng.uniform(5, 20));

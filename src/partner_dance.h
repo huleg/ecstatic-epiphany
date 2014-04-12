@@ -59,7 +59,7 @@ private:
 
 
 inline PartnerDance::PartnerDance()
-    : palette("data/shoreline-palette.png"),
+    : palette("data/beach-palette.png"),
       timeDeltaRemainder(0)
 {
     reseed(42);
