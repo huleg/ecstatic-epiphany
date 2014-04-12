@@ -28,19 +28,21 @@ public:
     virtual void debug(const DebugInfo &di);
 
 private:
-    static const unsigned numParticles = 700;
+    static const unsigned numParticles = 600;
+    static const unsigned numDarkParticles = numParticles / 20;
     static const float generationScale = 1.0 / 14;
-    static const float speedMin = 0.98;
-    static const float speedMax = 1.2;
+    static const float speedMin = 0.97;
+    static const float speedMax = 1.8;
     static const float spinMin = M_PI / 6;
     static const float spinMax = spinMin + M_PI * 0.08;
-    static const float relativeSize = 0.25;
-    static const float intensity = 0.7;
+    static const float relativeSize = 0.32;
+    static const float intensity = 1.8;
     static const float intensityExp = 1.0 / 2.5;
-    static const float initialSpeed = 0.012;
+    static const float initialSpeed = 0.008;
     static const float stepSize = 1.0 / 200;
     static const float colorRate = 0.02;
     static const float outsideMargin = 6.0;
+    static const float darkMultiplier = -8.0;
     static const unsigned maxAge = 18000;
 
     struct ParticleDynamics {
@@ -159,17 +161,20 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         appearance[i].point[0] = dynamics[i].position[0];
         appearance[i].point[2] = dynamics[i].position[1];
 
+        // Dark matter, to break up the monotony of lightness
+        bool darkParticle = i < numDarkParticles;
+
         // Fade in/out
         float fade = pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
         float particleIntensity = intensity * fade;
-        appearance[i].intensity = particleIntensity;
+        appearance[i].intensity = darkParticle ? particleIntensity * darkMultiplier : particleIntensity;
         appearance[i].radius = f.modelDiameter * relativeSize * fade;
 
         numLiveParticles++;
         intensityAccumulator += particleIntensity;
 
         float c = (dynamics[i].generation + ageF) * generationScale;
-        appearance[i].color = palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
+        appearance[i].color = darkParticle ? Vec3(1,1,1) : palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
 
         dynamics[i].escaped = f.distanceOutsideBoundingBox(appearance[i].point) >
             outsideMargin * appearance[i].radius;
