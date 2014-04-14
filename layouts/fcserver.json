@@ -68,7 +68,7 @@
             "type": "fadecandy",
             "led": false,
             "serial": "ZFOKPXWKZNODGVQX",
-            "heatshrink_color": "blue+green",
+            "heatshrink_color": "blue/yellow",
             "index": 5,
             "map": [
                 [ 0, 2560, 0, 512 ]
