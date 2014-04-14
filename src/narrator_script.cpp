@@ -159,7 +159,7 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.targetSpin = 0.00015;
             partnerDance.damping = 0.012;
 
-            delay(prng.uniform(60*1, 60*3));
+            delay(prng.uniform(30, 90));
 
             return 90;
         }
