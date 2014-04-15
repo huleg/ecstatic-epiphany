@@ -1,10 +1,6 @@
 #!/bin/sh
-#
-# Install system configuration and pre-built binaries
-# (x86 Linux)
-#
+# Install system configuration
 
-sudo apt-get install supervisor lighttpd
-sudo cp -r etc usr /
+sudo apt-get install supervisor
+sudo cp -r etc /
 sudo supervisorctl reload
-

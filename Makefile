@@ -27,6 +27,8 @@ ifeq ($(UNAME), Linux)
 	CXX := gcc-4.8 -std=c++11 -fpermissive
 	CPPFLAGS += -march=native
 	LDFLAGS += -march=native
+	CPPFLAGS += -pthread
+	LDFLAGS += -pthread
 endif
 
 ifeq ($(UNAME), Darwin)

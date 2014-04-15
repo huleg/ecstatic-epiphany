@@ -1,0 +1,31 @@
+Setup notes for ODROID-U3
+-------------------------
+
+- Installed stock Ubuntu eMMC card
+- Serial console
+- Expanded filesystem
+- Network up, no special configuration: Ethernet -> internet sharing from laptop
+
+apt-get update
+apt-get upgrade
+apt-get install screen libusb1.0-0-dev
+
+useradd -m micah
+passwd micah
+su micah
+
+mkdir ~/src
+cd ~/src
+git clone https://github.com/scanlime/fadecandy.git
+git clone https://github.com/scanlime/ecstatic-epiphany.git
+
+cd ~/src/fadecandy/server
+make submodules
+make
+
+cd ~/src/ecstatic-epiphany
+make
+
+# root
+cd ~/src/ecstatic-epiphany/system
+./install.sh
