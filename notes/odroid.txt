@@ -6,10 +6,17 @@ Setup notes for ODROID-U3
 - Expanded filesystem
 - Network up, no special configuration: Ethernet -> internet sharing from laptop
 
+eth0      Link encap:Ethernet  HWaddr 1e:f6:d7:be:00:ad  
+          inet addr:192.168.2.2  Bcast:192.168.2.255  Mask:255.255.255.0
+
+
 apt-get update
 apt-get upgrade
-apt-get install screen libusb1.0-0-dev
+apt-get install screen libusb1.0-0-dev openssh-server
+apt-get remove xorg cups cups-daemon lightdm
+apt-get remove xfce.*
 
+passwd
 useradd -m micah
 passwd micah
 su micah
