@@ -121,10 +121,10 @@ int Narrator::script(int st, PRNG &prng)
             ants.stepRateDelta = prng.uniform(0.07, 0.17);
             do { doFrame(); } while (ants.stepRate < 200);
             ants.stepRateDelta = 0;
-            return 80;
+            return 70;
         }
 
-        case 80: {
+        case 70: {
             // Two partners, populations of particles.
             // Act one, spiralling inwards. Depression.
 
@@ -145,7 +145,7 @@ int Narrator::script(int st, PRNG &prng)
 
             delay(prng.uniform(30, 90));
 
-            return 90;
+            return 80;
         }
     }
 }
