@@ -20,7 +20,8 @@ public:
 
     virtual void beginFrame(const FrameInfo& f);
 
-    float stepSize;
+    float stepRate;
+    float stepRateDelta;
     float colorParam;
 
 private:
@@ -72,7 +73,8 @@ inline Ants::Ants()
 
 inline void Ants::reseed(unsigned seed)
 {
-    stepSize = 1;
+    stepRate = 1;
+    stepRateDelta = 0;
 
     clear();
     state.clear();
@@ -101,8 +103,8 @@ inline void Ants::beginFrame(const FrameInfo& f)
 
     // Fixed timestep
     float t = f.timeDelta + timeDeltaRemainder;
-    int steps = t / stepSize;
-    timeDeltaRemainder = t - steps * stepSize;
+    int steps = t * stepRate;
+    timeDeltaRemainder = t - steps / stepRate;
 
     while (steps > 0) {
         runStep(f);
@@ -163,7 +165,7 @@ inline void Ants::Ant::update(Ants &world)
         direction++;
         st = 1;
 
-        a.angle += world.stepSize * angleRate;
+        a.angle += angleRate / world.stepRate;
         a.contrast = 0.4;
         a.noise = noiseMax;
     }
@@ -181,5 +183,6 @@ inline void Ants::Ant::update(Ants &world)
 
 inline void Ants::runStep(const FrameInfo &f)
 {
+    stepRate += stepRateDelta;
     ant.update(*this);
 }
