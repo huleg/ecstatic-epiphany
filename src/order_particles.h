@@ -12,6 +12,7 @@
 #include <vector>
 #include "lib/particle.h"
 #include "lib/prng.h"
+#include "lib/noise.h"
 #include "lib/texture.h"
 
 
@@ -26,7 +27,6 @@ public:
     virtual void debug(const DebugInfo &di);
 
     Texture palette;
-    float vibration;
     int symmetry;
     float colorCycle;
 
@@ -38,10 +38,15 @@ private:
     static const float stepSize = 1.0 / 500;
     static const float seedRadius = 2.0;
     static const float interactionSize = 0.5;
-    static const float angleGain = 0.003;
     static const float colorRate = 0.03;
 
+    unsigned seed;
     float timeDeltaRemainder;
+
+    // Calculated per-frame
+    Vec3 lightVec;
+    float angleGain;
+    float vibration;
 
     void runStep(const FrameInfo &f);
 };
@@ -61,22 +66,19 @@ inline OrderParticles::OrderParticles()
 
 inline void OrderParticles::reseed(unsigned seed)
 {
-    vibration = 0;
     symmetry = 1000;
 
     appearance.resize(numParticles);
 
     PRNG prng;
     prng.seed(seed);
+    this->seed = seed;
 
     colorCycle = prng.uniform(0, 2*M_PI);
 
     for (unsigned i = 0; i < appearance.size(); i++) {
         Vec2 p = prng.ringVector(1e-4, seedRadius);
         appearance[i].point = Vec3(p[0], 0, p[1]);
-
-        // Assume plain white for now; we do our own coloration in shader()
-        appearance[i].color = Vec3(1,1,1);
     }
 }
 
@@ -91,7 +93,16 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
         steps--;
     }
 
+    // Lighting
     colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
+    float lightAngle = fbm_noise2(sin(colorCycle), seed * 1e-6, 4) * 30.0f;
+    lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
+
+    // Angular speed and direction
+    angleGain = fbm_noise2(cos(colorCycle), seed * 5e-7, 3) * 0.08;
+
+    // Occasional vibration storms. Too much vibration will make the particles disperse
+    vibration = sq(std::max(0.0f, fbm_noise2(cos(colorCycle), seed * 2e-6, 2))) * 0.05;
 }
 
 inline void OrderParticles::runStep(const FrameInfo &f)
@@ -166,10 +177,14 @@ inline void OrderParticles::debug(const DebugInfo &di)
 
 inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
 {
-    ParticleEffect::shader(rgb, p);
+    // Metaball-style shading with lambertian diffuse lighting and an image-based color palette
 
-    // Metaball-style shading: Use computed intensity as parameter for a
-    // nonlinear color palette.
+    float intensity = sampleIntensity(p.point);
+    Vec3 gradient = sampleIntensityGradient(p.point);
+    float gradientMagnitude = len(gradient);
+    Vec3 normal = gradientMagnitude ? (gradient / gradientMagnitude) : Vec3(0, 0, 0);
+    float lambert = 1.2f * std::max(0.0f, dot(normal, lightVec));
+    float ambient = 0.6f;
 
-    rgb = brightness * palette.sample(0.5 + 0.5 * sinf(colorCycle), rgb[0]);
+    rgb = (brightness * (ambient + lambert)) * palette.sample(0.5 + 0.5 * sinf(colorCycle), intensity);
 }

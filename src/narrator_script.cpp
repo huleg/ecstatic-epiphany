@@ -100,13 +100,12 @@ int Narrator::script(int st, PRNG &prng)
         case 50: {
             // Biology happens, order emerges
             orderParticles.reseed(prng.uniform32());
-            orderParticles.vibration = 0.001;
             orderParticles.symmetry = 16;
             crossfade(&orderParticles, 15);
 
             // Run until we have square grid symmetry
             while (orderParticles.symmetry > 4) {
-                delay(prng.uniform(1, 20));
+                delay(prng.uniform(2, 45));
                 orderParticles.symmetry--;
             }
             delay(prng.uniform(10, 25));
