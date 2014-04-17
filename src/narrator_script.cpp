@@ -98,7 +98,7 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 50: {
-            // Biology happens, order emerges
+            // Biology happens, order emerges. Cellular look, emergent order.
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 16;
             crossfade(&orderParticles, 15);
@@ -113,7 +113,8 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 60: {
-            // Langton's ant
+            // Emergent grid abstracted into intentional grid.
+            // Emergent behavior on the grid; Langton's ant
             ants.reseed(prng.uniform32());
             ants.stepSize = 0.5;
             crossfade(&ants, prng.uniform(5, 20));
@@ -127,15 +128,6 @@ int Narrator::script(int st, PRNG &prng)
             ants.stepSize = 0.0125;
             delay(2);
             ants.stepSize = 0.00625;
-            return 70;
-        }
-
-        case 70: {
-            // Fast ant slowly crossfades into rings with same palette; meta
-            ringsA.reseed();
-            ringsA.palette.load("data/succulent-palette.png");
-            crossfade(&ringsA, prng.uniform(15, 30));
-            delay(prng.uniform(60*1, 60*3));
             return 80;
         }
 
