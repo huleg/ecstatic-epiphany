@@ -105,7 +105,7 @@ int Narrator::script(int st, PRNG &prng)
 
             // Run until we have square grid symmetry
             while (orderParticles.symmetry > 4) {
-                delay(prng.uniform(2, 45));
+                delay(prng.uniform(2, 30));
                 orderParticles.symmetry--;
             }
             delay(prng.uniform(10, 25));
@@ -131,17 +131,24 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.reseed(prng.uniform32());
 
             // Start out slow during the crossfade
-            partnerDance.targetGain = 0.00004;
+            partnerDance.targetGain = 0.00002;
             partnerDance.targetSpin = 0.000002;
-            partnerDance.damping = 0.004;
+            partnerDance.damping = 0.005;
 
             crossfade(&partnerDance, prng.uniform(5, 10));
-            delay(prng.uniform(1, 15));
+            delay(prng.uniform(3, 10));
 
             // Normal speed
-            partnerDance.targetGain = 0.0004;
-            partnerDance.targetSpin = 0.00015;
-            partnerDance.damping = 0.012;
+            partnerDance.targetGain = 0.00004;
+            partnerDance.targetSpin = 0.00003;
+            partnerDance.damping = 0.004;
+
+            delay(prng.uniform(20, 40));
+
+            // Overdamped, collapsing in.
+            partnerDance.targetGain = 0.00008;
+            partnerDance.targetSpin = 0.00001;
+            partnerDance.damping = 0.02;
 
             delay(prng.uniform(30, 90));
 

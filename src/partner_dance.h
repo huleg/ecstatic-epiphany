@@ -39,8 +39,9 @@ private:
     static const float colorRate = 0.8;
     static const float noiseRate = 0.1;
     static const float radius = 0.5;
-    static const float intensityScale = 50.0;
-    static const float maxIntensity = 0.4;
+    static const float intensityScale = 60.0;
+    static const float maxIntensity = 0.45;
+    static const float targetRadius = 0.3;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -53,6 +54,7 @@ private:
     float colorCycle;
     float noiseCycle;
 
+    void resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const;
     void runStep(const FrameInfo &f);
 };
 
@@ -89,9 +91,10 @@ inline void PartnerDance::reseed(uint32_t seed)
     for (unsigned dancer = 0; dancer < numDancers; dancer++) {
         for (unsigned i = 0; i < particlesPerDancer; i++, pa++, pd++) {
 
-            pd->position = prng.circularVector() * 3.0 + (dancer ? Vec2(4, 0) : Vec2(-4, 0));
-            pd->target = prng.circularVector() * 0.1;
+            pd->target = Vec2(0,0);
             pd->velocity = prng.circularVector() * 0.1;
+
+            resetParticle(*pd, prng, dancer);
 
             pa->radius = radius;
             pa->color = dancer ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
@@ -137,8 +140,8 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             v += disparity * targetGain;
             v += normal * targetSpin;
 
-            pd->target[0] = fbm_noise2(noiseCycle, 0, 4);
-            pd->target[1] = fbm_noise2(noiseCycle, 1, 4);
+            pd->target[0] = targetRadius * fbm_noise2(noiseCycle, 0, 4);
+            pd->target[1] = targetRadius * fbm_noise2(noiseCycle, 1, 4);
 
             pd->velocity = v;
             pd->position += v;
@@ -146,11 +149,16 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             pa->point = Vec3(pd->position[0], 0, pd->position[1]);
             pa->intensity = std::min(float(maxIntensity), intensityScale * len(v));
 
-            if (sqrlen(v) < sq(0.001)) {
-                pd->position = prng.circularVector() * 3.0 + Vec2(4, 0);
+            if (sqrlen(v) < sq(1e-4)) {
+                resetParticle(*pd, prng, dancer);
             }
         }
     }
+}
+
+inline void PartnerDance::resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const
+{
+    pd.position = prng.circularVector() * 3.0 + (dancer ? Vec2(4, 0) : Vec2(-4, 0));
 }
 
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
@@ -161,8 +169,8 @@ inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
     // Hilight one edge
     Vec3 gradient = sampleIntensityGradient(p.point);
     Vec3 lightVec = Vec3(-1, 0, -1);
-    float lambert = 0.6f * std::max(0.0f, dot(gradient, lightVec));
-    float ambient = 1.0f;
+    float lambert = 0.2f * std::max(0.0f, dot(gradient, lightVec));
+    float ambient = 0.8f;
 
     // 2-dimensional palette lookup
     rgb = (lambert + ambient) * palette.sample(c[0], c[1]);
