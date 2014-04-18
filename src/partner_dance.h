@@ -38,6 +38,9 @@ private:
 
     static const float colorRate = 0.8;
     static const float noiseRate = 0.1;
+    static const float radius = 0.5;
+    static const float intensityScale = 80.0;
+    static const float maxIntensity = 0.4;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -88,8 +91,7 @@ inline void PartnerDance::reseed(uint32_t seed)
             pd->target = prng.circularVector() * 0.1;
             pd->velocity = prng.circularVector() * 0.1;
 
-            pa->intensity = 0.4;
-            pa->radius = 0.5;
+            pa->radius = radius;
             pa->color = dancer ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
         }
     }
@@ -140,6 +142,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             pd->position += v;
 
             pa->point = Vec3(pd->position[0], 0, pd->position[1]);
+            pa->intensity = std::min(float(maxIntensity), intensityScale * len(v));
 
             if (sqrlen(v) < sq(0.001)) {
                 pd->position = prng.circularVector() * 3.0 + Vec2(4, 0);
@@ -150,6 +153,9 @@ inline void PartnerDance::runStep(const FrameInfo &f)
 
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
 {
-    ParticleEffect::shader(rgb, p);
-    rgb = palette.sample(rgb[0], rgb[1]);
+    // Use 'color' to encode contributions from both partners
+    Vec3 c = sampleColor(p.point);
+
+    // 2-dimensional palette lookup
+    rgb = palette.sample(c[0], c[1]);
 }
