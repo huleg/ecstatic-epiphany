@@ -39,7 +39,7 @@ private:
     static const float colorRate = 0.8;
     static const float noiseRate = 0.1;
     static const float radius = 0.5;
-    static const float intensityScale = 80.0;
+    static const float intensityScale = 50.0;
     static const float maxIntensity = 0.4;
 
     struct ParticleDynamics {
@@ -63,10 +63,12 @@ private:
 
 
 inline PartnerDance::PartnerDance()
-    : palette("data/beach-palette.png"),
-      targetGain(0), targetSpin(0), damping(0),
+    : targetGain(0), targetSpin(0), damping(0),
       timeDeltaRemainder(0)
 {
+    // Sky at (0,0), lightness along +X, darkness along +Y. Fire encircles the void at (1,1)
+    palette.load("data/beach-palette.png"),
+
     reseed(42);
 }
 
@@ -156,6 +158,12 @@ inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
     // Use 'color' to encode contributions from both partners
     Vec3 c = sampleColor(p.point);
 
+    // Hilight one edge
+    Vec3 gradient = sampleIntensityGradient(p.point);
+    Vec3 lightVec = Vec3(-1, 0, -1);
+    float lambert = 0.6f * std::max(0.0f, dot(gradient, lightVec));
+    float ambient = 1.0f;
+
     // 2-dimensional palette lookup
-    rgb = palette.sample(c[0], c[1]);
+    rgb = (lambert + ambient) * palette.sample(c[0], c[1]);
 }
