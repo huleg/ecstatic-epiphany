@@ -23,12 +23,14 @@ public:
 
     virtual void beginFrame(const FrameInfo &f);
     virtual void shader(Vec3& rgb, const PixelInfo& p) const;
+    virtual void debug(const DebugInfo& d);
 
     Texture palette;
 
     float targetGain;
     float targetSpin;
     float damping;
+    float dampingRate;
 
 private:
     static const unsigned particlesPerDancer = 20;
@@ -40,8 +42,12 @@ private:
     static const float noiseRate = 0.1;
     static const float radius = 0.5;
     static const float intensityScale = 60.0;
-    static const float maxIntensity = 0.45;
+    static const float maxIntensity = 0.6;
     static const float targetRadius = 0.3;
+    static const float jitterRate = 2.0;
+    static const float jitterStrength = 0.3;
+    static const float jitterScale = 1.2;
+    static const float initialVelocity = 0.02;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -51,7 +57,6 @@ private:
 
     std::vector<ParticleDynamics> dynamics;
     float timeDeltaRemainder;
-    float colorCycle;
     float noiseCycle;
 
     void resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const;
@@ -65,7 +70,7 @@ private:
 
 
 inline PartnerDance::PartnerDance()
-    : targetGain(0), targetSpin(0), damping(0),
+    : targetGain(0), targetSpin(0), damping(0), dampingRate(0),
       timeDeltaRemainder(0)
 {
     // Sky at (0,0), lightness along +X, darkness along +Y. Fire encircles the void at (1,1)
@@ -79,7 +84,6 @@ inline void PartnerDance::reseed(uint32_t seed)
     PRNG prng;
     prng.seed(seed);
 
-    colorCycle = prng.uniform(0, M_PI * 2);
     noiseCycle = prng.uniform(0, 1000);
 
     appearance.resize(numParticles);
@@ -92,7 +96,6 @@ inline void PartnerDance::reseed(uint32_t seed)
         for (unsigned i = 0; i < particlesPerDancer; i++, pa++, pd++) {
 
             pd->target = Vec2(0,0);
-            pd->velocity = prng.circularVector() * 0.1;
 
             resetParticle(*pd, prng, dancer);
 
@@ -104,8 +107,9 @@ inline void PartnerDance::reseed(uint32_t seed)
 
 inline void PartnerDance::beginFrame(const FrameInfo &f)
 {    
-    colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
     noiseCycle += f.timeDelta * noiseRate;
+
+    damping += f.timeDelta * dampingRate;
 
     float t = f.timeDelta + timeDeltaRemainder;
     int steps = t / stepSize;
@@ -117,6 +121,12 @@ inline void PartnerDance::beginFrame(const FrameInfo &f)
     }
 
     ParticleEffect::beginFrame(f);
+}
+
+inline void PartnerDance::debug(const DebugInfo& d)
+{
+    fprintf(stderr, "\t[partner-dance] noiseCycle = %f\n", noiseCycle);
+    fprintf(stderr, "\t[partner-dance] damping = %f\n", damping);
 }
 
 inline void PartnerDance::runStep(const FrameInfo &f)
@@ -149,7 +159,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             pa->point = Vec3(pd->position[0], 0, pd->position[1]);
             pa->intensity = std::min(float(maxIntensity), intensityScale * len(v));
 
-            if (sqrlen(v) < sq(1e-4)) {
+            if (pa->intensity < 1.0 / prng.uniform(40, 100)) {
                 resetParticle(*pd, prng, dancer);
             }
         }
@@ -158,20 +168,20 @@ inline void PartnerDance::runStep(const FrameInfo &f)
 
 inline void PartnerDance::resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const
 {
-    pd.position = prng.circularVector() * 3.0 + (dancer ? Vec2(4, 0) : Vec2(-4, 0));
+    pd.velocity = prng.circularVector() * initialVelocity;
+    pd.position = prng.circularVector() * 2.0 + (dancer ? Vec2(3, 0) : Vec2(-3, 0));
 }
 
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
 {
-    // Use 'color' to encode contributions from both partners
-    Vec3 c = sampleColor(p.point);
+    Vec3 jitter = Vec3(
+        fbm_noise3(noiseCycle * jitterRate, p.point[0] * jitterScale, p.point[2] * jitterScale, 2) * jitterStrength,
+        fbm_noise3(noiseCycle * jitterRate, p.point[0] * jitterScale, p.point[2] * jitterScale, 2) * jitterStrength,
+        0);
 
-    // Hilight one edge
-    Vec3 gradient = sampleIntensityGradient(p.point);
-    Vec3 lightVec = Vec3(-1, 0, -1);
-    float lambert = 0.2f * std::max(0.0f, dot(gradient, lightVec));
-    float ambient = 0.8f;
+    // Use 'color' to encode contributions from both partners
+    Vec3 c = sampleColor(p.point) + jitter;
 
     // 2-dimensional palette lookup
-    rgb = (lambert + ambient) * palette.sample(c[0], c[1]);
+    rgb = palette.sample(c[0], c[1]);
 }

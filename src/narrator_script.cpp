@@ -13,6 +13,7 @@
 #include "ants.h"
 #include "planar_waves.h"
 #include "partner_dance.h"
+#include "lib/brightness.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -23,6 +24,7 @@ int Narrator::script(int st, PRNG &prng)
     static RingsEffect ringsA, ringsB;
     static Ants ants;
     static PartnerDance partnerDance;
+    static Brightness orderParticlesBr(orderParticles);
 
 
     switch (st) {
@@ -99,13 +101,16 @@ int Narrator::script(int st, PRNG &prng)
 
         case 50: {
             // Biology happens, order emerges. Cellular look, emergent order.
+            // Smooth out overall brightness jitter with the "Brightness" object.
+
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 16;
-            crossfade(&orderParticles, 15);
+            orderParticlesBr.set(0.18);
+            crossfade(&orderParticlesBr, 15);
 
             // Run until we have square grid symmetry
             while (orderParticles.symmetry > 4) {
-                delay(prng.uniform(2, 30));
+                delay(prng.uniform(2, 20));
                 orderParticles.symmetry--;
             }
             delay(prng.uniform(10, 25));
@@ -115,6 +120,7 @@ int Narrator::script(int st, PRNG &prng)
         case 60: {
             // Emergent grid abstracted into intentional grid.
             // Emergent behavior on the grid; Langton's ant
+
             ants.reseed(prng.uniform32());
             ants.antStepRate = 2.0;
             crossfade(&ants, prng.uniform(5, 20));
@@ -127,30 +133,29 @@ int Narrator::script(int st, PRNG &prng)
         case 70: {
             // Two partners, populations of particles.
             // Act one, spiralling inwards. Depression.
+            // Sparks happen at the edge of the void.
+            // Foam on the edge of the apocalypse.
 
             partnerDance.reseed(prng.uniform32());
 
             // Start out slow during the crossfade
             partnerDance.targetGain = 0.00002;
-            partnerDance.targetSpin = 0.000002;
-            partnerDance.damping = 0.005;
+            partnerDance.targetSpin = 0.000032;
+            partnerDance.damping = 0.0045;
+            partnerDance.dampingRate = 0;
 
-            crossfade(&partnerDance, prng.uniform(10, 20));
-            delay(prng.uniform(3, 10));
+            crossfade(&partnerDance, prng.uniform(5, 15));
+            delay(prng.uniform(2, 10));
 
             // Normal speed
-            partnerDance.targetGain = 0.00004;
-            partnerDance.targetSpin = 0.00003;
-            partnerDance.damping = 0.004;
+            partnerDance.targetGain = 0.00009;
+            partnerDance.dampingRate = 0.0001;
+            delay(prng.uniform(20, 30));
 
-            delay(prng.uniform(20, 40));
-
-            // Overdamped, collapsing in.
-            partnerDance.targetGain = 0.00008;
-            partnerDance.targetSpin = 0.00001;
-            partnerDance.damping = 0.02;
-
-            delay(prng.uniform(30, 90));
+            // Damp quickly, fall into the void
+            partnerDance.dampingRate = 0.003;
+            partnerDance.targetSpin = 0.0001;
+            delay(prng.uniform(20, 30));
 
             return 80;
         }

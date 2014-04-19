@@ -116,6 +116,7 @@ inline void Ants::beginFrame(const FrameInfo& f)
         targetColors.resize(width() * height());
         pushVectors.resize(width() * height());
         memset(&state[0], 0, state.size() * sizeof state[0]);
+        memset(&targetColors[0], 0, targetColors.size() * sizeof targetColors[0]);
         memset(&pushVectors[0], 0, pushVectors.size() * sizeof pushVectors[0]);
     }
 

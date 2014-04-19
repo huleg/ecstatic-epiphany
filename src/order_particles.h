@@ -32,17 +32,20 @@ public:
 
 private:
     static const unsigned numParticles = 50;
-    static const float relativeSize = 0.37;
-    static const float intensity = 0.12;
+    static const float relativeSize = 0.35;
+    static const float intensity = 0.08;
     static const float brightness = 1.65;
     static const float stepSize = 1.0 / 500;
     static const float seedRadius = 2.0;
-    static const float interactionSize = 0.5;
+    static const float interactionSize = 0.7;
     static const float colorRate = 0.03;
-    static const float vibrationScale = 0.012;
+    static const float vibrationScale = 0.007;
     static const float lightSpinRate = 60.0;
-    static const float breatheRate = 200.0;
-    static const float breatheAmount = 0.01;
+    static const float breatheRate = 30.0;
+    static const float breatheAmount = 0.08;
+    static const float angleGainLimit = 0.002;
+    static const float angleGainRate = 0.3;
+    static const float angleGainSlope = 40.0;
 
     unsigned seed;
     float timeDeltaRemainder;
@@ -93,6 +96,12 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     int steps = t / stepSize;
     timeDeltaRemainder = t - steps * stepSize;
 
+    // Particle appearance
+    for (unsigned i = 0; i < appearance.size(); i++) {
+        appearance[i].intensity = intensity;
+        appearance[i].radius = f.modelDiameter * relativeSize;
+    }
+
     while (steps > 0) {
         runStep(f);
         steps--;
@@ -104,10 +113,9 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
 
     // Angular speed and direction
-    angleGain = fbm_noise2(colorCycle * 0.6f, seed * 5e-7, 3) * 0.02;
-
-    // Occasional vibration storms. Too much vibration will make the particles disperse
-    vibration = sq(std::max(0.0f, fbm_noise2(colorCycle * 3.5f, seed * 2e-6, 2))) * vibrationScale;
+    float n = fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 3);
+    angleGain = std::min(float(angleGainLimit), std::max(float(-angleGainLimit),
+        n * n * n * angleGainSlope));
 
     // Bias the palette sample up/down, to cause the particles to 'breathe' a little
     bias = sin(colorCycle * breatheRate) * breatheAmount;
@@ -115,25 +123,6 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
 inline void OrderParticles::runStep(const FrameInfo &f)
 {
-    PRNG prng;
-    prng.seed(20);
-
-    // Update dynamics
-    for (unsigned i = 0; i < appearance.size(); i++) {
-
-        float fade = 1.0;
-
-        appearance[i].intensity = intensity * fade;
-        appearance[i].radius = f.modelDiameter * relativeSize * fade;
-
-        prng.remix(appearance[i].point[0] * 1e8);
-        prng.remix(appearance[i].point[2] * 1e8);
-
-        // Vibration
-        Vec2 v = prng.ringVector(0.5, 1) * vibration;
-        appearance[i].point += Vec3(v[0], 0, v[1]);
-    }
-
     // Rebuild index
     ParticleEffect::beginFrame(f);
 

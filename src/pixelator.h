@@ -53,7 +53,9 @@ private:
 
 inline Pixelator::Pixelator()
     : bufferWidth(0), bufferHeight(0), noiseZ(0)
-{}
+{
+    clear();
+}
 
 inline void Pixelator::clear()
 {
@@ -130,10 +132,10 @@ inline void Pixelator::shader(Vec3& rgb, const PixelInfo& p) const
 
     rgb = a.color * (1.0f
         + a.contrast * cosf(a.angle + blockAngle)
-        + a.noise * fbm_noise3( p.point[0] * noiseScale,
-                                p.point[2] * noiseScale,
-                                noiseZ,
-                                2 ));
+        + a.noise * (0.5 + fbm_noise3( p.point[0] * noiseScale,
+                                       p.point[2] * noiseScale,
+                                       noiseZ,
+                                       3 )));
 }
 
 inline void Pixelator::debug(const DebugInfo& d)
