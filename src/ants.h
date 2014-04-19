@@ -158,7 +158,7 @@ inline void Ants::filterColor(int x, int y)
 
 inline Vec3 Ants::targetColorForState(unsigned st)
 {
-    static float brightness[] = { 0, 2.0, 0.4 };
+    static float brightness[] = { 0, 3.0, 0.6 };
     float r = 0.65 / (1 + colorParam * spiralRate);
     float t = colorParam;
     float br = st < 3 ? brightness[st] : 0;

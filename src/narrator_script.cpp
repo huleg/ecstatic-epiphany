@@ -118,8 +118,8 @@ int Narrator::script(int st, PRNG &prng)
             ants.reseed(prng.uniform32());
             ants.antStepRate = 2.0;
             crossfade(&ants, prng.uniform(5, 20));
-            ants.antStepRateDelta = prng.uniform(0.07, 0.17);
-            do { doFrame(); } while (ants.antStepRate < 200);
+            ants.antStepRateDelta = prng.uniform(0.05, 0.10);
+            do { doFrame(); } while (ants.antStepRate < 60);
             ants.antStepRateDelta = 0;
             return 70;
         }
@@ -135,7 +135,7 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.targetSpin = 0.000002;
             partnerDance.damping = 0.005;
 
-            crossfade(&partnerDance, prng.uniform(5, 10));
+            crossfade(&partnerDance, prng.uniform(10, 20));
             delay(prng.uniform(3, 10));
 
             // Normal speed
