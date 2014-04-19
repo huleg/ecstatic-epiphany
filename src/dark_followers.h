@@ -26,8 +26,9 @@ public:
 
 private:
     static const unsigned numParticles = 400;
-    static const float seedRadius = 3.5;
+    static const float seedRadius = 4.0;
     static const float radius = 0.2;
+    static const float intensity = 6.0;
 };
 
 
@@ -51,7 +52,7 @@ inline void DarkFollowers::reseed(unsigned seed)
     for (unsigned i = 0; i < appearance.size(); i++) {
         Vec2 p = prng.ringVector(1e-4, seedRadius);
         appearance[i].point = Vec3(p[0], 0, p[1]);
-        appearance[i].intensity = 1.0;
+        appearance[i].intensity = intensity;
         appearance[i].radius = radius;
         appearance[i].color = Vec3(-1, -1, -1);
     }

@@ -104,13 +104,13 @@ int Narrator::script(int st, PRNG &prng)
             // Smooth out overall brightness jitter with the "Brightness" object.
 
             orderParticles.reseed(prng.uniform32());
-            orderParticles.symmetry = 16;
-            orderParticlesBr.set(0.18);
+            orderParticles.symmetry = 10;
+            orderParticlesBr.set(0.24);
             crossfade(&orderParticlesBr, 15);
 
             // Run until we have square grid symmetry
             while (orderParticles.symmetry > 4) {
-                delay(prng.uniform(2, 20));
+                delay(prng.uniform(3, 20));
                 orderParticles.symmetry--;
             }
             delay(prng.uniform(10, 25));
@@ -144,8 +144,7 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.damping = 0.0045;
             partnerDance.dampingRate = 0;
 
-            crossfade(&partnerDance, prng.uniform(5, 15));
-            delay(prng.uniform(2, 10));
+            crossfade(&partnerDance, prng.uniform(10, 15));
 
             // Normal speed
             partnerDance.targetGain = 0.00009;

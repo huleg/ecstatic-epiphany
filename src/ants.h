@@ -27,6 +27,7 @@ public:
     float colorParam;
 
 private:
+    static const unsigned numAnts = 1;
     static const float stepRate = 200;
     static const float noiseMax = 1.5;
     static const float noiseFadeRate = 0.007;
@@ -35,7 +36,7 @@ private:
     static const float colorParamRate = 0.29;
     static const float spiralRate = 0.08;
     static const float pushRadius = 0.3;
-    static const float pushAmount = 0.001;
+    static const float pushAmount = 0.0006;
     static const float sinkRate = 0.0001;
 
     struct Ant {
@@ -45,7 +46,7 @@ private:
     };
 
     DarkFollowers darkness;
-    Ant ant;
+    Ant ants[numAnts];
     float antTimeDeltaRemainder;
     float timeDeltaRemainder;
     std::vector<unsigned> state;
@@ -93,8 +94,10 @@ inline void Ants::reseed(unsigned seed)
 
     PRNG prng;
     prng.seed(seed);
-    ant.reseed(prng);
     darkness.reseed(prng.uniform32());
+    for (unsigned i = 0; i < numAnts; i++) {
+        ants[i].reseed(prng);
+    }
 
     colorParam = prng.uniform(0, M_PI * 2);
 }
@@ -128,7 +131,9 @@ inline void Ants::beginFrame(const FrameInfo& f)
     antTimeDeltaRemainder = t - steps / antStepRate;
     antStepRate += steps * antStepRateDelta;
     while (steps > 0) {
-        ant.update(*this);
+        for (unsigned i = 0; i < numAnts; i++) {
+            ants[i].update(*this);
+        }
         steps--;
     }
 
@@ -159,7 +164,7 @@ inline void Ants::filterColor(int x, int y)
 
 inline Vec3 Ants::targetColorForState(unsigned st)
 {
-    static float brightness[] = { 0, 3.0, 0.6 };
+    static float brightness[] = { 0, 2.5, 0.75 };
     float r = 0.65 / (1 + colorParam * spiralRate);
     float t = colorParam;
     float br = st < 3 ? brightness[st] : 0;
@@ -222,6 +227,6 @@ inline void Ants::runStep(const FrameInfo &f)
         }
     }
 
-    // Sink toward the center
+    // Sink toward the middle
     darkness.snap(Vec3(0,0,0), sinkRate);
 }

@@ -32,18 +32,17 @@ public:
 
 private:
     static const unsigned numParticles = 50;
-    static const float relativeSize = 0.35;
+    static const float relativeSize = 0.42;
     static const float intensity = 0.08;
     static const float brightness = 1.65;
-    static const float stepSize = 1.0 / 500;
-    static const float seedRadius = 2.0;
-    static const float interactionSize = 0.7;
-    static const float colorRate = 0.03;
-    static const float vibrationScale = 0.007;
+    static const float stepSize = 1.0 / 300;
+    static const float seedRadius = 1.5;
+    static const float interactionSize = 0.6;
+    static const float colorRate = 0.02;
     static const float lightSpinRate = 60.0;
     static const float breatheRate = 30.0;
-    static const float breatheAmount = 0.08;
-    static const float angleGainLimit = 0.002;
+    static const float breatheAmount = 0.12;
+    static const float angleGainLimit = 0.003;
     static const float angleGainRate = 0.3;
     static const float angleGainSlope = 40.0;
 
@@ -53,7 +52,6 @@ private:
     // Calculated per-frame
     Vec3 lightVec;
     float angleGain;
-    float vibration;
     float bias;
 
     void runStep(const FrameInfo &f);
@@ -171,7 +169,6 @@ inline void OrderParticles::runStep(const FrameInfo &f)
 inline void OrderParticles::debug(const DebugInfo &di)
 {
     fprintf(stderr, "\t[order-particles] symmetry = %d\n", symmetry);
-    fprintf(stderr, "\t[order-particles] vibration = %f\n", vibration);
     fprintf(stderr, "\t[order-particles] colorCycle = %f\n", colorCycle);
 }
 
@@ -183,8 +180,8 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     Vec3 gradient = sampleIntensityGradient(p.point);
     float gradientMagnitude = len(gradient);
     Vec3 normal = gradientMagnitude ? (gradient / gradientMagnitude) : Vec3(0, 0, 0);
-    float lambert = 0.55f * std::max(0.0f, dot(normal, lightVec));
-    float ambient = 0.6f;
+    float lambert = 0.4f * std::max(0.0f, dot(normal, lightVec));
+    float ambient = 1.0f;
 
     rgb = (brightness * (ambient + lambert)) * 
         palette.sample(0.5 + 0.5 * sinf(colorCycle), bias + intensity);
