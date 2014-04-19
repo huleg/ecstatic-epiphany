@@ -92,6 +92,9 @@ inline void OrderParticles::reseed(unsigned seed)
 
 inline void OrderParticles::beginFrame(const FrameInfo &f)
 {    
+    // Rebuild index
+    ParticleEffect::beginFrame(f);
+
     float t = f.timeDelta + timeDeltaRemainder;
     int steps = t / stepSize;
     timeDeltaRemainder = t - steps * stepSize;
@@ -105,6 +108,9 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     while (steps > 0) {
         runStep(f);
         steps--;
+
+        // Build index again after each physics step
+        ParticleEffect::beginFrame(f);
     }
 
     // Lighting
@@ -123,9 +129,6 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
 inline void OrderParticles::runStep(const FrameInfo &f)
 {
-    // Rebuild index
-    ParticleEffect::beginFrame(f);
-
     // Particle interactions
     for (unsigned i = 0; i < appearance.size(); i++) {
 
