@@ -116,11 +116,11 @@ int Narrator::script(int st, PRNG &prng)
             // Emergent grid abstracted into intentional grid.
             // Emergent behavior on the grid; Langton's ant
             ants.reseed(prng.uniform32());
-            ants.stepRate = 2.0;
+            ants.antStepRate = 2.0;
             crossfade(&ants, prng.uniform(5, 20));
-            ants.stepRateDelta = prng.uniform(0.07, 0.17);
-            do { doFrame(); } while (ants.stepRate < 200);
-            ants.stepRateDelta = 0;
+            ants.antStepRateDelta = prng.uniform(0.07, 0.17);
+            do { doFrame(); } while (ants.antStepRate < 200);
+            ants.antStepRateDelta = 0;
             return 70;
         }
 
