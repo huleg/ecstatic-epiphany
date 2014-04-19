@@ -143,18 +143,27 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.targetSpin = 0.000032;
             partnerDance.damping = 0.0045;
             partnerDance.dampingRate = 0;
+            partnerDance.interactionRate = 0;
 
             crossfade(&partnerDance, prng.uniform(10, 15));
 
             // Normal speed
-            partnerDance.targetGain = 0.00009;
+            partnerDance.targetGain = 0.00005;
             partnerDance.dampingRate = 0.0001;
-            delay(prng.uniform(20, 30));
+            delay(prng.uniform(50, 75));
 
             // Damp quickly, fall into the void
             partnerDance.dampingRate = 0.003;
             partnerDance.targetSpin = 0.0001;
             delay(prng.uniform(20, 30));
+
+            // Start interacting; agency overpowers the void
+            partnerDance.targetGain = 0.000015;
+            partnerDance.targetSpin = 0;
+            partnerDance.damping = 0.0075;
+            partnerDance.dampingRate = 0;
+            partnerDance.interactionRate = 0.00007;
+            delay(prng.uniform(80, 120));
 
             return 80;
         }

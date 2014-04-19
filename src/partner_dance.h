@@ -31,9 +31,10 @@ public:
     float targetSpin;
     float damping;
     float dampingRate;
+    float interactionRate;
 
 private:
-    static const unsigned particlesPerDancer = 20;
+    static const unsigned particlesPerDancer = 30;
     static const unsigned numDancers = 2;
     static const unsigned numParticles = numDancers * particlesPerDancer;
     static const float stepSize = 1.0 / 200;
@@ -41,11 +42,14 @@ private:
     static const float colorRate = 0.8;
     static const float noiseRate = 0.1;
     static const float radius = 0.5;
+    static const float radiusNoiseAmount = 0.2;
+    static const float radiusNoiseRate = 3.0;
     static const float intensityScale = 60.0;
-    static const float maxIntensity = 0.6;
+    static const float maxIntensity = 0.4;
     static const float targetRadius = 0.3;
-    static const float jitterRate = 2.0;
-    static const float jitterStrength = 0.3;
+    static const float interactionRadius = 0.4;
+    static const float jitterRate = 2.5;
+    static const float jitterStrength = 0.26;
     static const float jitterScale = 1.2;
     static const float initialVelocity = 0.02;
 
@@ -70,7 +74,7 @@ private:
 
 
 inline PartnerDance::PartnerDance()
-    : targetGain(0), targetSpin(0), damping(0), dampingRate(0),
+    : targetGain(0), targetSpin(0), damping(0), dampingRate(0), interactionRate(0),
       timeDeltaRemainder(0)
 {
     // Sky at (0,0), lightness along +X, darkness along +Y. Fire encircles the void at (1,1)
@@ -99,7 +103,6 @@ inline void PartnerDance::reseed(uint32_t seed)
 
             resetParticle(*pd, prng, dancer);
 
-            pa->radius = radius;
             pa->color = dancer ? Vec3(1, 0, 0) : Vec3(0, 1, 0);
         }
     }
@@ -108,19 +111,28 @@ inline void PartnerDance::reseed(uint32_t seed)
 inline void PartnerDance::beginFrame(const FrameInfo &f)
 {    
     noiseCycle += f.timeDelta * noiseRate;
-
     damping += f.timeDelta * dampingRate;
 
     float t = f.timeDelta + timeDeltaRemainder;
     int steps = t / stepSize;
     timeDeltaRemainder = t - steps * stepSize;
 
+    // Update all particle radii
+    float r = radius + radiusNoiseAmount * fbm_noise2(noiseCycle * radiusNoiseRate, 15, 2);
+    for (unsigned i = 0; i < appearance.size(); i++) {
+        appearance[i].radius = r;
+    }
+
+    // Build first index
+    ParticleEffect::beginFrame(f);
+
     while (steps > 0) {
         runStep(f);
         steps--;
-    }
 
-    ParticleEffect::beginFrame(f);
+        // Rebuild index
+        ParticleEffect::beginFrame(f);
+    }
 }
 
 inline void PartnerDance::debug(const DebugInfo& d)
@@ -146,9 +158,41 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             Vec2 disparity = pd->target - pd->position;
             Vec2 normal = Vec2(disparity[1], -disparity[0]);
             Vec2 v = pd->velocity;
+
+            // Single-particle velocity updates
             v *= 1.0 - damping;
             v += disparity * targetGain;
             v += normal * targetSpin;
+
+            // Particle interactions
+            std::vector<std::pair<size_t, Real> > hits;
+            nanoflann::SearchParams params;
+            params.sorted = false;
+            float searchRadius2 = sq(interactionRadius);
+            index.tree.radiusSearch(&pa->point[0], searchRadius2, hits, params);
+
+            for (unsigned i = 0; i < hits.size(); i++) {
+                int hitDancer = hits[i].first / particlesPerDancer;
+                if (hitDancer == dancer) {
+                    // Only interact with other dancers
+                    continue;
+                }
+
+                // Check distance
+                float q2 = hits[i].second / searchRadius2;
+                if (q2 >= 1.0f) {
+                    continue;
+                }
+                float k = dancer ? kernel2(q2) : -kernel(q2);
+
+                // Spin force, normal to the angle between us
+                ParticleDynamics &other = dynamics[hits[i].first];
+                Vec2 d = other.position - pd->position;
+                Vec2 normal = Vec2(d[1], -d[0]);
+                normal /= len(normal);
+
+                v += interactionRate * k * normal;
+            }
 
             pd->target[0] = targetRadius * fbm_noise2(noiseCycle, 0, 4);
             pd->target[1] = targetRadius * fbm_noise2(noiseCycle, 1, 4);
