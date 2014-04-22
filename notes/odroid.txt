@@ -9,30 +9,55 @@ Setup notes for ODROID-U3
 eth0      Link encap:Ethernet  HWaddr 1e:f6:d7:be:00:ad  
           inet addr:192.168.2.2  Bcast:192.168.2.255  Mask:255.255.255.0
 
+wlan12    Link encap:Ethernet  HWaddr 00:a8:2b:00:04:68  
+          inet addr:10.1.10.49  Bcast:10.1.10.255  Mask:255.255.255.0
+          inet6 addr: fe80::2a8:2bff:fe00:468/64 Scope:Link
+
+# Packages
 
 apt-get update
 apt-get upgrade
-apt-get install screen libusb1.0-0-dev openssh-server
-apt-get remove xorg cups cups-daemon lightdm
-apt-get remove xfce.*
+do-release-upgrade
+
+apt-get remove xorg cups cups-daemon lightdm xfce.* ftpd openbsd-inetd manpages abiword-common joe mysql-common gnumeric chromium.* openjdk-6-jre-headless openjdk-7-jre-headless libpyzy-1.0-0 scribus libwebkit2gtk-3.0-25 firefox samba gimp.* gnome.*
+
+apt-get install screen libusb-dev openssh-server libopencv-dev
+apt-get autoremove
+apt-get clean
+
+# Set up wifi
+
+nmcli d wifi connect <SSID> password <Password>
+
+# Verify open ports
+
+netstat -lutn
+
+# Create normal user
 
 passwd
 useradd -m micah
 passwd micah
 su micah
+chsh micah /bin/bash
+usermod -G sudo micah
+
+# Download source
 
 mkdir ~/src
 cd ~/src
 git clone https://github.com/scanlime/fadecandy.git
 git clone https://github.com/scanlime/ecstatic-epiphany.git
 
+# Build fadecandy
+
 cd ~/src/fadecandy/server
 make submodules
 make
 
+# Build EI
+
 cd ~/src/ecstatic-epiphany
 make
-
-# root
 cd ~/src/ecstatic-epiphany/system
-./install.sh
+sudo ./install.sh
