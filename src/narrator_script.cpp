@@ -32,6 +32,14 @@ int Narrator::script(int st, PRNG &prng)
             return 10;
         }
 
+        case 1: {
+            // Special state; precursor only (sleep mode)            
+            precursor.reseed(prng.uniform32());
+            crossfade(&precursor, 1);
+            precursor.resetCycle();
+            while (true) doFrame();
+        }
+
         case 10: {
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
