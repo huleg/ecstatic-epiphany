@@ -217,7 +217,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
 inline void PartnerDance::resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const
 {
     pd.velocity = Vec2(0, 0);
-    pd.position = prng.circularVector() * 14.0 + (dancer ? Vec2(5, 0) : Vec2(-5, 0));
+    pd.position = prng.circularVector() * 7.0 + (dancer ? Vec2(5, 0) : Vec2(-5, 0));
 }
 
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
