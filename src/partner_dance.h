@@ -41,14 +41,14 @@ private:
 
     static const float colorRate = 0.8;
     static const float noiseRate = 0.4;
-    static const float radius = 1.2;
+    static const float radius = 0.9;
     static const float radiusScale = 0.3;
     static const float intensityScale = 20.0;
-    static const float maxIntensity = 0.4;
+    static const float maxIntensity = 0.3;
     static const float minIntensity = 0.01;
     static const float targetRadius = 0.5;
     static const float interactionRadius = 0.4;
-    static const float jitterRate = 0.5;
+    static const float jitterRate = 0.66;
     static const float jitterStrength = 0.6;
     static const float jitterScale = 0.7;
 
@@ -217,7 +217,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
 inline void PartnerDance::resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const
 {
     pd.velocity = Vec2(0, 0);
-    pd.position = prng.circularVector() * 10.0 + (dancer ? Vec2(5, 0) : Vec2(-5, 0));
+    pd.position = prng.circularVector() * 14.0 + (dancer ? Vec2(5, 0) : Vec2(-5, 0));
 }
 
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
