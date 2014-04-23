@@ -35,7 +35,7 @@ private:
     static const unsigned numParticles = 70;
     static const float relativeSize = 0.42;
     static const float intensity = 0.16;
-    static const float brightness = 1.55;
+    static const float brightness = 1.35;
     static const float stepSize = 1.0 / 300;
     static const float seedRadius = 3.0;
     static const float interactionSize = 0.56;

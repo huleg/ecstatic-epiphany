@@ -35,7 +35,6 @@ public:
     void run();
 
     // VisualMemory vismem;
-    EffectTap tap;
     NEffectRunner runner;
     EffectMixer mixer;
 
