@@ -29,6 +29,7 @@ public:
     virtual void debug(const DebugInfo &di);
 
     float totalSecondsOfDarkness();
+    float cycle;
 
 private:
     static const float stepSize = 0.01;
@@ -59,7 +60,6 @@ private:
     Texture palette;
     unsigned seed;
     unsigned darkStepCount;
-    float cycle;
     float noiseCycle;
     float timeDeltaRemainder;
 

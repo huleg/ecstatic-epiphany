@@ -37,7 +37,11 @@ int Narrator::script(int st, PRNG &prng)
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 1);
             precursor.resetCycle();
-            while (true) doFrame();
+            while (precursor.cycle < 1.0f) {
+                doFrame();
+            }
+            delay(prng.uniform(1, 45));
+            return 1;
         }
 
         case 10: {
