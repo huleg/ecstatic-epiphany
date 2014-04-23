@@ -13,7 +13,7 @@ UNAME := $(shell uname)
 CPPFLAGS = -O3
 
 # Libraries
-LDFLAGS = -lm -lstdc++ -lusb-1.0
+LDFLAGS = -lm -lstdc++ -lusb-1.0 -lopencv_core -lopencv_video
 
 # Debugging
 CPPFLAGS += -g -Wall
