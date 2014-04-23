@@ -69,18 +69,18 @@ private:
     static void learnThreadFunc(void *context);
 
     // Learning parameters
-    static const memory_t kMotionLearningThreshold = 3e-2;
-    static const memory_t kPermeability = 1e-5;
-    static const memory_t kExpectedValueGain = 1e-3;
+    static constexpr memory_t kMotionLearningThreshold = 3e-2;
+    static constexpr memory_t kPermeability = 1e-5;
+    static constexpr memory_t kExpectedValueGain = 1e-3;
 
     // Recall parameters
-    static const float kMotionRecallProportion = 0.30;
-    static const float kMotionRecallThresholdDecay = 1e-4;
-    static const float kMotionRecallThresholdLimit = 1e-4;
-    static const float kMotionThresholdMaxPeakRatio = 1e6;
+    static constexpr float kMotionRecallProportion = 0.30;
+    static constexpr float kMotionRecallThresholdDecay = 1e-4;
+    static constexpr float kMotionRecallThresholdLimit = 1e-4;
+    static constexpr float kMotionThresholdMaxPeakRatio = 1e6;
 
-    static const memory_t kRecallFilterGain = 0.08;
-    static const memory_t kRecallToleranceGain = 0.001;
+    static constexpr memory_t kRecallFilterGain = 0.08;
+    static constexpr memory_t kRecallToleranceGain = 0.001;
 
     // Main loop for learning thread
     void learnWorker();

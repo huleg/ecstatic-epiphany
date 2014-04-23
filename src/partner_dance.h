@@ -34,23 +34,23 @@ public:
     float interactionRate;
 
 private:
-    static const unsigned particlesPerDancer = 30;
-    static const unsigned numDancers = 2;
-    static const unsigned numParticles = numDancers * particlesPerDancer;
-    static const float stepSize = 1.0 / 300;
+    static constexpr unsigned particlesPerDancer = 30;
+    static constexpr unsigned numDancers = 2;
+    static constexpr unsigned numParticles = numDancers * particlesPerDancer;
+    static constexpr float stepSize = 1.0 / 300;
 
-    static const float colorRate = 0.8;
-    static const float noiseRate = 0.4;
-    static const float radius = 0.9;
-    static const float radiusScale = 0.3;
-    static const float intensityScale = 20.0;
-    static const float maxIntensity = 0.3;
-    static const float minIntensity = 0.01;
-    static const float targetRadius = 0.5;
-    static const float interactionRadius = 0.4;
-    static const float jitterRate = 0.66;
-    static const float jitterStrength = 0.6;
-    static const float jitterScale = 0.7;
+    static constexpr float colorRate = 0.8;
+    static constexpr float noiseRate = 0.4;
+    static constexpr float radius = 0.9;
+    static constexpr float radiusScale = 0.3;
+    static constexpr float intensityScale = 20.0;
+    static constexpr float maxIntensity = 0.3;
+    static constexpr float minIntensity = 0.01;
+    static constexpr float targetRadius = 0.5;
+    static constexpr float interactionRadius = 0.4;
+    static constexpr float jitterRate = 0.66;
+    static constexpr float jitterStrength = 0.6;
+    static constexpr float jitterScale = 0.7;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -179,7 +179,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             index.tree.radiusSearch(&pa->point[0], searchRadius2, hits, params);
 
             for (unsigned i = 0; i < hits.size(); i++) {
-                int hitDancer = hits[i].first / particlesPerDancer;
+                unsigned hitDancer = hits[i].first / particlesPerDancer;
                 if (hitDancer == dancer) {
                     // Only interact with other dancers
                     continue;

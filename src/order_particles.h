@@ -32,18 +32,18 @@ public:
     float baseAngle;
 
 private:
-    static const unsigned numParticles = 70;
-    static const float relativeSize = 0.42;
-    static const float intensity = 0.16;
-    static const float brightness = 1.35;
-    static const float stepSize = 1.0 / 300;
-    static const float seedRadius = 3.0;
-    static const float interactionSize = 0.56;
-    static const float colorRate = 0.02;
-    static const float lightSpinRate = 60.0;
-    static const float angleGainRate = 0.3;
-    static const float angleGainCenter = 0.02;
-    static const float angleGainVariation = angleGainCenter * 0.3;
+    static constexpr unsigned numParticles = 70;
+    static constexpr float relativeSize = 0.42;
+    static constexpr float intensity = 0.16;
+    static constexpr float brightness = 1.35;
+    static constexpr float stepSize = 1.0 / 300;
+    static constexpr float seedRadius = 3.0;
+    static constexpr float interactionSize = 0.56;
+    static constexpr float colorRate = 0.02;
+    static constexpr float lightSpinRate = 60.0;
+    static constexpr float angleGainRate = 0.3;
+    static constexpr float angleGainCenter = 0.02;
+    static constexpr float angleGainVariation = angleGainCenter * 0.3;
 
     unsigned seed;
     float timeDeltaRemainder;

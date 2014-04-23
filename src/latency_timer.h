@@ -21,7 +21,7 @@ class LatencyTimerEffect : public Effect
 public:
     LatencyTimerEffect();
 
-    static const float hz = 2;
+    static constexpr float hz = 2;
     float phase;
 
     virtual void beginFrame(const FrameInfo &f);

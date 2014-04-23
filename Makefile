@@ -24,7 +24,7 @@ CPPFLAGS += -MMD
 
 ifeq ($(UNAME), Linux)
 	# Use a recent toolchain (Linux)
-	CXX := gcc-4.8 -std=c++11 -fpermissive
+	CXX := gcc-4.8 -std=c++11
 	CPPFLAGS += -march=native
 	LDFLAGS += -march=native
 	CPPFLAGS += -pthread

@@ -50,8 +50,8 @@ public:
     std::vector<Wave> waves;
 
 private:
-    static const float stepSize = 1.0 / 500;
-    static const float easingRate = 0.01;
+    static constexpr float stepSize = 1.0 / 500;
+    static constexpr float easingRate = 0.01;
 
     Texture palette;
     float timeDeltaRemainder;

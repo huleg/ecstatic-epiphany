@@ -28,22 +28,22 @@ public:
     virtual void debug(const DebugInfo &di);
 
 private:
-    static const unsigned numParticles = 600;
-    static const unsigned numDarkParticles = numParticles / 20;
-    static const float generationScale = 1.0 / 14;
-    static const float speedMin = 0.97;
-    static const float speedMax = 1.8;
-    static const float spinMin = M_PI / 6;
-    static const float spinMax = spinMin + M_PI * 0.08;
-    static const float relativeSize = 0.36;
-    static const float intensity = 1.4;
-    static const float intensityExp = 1.0 / 2.5;
-    static const float initialSpeed = 0.008;
-    static const float stepSize = 1.0 / 200;
-    static const float colorRate = 0.02;
-    static const float outsideMargin = 6.0;
-    static const float darkMultiplier = -8.0;
-    static const unsigned maxAge = 18000;
+    static constexpr unsigned numParticles = 600;
+    static constexpr unsigned numDarkParticles = numParticles / 20;
+    static constexpr float generationScale = 1.0 / 14;
+    static constexpr float speedMin = 0.97;
+    static constexpr float speedMax = 1.8;
+    static constexpr float spinMin = M_PI / 6;
+    static constexpr float spinMax = spinMin + M_PI * 0.08;
+    static constexpr float relativeSize = 0.36;
+    static constexpr float intensity = 1.4;
+    static constexpr float intensityExp = 1.0 / 2.5;
+    static constexpr float initialSpeed = 0.008;
+    static constexpr float stepSize = 1.0 / 200;
+    static constexpr float colorRate = 0.02;
+    static constexpr float outsideMargin = 6.0;
+    static constexpr float darkMultiplier = -8.0;
+    static constexpr unsigned maxAge = 18000;
 
     struct ParticleDynamics {
         Vec2 position;
