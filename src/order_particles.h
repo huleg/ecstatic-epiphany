@@ -29,20 +29,21 @@ public:
     Texture palette;
     int symmetry;
     float colorCycle;
+    float baseAngle;
 
 private:
-    static const unsigned numParticles = 50;
+    static const unsigned numParticles = 70;
     static const float relativeSize = 0.42;
-    static const float intensity = 0.08;
-    static const float brightness = 1.85;
+    static const float intensity = 0.16;
+    static const float brightness = 1.55;
     static const float stepSize = 1.0 / 300;
-    static const float seedRadius = 1.5;
-    static const float interactionSize = 0.6;
+    static const float seedRadius = 3.0;
+    static const float interactionSize = 0.56;
     static const float colorRate = 0.02;
     static const float lightSpinRate = 60.0;
     static const float angleGainRate = 0.3;
-    static const float angleGainCenter = 0.003;
-    static const float angleGainVariation = 0.0018;
+    static const float angleGainCenter = 0.02;
+    static const float angleGainVariation = angleGainCenter * 0.3;
 
     unsigned seed;
     float timeDeltaRemainder;
@@ -110,12 +111,12 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
     // Lighting
     colorCycle += f.timeDelta * colorRate;
-    float lightAngle = fbm_noise2(colorCycle * 0.08f, seed * 1e-6, 4) * lightSpinRate;
+    float lightAngle = fbm_noise2(colorCycle * 0.08f, seed * 1e-6, 2) * lightSpinRate;
     lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
 
     // Angular speed and direction
     angleGain = angleGainCenter + angleGainVariation *
-        fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 3);
+        fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 2);
 }
 
 inline void OrderParticles::runStep(const FrameInfo &f)
@@ -151,7 +152,7 @@ inline void OrderParticles::runStep(const FrameInfo &f)
                 float angleDelta = fabsf(snapAngle - angle);
 
                 // Spin perpendicular to 'd'
-                Vec3 da = (angleGain * angleDelta / (1.0f + q2)) * Vec3( d[2], 0, -d[0] );
+                Vec3 da = angleGain * angleDelta * kernel2(q2) * Vec3( d[2], 0, -d[0] );
                 p += da;
                 hit.point -= da;
             }
