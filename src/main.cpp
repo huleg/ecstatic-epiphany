@@ -6,12 +6,15 @@
  */
 
 #include "lib/camera.h"
+#include "lib/camera_flowvectorizer.h"
 #include "narrator.h"
 
 static Narrator narrator;
+static CameraFlowVectorizer flow;
 
 static void videoCallback(const Camera::VideoChunk &video, void *)
 {
+    flow.process(video);
 }
 
 int main(int argc, char **argv)
