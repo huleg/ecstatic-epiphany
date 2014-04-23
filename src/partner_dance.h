@@ -45,7 +45,7 @@ private:
     static const float radiusScale = 0.3;
     static const float intensityScale = 20.0;
     static const float maxIntensity = 0.4;
-    static const float minIntensity = 0.001;
+    static const float minIntensity = 0.01;
     static const float targetRadius = 0.5;
     static const float interactionRadius = 0.4;
     static const float jitterRate = 0.5;

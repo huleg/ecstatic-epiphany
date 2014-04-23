@@ -10,7 +10,7 @@ CPP_FILES = \
 UNAME := $(shell uname)
 
 # Important optimization options
-CPPFLAGS = -O3 -ffast-math
+CPPFLAGS = -O3
 
 # Libraries
 LDFLAGS = -lm -lstdc++ -lusb-1.0
