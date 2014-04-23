@@ -13,7 +13,6 @@
 #include "ants.h"
 #include "planar_waves.h"
 #include "partner_dance.h"
-#include "lib/brightness.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -24,7 +23,6 @@ int Narrator::script(int st, PRNG &prng)
     static RingsEffect ringsA, ringsB;
     static Ants ants;
     static PartnerDance partnerDance;
-    static Brightness orderParticlesBr(orderParticles);
 
 
     switch (st) {
@@ -105,8 +103,7 @@ int Narrator::script(int st, PRNG &prng)
 
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 10;
-            orderParticlesBr.set(0.24);
-            crossfade(&orderParticlesBr, 15);
+            crossfade(&orderParticles, 15);
 
             // Run until we have square grid symmetry
             while (orderParticles.symmetry > 4) {

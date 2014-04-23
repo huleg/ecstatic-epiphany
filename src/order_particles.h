@@ -34,17 +34,15 @@ private:
     static const unsigned numParticles = 50;
     static const float relativeSize = 0.42;
     static const float intensity = 0.08;
-    static const float brightness = 1.65;
+    static const float brightness = 1.85;
     static const float stepSize = 1.0 / 300;
     static const float seedRadius = 1.5;
     static const float interactionSize = 0.6;
     static const float colorRate = 0.02;
     static const float lightSpinRate = 60.0;
-    static const float breatheRate = 30.0;
-    static const float breatheAmount = 0.12;
-    static const float angleGainLimit = 0.003;
     static const float angleGainRate = 0.3;
-    static const float angleGainSlope = 40.0;
+    static const float angleGainCenter = 0.003;
+    static const float angleGainVariation = 0.0018;
 
     unsigned seed;
     float timeDeltaRemainder;
@@ -52,7 +50,6 @@ private:
     // Calculated per-frame
     Vec3 lightVec;
     float angleGain;
-    float bias;
 
     void runStep(const FrameInfo &f);
 };
@@ -117,12 +114,8 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
 
     // Angular speed and direction
-    float n = fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 3);
-    angleGain = std::min(float(angleGainLimit), std::max(float(-angleGainLimit),
-        n * n * n * angleGainSlope));
-
-    // Bias the palette sample up/down, to cause the particles to 'breathe' a little
-    bias = sin(colorCycle * breatheRate) * breatheAmount;
+    angleGain = angleGainCenter + angleGainVariation *
+        fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 3);
 }
 
 inline void OrderParticles::runStep(const FrameInfo &f)
@@ -184,5 +177,5 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     float ambient = 1.0f;
 
     rgb = (brightness * (ambient + lambert)) * 
-        palette.sample(0.5 + 0.5 * sinf(colorCycle), bias + intensity);
+        palette.sample(0.5 + 0.5 * sinf(colorCycle), intensity);
 }
