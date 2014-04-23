@@ -10,8 +10,6 @@
 #include "order_particles.h"
 #include "precursor.h"
 #include "rings.h"
-#include "ants.h"
-#include "planar_waves.h"
 #include "partner_dance.h"
 
 
@@ -21,7 +19,6 @@ int Narrator::script(int st, PRNG &prng)
     static OrderParticles orderParticles;
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
-    static Ants ants;
     static PartnerDance partnerDance;
 
 
@@ -104,9 +101,7 @@ int Narrator::script(int st, PRNG &prng)
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 10;
             crossfade(&orderParticles, 15);
-
-            // Run until we have square grid symmetry
-            while (orderParticles.symmetry > 4) {
+            while (orderParticles.symmetry > 2) {
                 delay(prng.uniform(3, 20));
                 orderParticles.symmetry--;
             }
@@ -115,19 +110,6 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 60: {
-            // Emergent grid abstracted into intentional grid.
-            // Emergent behavior on the grid; Langton's ant
-
-            ants.reseed(prng.uniform32());
-            ants.antStepRate = 2.0;
-            crossfade(&ants, prng.uniform(5, 20));
-            ants.antStepRateDelta = prng.uniform(0.05, 0.10);
-            do { doFrame(); } while (ants.antStepRate < 60);
-            ants.antStepRateDelta = 0;
-            return 70;
-        }
-
-        case 70: {
             // Two partners, populations of particles.
             // Act one, spiralling inwards. Depression.
             // Sparks happen at the edge of the void.
@@ -142,7 +124,7 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.dampingRate = 0;
             partnerDance.interactionRate = 0;
 
-            crossfade(&partnerDance, prng.uniform(10, 15));
+            crossfade(&partnerDance, prng.uniform(5, 10));
 
             // Normal speed
             partnerDance.targetGain = 0.00005;
