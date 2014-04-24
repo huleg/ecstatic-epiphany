@@ -126,6 +126,8 @@ inline void ChaosParticles::beginFrame(const FrameInfo &f)
     }
 
     colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
+
+    ParticleEffect::beginFrame(f);
 }
 
 inline void ChaosParticles::debug(const DebugInfo &di)
@@ -216,6 +218,4 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
     if (!numLiveParticles) {
         running = false;
     }
-
-    ParticleEffect::beginFrame(f);
 }
