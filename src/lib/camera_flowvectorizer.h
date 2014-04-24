@@ -42,7 +42,7 @@ public:
     void process(const Camera::VideoChunk &chunk);
 
 private:
-    const unsigned kLinesPerStripe = Camera::kLinesPerField / 4;
+    const unsigned kLinesPerStripe = Camera::kLinesPerField / 2;
 
     cv::Mat currentFrame;
     cv::Mat prevFrame;
@@ -59,9 +59,12 @@ private:
 
 inline CameraFlowVectorizer::CameraFlowVectorizer()
 {
-    currentFrame = cv::Mat::zeros(Camera::kLinesPerField * Camera::kFields, Camera::kPixelsPerLine,  CV_8UC1);
-    prevFrame = cv::Mat::zeros(Camera::kLinesPerField * Camera::kFields, Camera::kPixelsPerLine, CV_8UC1);
-    flow = cv::Mat::zeros(Camera::kLinesPerField * Camera::kFields, Camera::kPixelsPerLine, CV_32FC2);
+    unsigned width = Camera::kPixelsPerLine;
+    unsigned height = Camera::kLinesPerField * Camera::kFields;
+
+    currentFrame = cv::Mat::zeros(height, width, CV_8UC1);
+    prevFrame = cv::Mat::zeros(height, width, CV_8UC1);
+    flow = cv::Mat::zeros(height, width, CV_32FC2);
 }
 
 static void drawOptFlowMap(const cv::Mat& flow, cv::Mat& cflowmap, int step, const cv::Scalar& color)
