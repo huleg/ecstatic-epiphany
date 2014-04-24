@@ -38,6 +38,7 @@ netstat -lutn
 passwd
 useradd -m micah
 passwd micah
+visudo
 su micah
 chsh micah /bin/bash
 usermod -G sudo micah
