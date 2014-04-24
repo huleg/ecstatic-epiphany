@@ -65,7 +65,7 @@ micah@odroid:~$ chmod 0600 ~/.ssh/authorized_keys
 
 # Log in for the first time, to accept the gateway machine's key
 
-micah@odroid:~$ ssh ei@54.196.4.174
+micah@odroid:~$ ssh ei@pixelbees.net
 
 # Download source
 
