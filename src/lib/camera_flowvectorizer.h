@@ -111,14 +111,12 @@ inline void CameraFlowVectorizer::process(const Camera::VideoChunk &chunk)
             static int i = 0;
             char s[256];
             ++i;
-            if ((i % 4) == 0) {
-                cv::Mat cflow;
-                cv::cvtColor(prevFrame, cflow, cv::COLOR_GRAY2BGR);
-                drawOptFlowMap(flow, cflow, 12, cv::Scalar(0, 255, 0));
-                snprintf(s, sizeof s, "frame%d.png", i);
-                cv::imwrite(s, cflow);
-            }
 
+            cv::Mat cflow;
+            cv::cvtColor(prevFrame, cflow, cv::COLOR_GRAY2BGR);
+            drawOptFlowMap(flow, cflow, 12, cv::Scalar(0, 255, 0));
+            snprintf(s, sizeof s, "frame%d.png", i);
+            cv::imwrite(s, cflow);
 
         }
     }
@@ -132,7 +130,20 @@ inline void CameraFlowVectorizer::calculateFlow(unsigned field, unsigned stripe)
     cv::Mat stripeNext = currentFrame.rowRange(firstRow, firstRow + kLinesPerStripe);
     cv::Mat stripeFlow = flow.rowRange(firstRow, firstRow + kLinesPerStripe);
 
-    cv::calcOpticalFlowFarneback(stripePrev, stripeNext, stripeFlow,
-        0.5, 2, 15, 1, 5, 1.1,
-        cv::OPTFLOW_USE_INITIAL_FLOW);
+    printf("SF+\n");
+    cv::calcOpticalFlowSF(stripePrev, stripeNext, stripeFlow,
+        3,      // layers
+        2,      // averaging_radius
+        4,      // max_flow
+        4.1,    // sigma_dist
+        25.5,   // sigma_color
+        18,     // postprocess_window
+        55,     // sigma_dist_fix
+        25.5,   // sigma_color_fix
+        0.35,
+        18,
+        55.0,
+        25.5,
+        10);
+    printf("SF-\n");
 }
