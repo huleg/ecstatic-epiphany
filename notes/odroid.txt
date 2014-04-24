@@ -42,6 +42,30 @@ su micah
 chsh micah /bin/bash
 usermod -G sudo micah
 
+# Set up reverse SSH tunnel for remote access.
+# This uses a remote EC2 instance as a tunnel endpoint. The remote tunnel itself is run
+# in a supervisord service set up by install.sh in EI.
+
+[ec2-user ~]$ ssh-keygen -t dsa
+[ec2-user ~]$ sudo useradd -m ei
+[ec2-user ~]$ sudo su ei
+[ei ec2-user]$ cd
+[ei ~]$ ssh-keygen -t dsa
+[ei ~]$ cat > ~/.ssh/authorized_keys
+<< Paste in ~/.ssh/id_dsa.pub from micah@odroid >>
+^D
+[ei ~]$ chmod 0600 ~/.ssh/authorized_keys
+
+# Back on the ODROID...
+
+micah@odroid:~$ cat > ~/.ssh/authorized_keys 
+<< Paste in public key from development machine >>
+micah@odroid:~$ chmod 0600 ~/.ssh/authorized_keys 
+
+# Log in for the first time, to accept the gateway machine's key
+
+micah@odroid:~$ ssh ei@54.196.4.174
+
 # Download source
 
 mkdir ~/src

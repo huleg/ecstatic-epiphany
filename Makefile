@@ -10,10 +10,11 @@ CPP_FILES = \
 UNAME := $(shell uname)
 
 # Important optimization options
-CPPFLAGS = -O3 -ffast-math
+CPPFLAGS = -O3
 
 # Libraries
 LDFLAGS = -lm -lstdc++ -lusb-1.0
+LDFLAGS += -lopencv_core -lopencv_imgproc -lopencv_video -lopencv_highgui
 
 # Debugging
 CPPFLAGS += -g -Wall
@@ -24,7 +25,7 @@ CPPFLAGS += -MMD
 
 ifeq ($(UNAME), Linux)
 	# Use a recent toolchain (Linux)
-	CXX := gcc-4.8 -std=c++11 -fpermissive
+	CXX := gcc-4.8 -std=c++11
 	CPPFLAGS += -march=native
 	LDFLAGS += -march=native
 	CPPFLAGS += -pthread

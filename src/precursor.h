@@ -29,18 +29,19 @@ public:
     virtual void debug(const DebugInfo &di);
 
     float totalSecondsOfDarkness();
+    float cycle;
 
 private:
-    static const float stepSize = 0.01;
-    static const float cycleRate = stepSize / (60 * 1);
-    static const float speed = stepSize * 0.4;
-    static const float potentialBackground = 5e-6;
-    static const float potentialSettle = 0.2;
-    static const float potentialTransfer = 0.1;
-    static const float maxBrightness = 1.2;
-    static const float maxPropagationDistance = 0.1;
-    static const float maxPropagationRate = 0.05;
-    static const float energyRateScale = 10.5;
+    static constexpr float stepSize = 0.01;
+    static constexpr float cycleRate = stepSize / (60 * 1);
+    static constexpr float speed = stepSize * 0.4;
+    static constexpr float potentialBackground = 5e-6;
+    static constexpr float potentialSettle = 0.2;
+    static constexpr float potentialTransfer = 0.1;
+    static constexpr float maxBrightness = 1.2;
+    static constexpr float maxPropagationDistance = 0.1;
+    static constexpr float maxPropagationRate = 0.05;
+    static constexpr float energyRateScale = 10.5;
 
     struct PixelState {
         PixelState();
@@ -59,7 +60,6 @@ private:
     Texture palette;
     unsigned seed;
     unsigned darkStepCount;
-    float cycle;
     float noiseCycle;
     float timeDeltaRemainder;
 

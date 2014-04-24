@@ -29,22 +29,21 @@ public:
     Texture palette;
     int symmetry;
     float colorCycle;
+    float baseAngle;
 
 private:
-    static const unsigned numParticles = 50;
-    static const float relativeSize = 0.42;
-    static const float intensity = 0.08;
-    static const float brightness = 1.65;
-    static const float stepSize = 1.0 / 300;
-    static const float seedRadius = 1.5;
-    static const float interactionSize = 0.6;
-    static const float colorRate = 0.02;
-    static const float lightSpinRate = 60.0;
-    static const float breatheRate = 30.0;
-    static const float breatheAmount = 0.12;
-    static const float angleGainLimit = 0.003;
-    static const float angleGainRate = 0.3;
-    static const float angleGainSlope = 40.0;
+    static constexpr unsigned numParticles = 70;
+    static constexpr float relativeSize = 0.42;
+    static constexpr float intensity = 0.16;
+    static constexpr float brightness = 1.35;
+    static constexpr float stepSize = 1.0 / 300;
+    static constexpr float seedRadius = 3.0;
+    static constexpr float interactionSize = 0.56;
+    static constexpr float colorRate = 0.02;
+    static constexpr float lightSpinRate = 60.0;
+    static constexpr float angleGainRate = 0.3;
+    static constexpr float angleGainCenter = 0.02;
+    static constexpr float angleGainVariation = angleGainCenter * 0.3;
 
     unsigned seed;
     float timeDeltaRemainder;
@@ -52,7 +51,6 @@ private:
     // Calculated per-frame
     Vec3 lightVec;
     float angleGain;
-    float bias;
 
     void runStep(const FrameInfo &f);
 };
@@ -113,16 +111,12 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
     // Lighting
     colorCycle += f.timeDelta * colorRate;
-    float lightAngle = fbm_noise2(colorCycle * 0.08f, seed * 1e-6, 4) * lightSpinRate;
+    float lightAngle = fbm_noise2(colorCycle * 0.08f, seed * 1e-6, 2) * lightSpinRate;
     lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
 
     // Angular speed and direction
-    float n = fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 3);
-    angleGain = std::min(float(angleGainLimit), std::max(float(-angleGainLimit),
-        n * n * n * angleGainSlope));
-
-    // Bias the palette sample up/down, to cause the particles to 'breathe' a little
-    bias = sin(colorCycle * breatheRate) * breatheAmount;
+    angleGain = angleGainCenter + angleGainVariation *
+        fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 2);
 }
 
 inline void OrderParticles::runStep(const FrameInfo &f)
@@ -158,7 +152,7 @@ inline void OrderParticles::runStep(const FrameInfo &f)
                 float angleDelta = fabsf(snapAngle - angle);
 
                 // Spin perpendicular to 'd'
-                Vec3 da = (angleGain * angleDelta / (1.0f + q2)) * Vec3( d[2], 0, -d[0] );
+                Vec3 da = angleGain * angleDelta * kernel2(q2) * Vec3( d[2], 0, -d[0] );
                 p += da;
                 hit.point -= da;
             }
@@ -184,5 +178,5 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     float ambient = 1.0f;
 
     rgb = (brightness * (ambient + lambert)) * 
-        palette.sample(0.5 + 0.5 * sinf(colorCycle), bias + intensity);
+        palette.sample(0.5 + 0.5 * sinf(colorCycle), intensity);
 }

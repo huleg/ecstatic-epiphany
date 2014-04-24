@@ -25,10 +25,10 @@ public:
     void push(Vec3 location, float radius, Vec3 displacement);
 
 private:
-    static const unsigned numParticles = 400;
-    static const float seedRadius = 4.0;
-    static const float radius = 0.2;
-    static const float intensity = 6.0;
+    static constexpr unsigned numParticles = 400;
+    static constexpr float seedRadius = 4.0;
+    static constexpr float radius = 0.2;
+    static constexpr float intensity = 6.0;
 };
 
 

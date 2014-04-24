@@ -10,10 +10,7 @@
 #include "order_particles.h"
 #include "precursor.h"
 #include "rings.h"
-#include "ants.h"
-#include "planar_waves.h"
 #include "partner_dance.h"
-#include "lib/brightness.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -22,9 +19,7 @@ int Narrator::script(int st, PRNG &prng)
     static OrderParticles orderParticles;
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
-    static Ants ants;
     static PartnerDance partnerDance;
-    static Brightness orderParticlesBr(orderParticles);
 
 
     switch (st) {
@@ -35,6 +30,18 @@ int Narrator::script(int st, PRNG &prng)
 
         case 0: {
             return 10;
+        }
+
+        case 1: {
+            // Special state; precursor only (sleep mode)            
+            precursor.reseed(prng.uniform32());
+            crossfade(&precursor, 1);
+            precursor.resetCycle();
+            while (precursor.cycle < 1.0f) {
+                doFrame();
+            }
+            delay(prng.uniform(1, 45));
+            return 1;
         }
 
         case 10: {
@@ -105,11 +112,8 @@ int Narrator::script(int st, PRNG &prng)
 
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 10;
-            orderParticlesBr.set(0.24);
-            crossfade(&orderParticlesBr, 15);
-
-            // Run until we have square grid symmetry
-            while (orderParticles.symmetry > 4) {
+            crossfade(&orderParticles, 15);
+            while (orderParticles.symmetry > 2) {
                 delay(prng.uniform(3, 20));
                 orderParticles.symmetry--;
             }
@@ -118,19 +122,6 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 60: {
-            // Emergent grid abstracted into intentional grid.
-            // Emergent behavior on the grid; Langton's ant
-
-            ants.reseed(prng.uniform32());
-            ants.antStepRate = 2.0;
-            crossfade(&ants, prng.uniform(5, 20));
-            ants.antStepRateDelta = prng.uniform(0.05, 0.10);
-            do { doFrame(); } while (ants.antStepRate < 60);
-            ants.antStepRateDelta = 0;
-            return 70;
-        }
-
-        case 70: {
             // Two partners, populations of particles.
             // Act one, spiralling inwards. Depression.
             // Sparks happen at the edge of the void.
@@ -145,7 +136,7 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.dampingRate = 0;
             partnerDance.interactionRate = 0;
 
-            crossfade(&partnerDance, prng.uniform(10, 15));
+            crossfade(&partnerDance, prng.uniform(5, 10));
 
             // Normal speed
             partnerDance.targetGain = 0.00005;

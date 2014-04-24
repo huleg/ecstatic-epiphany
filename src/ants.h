@@ -27,17 +27,17 @@ public:
     float colorParam;
 
 private:
-    static const unsigned numAnts = 1;
-    static const float stepRate = 200;
-    static const float noiseMax = 1.5;
-    static const float noiseFadeRate = 0.007;
-    static const float colorFadeRate = 0.015;
-    static const float angleRate = 10.0;
-    static const float colorParamRate = 0.29;
-    static const float spiralRate = 0.08;
-    static const float pushRadius = 0.3;
-    static const float pushAmount = 0.0006;
-    static const float sinkRate = 0.0001;
+    static constexpr unsigned numAnts = 1;
+    static constexpr float stepRate = 200;
+    static constexpr float noiseMax = 1.5;
+    static constexpr float noiseFadeRate = 0.007;
+    static constexpr float colorFadeRate = 0.015;
+    static constexpr float angleRate = 10.0;
+    static constexpr float colorParamRate = 0.29;
+    static constexpr float spiralRate = 0.08;
+    static constexpr float pushRadius = 0.3;
+    static constexpr float pushAmount = 0.0006;
+    static constexpr float sinkRate = 0.0001;
 
     struct Ant {
         int x, y, direction;

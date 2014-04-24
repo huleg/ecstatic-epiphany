@@ -10,8 +10,7 @@
 
 Narrator::Narrator()
 {
-    tap.setEffect(&mixer);
-    runner.setEffect(&tap);
+    runner.setEffect(&mixer);
 }
 
 void Narrator::run()
