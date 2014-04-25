@@ -1,7 +1,6 @@
 /*
- * Camera Flow Vectorizer - an input device using optical flow
- * vector clustering for low-latency non-location-specific motion
- * capture.
+ * Camera Flow - an object using sparse optical flow for
+ * low-latency non-location-specific motion capture with a camera.
  *
  * Copyright (c) 2014 Micah Elizabeth Scott <micah@scanlime.org>
  *
@@ -31,20 +30,23 @@
 
 #include <opencv2/opencv.hpp>
 #include <stdio.h>
+#include "effect.h"
 #include "camera.h"
 
 
-class CameraFlowVectorizer {
+class CameraFlowCapture;
+
+
+class CameraFlowAnalyzer {
 public:
-    CameraFlowVectorizer();
+    CameraFlowAnalyzer();
 
     // Process another chunk of video
     void process(const Camera::VideoChunk &chunk);
 
-    // Overall optical flow estimate
-    cv::Point2f overall;
-
 private:
+    friend class CameraFlowCapture;
+
     static constexpr bool kDebug = false;
     static constexpr unsigned kMaxPoints = 50;
     static constexpr unsigned kDecimate = 3;
@@ -65,13 +67,37 @@ private:
         cv::Mat frames[2];
         std::vector<cv::Point2f> points;
         std::vector<PointInfo> pointInfo;
-        cv::Point2f totalNumerator;
-        float totalDenominator;
     };
 
     Field fields[Camera::kFields];
 
+    // Optical flow integrators, in 16:16 fixed point
+    uint32_t integratorX, integratorY;
+
     void calculateFlow(Field &f);
+};
+
+
+class CameraFlowCapture {
+public:
+    CameraFlowCapture(const CameraFlowAnalyzer &analyzer);
+
+    // Capture the current flow position, set 'x' and 'y'
+    void capture();
+
+    // Set the last captured flow position to be the origin
+    void origin();
+
+    // Raw x/y in pixels
+    Vec2 pixels;
+
+    // Model coordinates (arbitrary units)
+    Vec3 model;
+
+private:
+    const CameraFlowAnalyzer &analyzer;
+    uint32_t captureX, captureY;
+    uint32_t originX, originY;
 };
 
 
@@ -80,8 +106,10 @@ private:
  *****************************************************************************************/
 
 
-inline CameraFlowVectorizer::CameraFlowVectorizer()
+inline CameraFlowAnalyzer::CameraFlowAnalyzer()
 {
+    integratorX = integratorY = 0;
+
     for (unsigned i = 0; i < Camera::kFields; i++) {
         for (unsigned j = 0; j < 2; j++) {
             fields[i].frames[j] = cv::Mat::zeros(Camera::kLinesPerField, Camera::kPixelsPerLine / kDecimate, CV_8UC1);
@@ -90,7 +118,7 @@ inline CameraFlowVectorizer::CameraFlowVectorizer()
     }
 }
 
-inline void CameraFlowVectorizer::process(const Camera::VideoChunk &chunk)
+inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
 {
     // Store decimated luminance values only
 
@@ -123,7 +151,7 @@ inline void CameraFlowVectorizer::process(const Camera::VideoChunk &chunk)
     }
 }
 
-inline void CameraFlowVectorizer::calculateFlow(Field &f)
+inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 {            
     /*
      * Each NTSC field has its own independent flow calculator, so that we can react to
@@ -261,19 +289,13 @@ inline void CameraFlowVectorizer::calculateFlow(Field &f)
         f.points.resize(j);
         f.pointInfo.resize(j);
 
-        // Update total flow for this field
-        f.totalNumerator = numerator;
-        f.totalDenominator = denominator;
-
-        // Update overall flow from both fields
-        cv::Point2f overallNumerator = fields[0].totalNumerator + fields[1].totalNumerator;
-        unsigned overallDenominator = fields[0].totalDenominator + fields[1].totalDenominator;
-        overall.x = overallDenominator ? overallNumerator.x / overallDenominator : 0;
-        overall.y = overallDenominator ? overallNumerator.y / overallDenominator : 0;
+        // Update integrator using this field's data
+        integratorX += int32_t(numerator.x * 0x10000 / denominator);
+        integratorY += int32_t(numerator.y * 0x10000 / denominator);
 
         if (kDebug) {
-            fprintf(stderr, "flow: Tracking %d points, overall (%f, %f) denominator=%f\n",
-                f.points.size(), overall.x, overall.y, denominator);
+            fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) denominator=%f\n",
+                f.points.size(), integratorX, integratorY, denominator);
         }
     }
 
@@ -294,4 +316,29 @@ inline void CameraFlowVectorizer::calculateFlow(Field &f)
     }
 
     std::swap(f.frames[0], f.frames[1]);
+}
+
+inline CameraFlowCapture::CameraFlowCapture(const CameraFlowAnalyzer &analyzer)
+    : analyzer(analyzer)
+{
+    originX = analyzer.integratorX;
+    originY = analyzer.integratorY;
+    capture();
+}       
+
+inline void CameraFlowCapture::origin()
+{
+    originX = captureX;
+    originY = captureY;
+}
+
+inline void CameraFlowCapture::capture()
+{
+    captureX = analyzer.integratorX;
+    captureY = analyzer.integratorY;
+
+    pixels[0] = (int32_t)(captureX - originX) / float(0x10000);
+    pixels[1] = (int32_t)(captureY - originY) / float(0x10000);
+
+    model = Vec3(pixels[0], 0, -pixels[1]);
 }

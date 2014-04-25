@@ -19,16 +19,21 @@
 #include "lib/effect.h"
 #include "lib/noise.h"
 #include "lib/texture.h"
+#include "lib/camera_flow.h"
+
 
 class RingsEffect : public Effect
 {
 public:
-    RingsEffect() {
+    RingsEffect(CameraFlowAnalyzer& flow)
+        : flow(flow)
+    {
         reseed();
     }
 
     static constexpr float xyzSpeed = 0.2;
     static constexpr float xyzScale = 0.3;
+    static constexpr float flowScale = 0.01;
     static constexpr float wSpeed = 0.1;
     static constexpr float wRate = 0.015;
     static constexpr float ringScale = 1.5;
@@ -45,6 +50,8 @@ public:
     static constexpr float initialThreshold = -1.0f;
     static constexpr unsigned brightnessOctaves = 7;
     static constexpr unsigned colorOctaves = 3;
+
+    CameraFlowCapture flow;
 
     // Sample colors along a curved path through a texture
     Texture palette;
@@ -66,6 +73,7 @@ public:
     virtual void beginFrame(const FrameInfo &f)
     {
         timer += f.timeDelta;
+        flow.capture();
 
         spacing = sq(0.5 + noise2(timer * ringScaleRate, 1.5)) * ringScale;
 
@@ -103,7 +111,7 @@ public:
     virtual void shader(Vec3& rgb, const PixelInfo &p) const
     {
         // Noise sampling location
-        Vec4 s = Vec4(p.point * xyzScale, seed) + d;
+        Vec4 s = Vec4(p.point * xyzScale + flow.model * flowScale, seed) + d;
 
         // Ring function, displaces the noise sampling coordinate
         float dist = len(p.point - center);
@@ -221,6 +229,9 @@ public:
 
     void reseed()
     {
+        flow.capture();
+        flow.origin();
+
         // Get okay seed mixing even with depressing rand() implementations
         srand(time(0));
         for (int i = 0; i < 50; i++) {
