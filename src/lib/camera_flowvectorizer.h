@@ -66,7 +66,7 @@ private:
         std::vector<cv::Point2f> points;
         std::vector<PointInfo> pointInfo;
         cv::Point2f totalNumerator;
-        unsigned totalDenominator;
+        float totalDenominator;
     };
 
     Field fields[Camera::kFields];
@@ -209,7 +209,7 @@ inline void CameraFlowVectorizer::calculateFlow(Field &f)
         std::vector<float> err;
 
         cv::Point2f numerator = cv::Point2f(0, 0);
-        unsigned denominator = 0;
+        float denominator = 0;
 
         cv::calcOpticalFlowPyrLK(f.frames[0], f.frames[1], f.points,
             points, status, err, winSize, 3, termcrit, 0, kMinEigThreshold);
@@ -241,11 +241,12 @@ inline void CameraFlowVectorizer::calculateFlow(Field &f)
                     f.points[j] = nextLocation;
                     j++;
 
-                    // Add to overall flow vector, using point age as a weight
+                    // Add to overall flow vector, using the point age and error to weight it
                     if (info.age > kPointTrialPeriod) {
-                        numerator.x += motion.x * info.age;
-                        numerator.y += motion.y * info.age;
-                        denominator += info.age;
+                        float weight = (info.age - kPointTrialPeriod) / err[i];
+                        numerator.x += motion.x * weight;
+                        numerator.y += motion.y * weight;
+                        denominator += weight;
                     }
 
                 } else if (kDebug) {
@@ -271,24 +272,25 @@ inline void CameraFlowVectorizer::calculateFlow(Field &f)
         overall.y = overallDenominator ? overallNumerator.y / overallDenominator : 0;
 
         if (kDebug) {
-            fprintf(stderr, "flow: Tracking %d points, overall (%f, %f) denominator=%d\n",
+            fprintf(stderr, "flow: Tracking %d points, overall (%f, %f) denominator=%f\n",
                 f.points.size(), overall.x, overall.y, denominator);
         }
     }
 
     if (kDebug) {
         // Debug screenshots
-        static int num = 0;
-        if ((++num % 10) == 0) {
-            for (unsigned i = 0; i < f.points.size(); ++i) {
-                int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(f.frames[1], f.points[i], 3, cv::Scalar(l));
-            }
 
-            char fn[256];
-            snprintf(fn, sizeof fn, "frame-%04d.png", num);
-            cv::imwrite(fn, f.frames[1]);
+        static int num = 0;
+        ++num;
+
+        for (unsigned i = 0; i < f.points.size(); ++i) {
+            int l = std::min<int>(255, f.pointInfo[i].age);
+            cv::circle(f.frames[1], f.points[i], 3, cv::Scalar(l));
         }
+
+        char fn[256];
+        snprintf(fn, sizeof fn, "frame-%04d.png", num);
+        cv::imwrite(fn, f.frames[1]);
     }
 
     std::swap(f.frames[0], f.frames[1]);
