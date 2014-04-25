@@ -11,6 +11,7 @@
 #include "precursor.h"
 #include "rings.h"
 #include "partner_dance.h"
+#include "vision_debug.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -20,9 +21,12 @@ int Narrator::script(int st, PRNG &prng)
     static Precursor precursor;
     static RingsEffect ringsA, ringsB;
     static PartnerDance partnerDance;
-
+    static VisionDebug visionDebug(flow);
 
     switch (st) {
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // Defaults
 
         default: {
             return 0;
@@ -31,6 +35,9 @@ int Narrator::script(int st, PRNG &prng)
         case 0: {
             return 10;
         }
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // Debug states
 
         case 1: {
             // Special state; precursor only (sleep mode)            
@@ -43,6 +50,18 @@ int Narrator::script(int st, PRNG &prng)
             delay(prng.uniform(1, 45));
             return 1;
         }
+
+        case 2: {
+            // Debugging the computer vision system
+            crossfade(&visionDebug, 1);
+            while (true) {
+                doFrame();
+            }
+            return 2;
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // Normal states
 
         case 10: {
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.

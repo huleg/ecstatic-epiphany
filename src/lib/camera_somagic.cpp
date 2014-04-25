@@ -131,6 +131,7 @@ struct alg1_video_state_t {
 	int active_line_count;
 	int vblank_found;
 	int field;
+	int frame_count;
 
 	enum sync_state state;
 };
@@ -406,6 +407,7 @@ static void alg1_process(struct alg1_video_state_t *vs, unsigned char *buffer, i
 						vs->vblank_found++;
 						if (vs->active_line_count > (lines_per_field - 8)) {
 							vs->vblank_found = 0;
+							vs->frame_count = std::min<int>(INT_MAX - 1, vs->frame_count) + 1;
 						}
 						vs->active_line_count = 0;
 					} else {
@@ -424,17 +426,21 @@ static void alg1_process(struct alg1_video_state_t *vs, unsigned char *buffer, i
 					vs->line_remaining -= skip;
 					next += skip ;
 				} else {
-					VideoChunk chunk;
 					wrote = std::min<unsigned>(end - next, vs->line_remaining);
 
-					chunk.data = next;
-					chunk.byteCount = wrote;
-					chunk.byteOffset = kBytesPerLine - vs->line_remaining;
-					chunk.line = vs->active_line_count;
-					chunk.field = vs->field;
+					if (vs->frame_count > 2) {
+						// We're definitely synchronized; process this video data
 
-					if (chunk.line < kLinesPerField) {
-						videoCallback(chunk, videoCallbackContext);
+						VideoChunk chunk;
+						chunk.data = next;
+						chunk.byteCount = wrote;
+						chunk.byteOffset = kBytesPerLine - vs->line_remaining;
+						chunk.line = vs->active_line_count;
+						chunk.field = vs->field;
+
+						if (chunk.line < kLinesPerField) {
+							videoCallback(chunk, videoCallbackContext);
+						}
 					}
 
 					vs->line_remaining -= wrote;
@@ -578,6 +584,9 @@ static int somagic_capture()
 
 		if (pending_requests == 0) {
 			fprintf(stderr, "camera: buffer underrun (video processing taking too long!)\n");
+		
+			// Discard synchronization state
+			memset(&alg1_vs, 0, sizeof alg1_vs);
 		}
 
 		while (resubmit_bitmask) {

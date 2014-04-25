@@ -12,8 +12,7 @@
 #include "lib/effect_runner.h"
 #include "lib/effect_tap.h"
 #include "lib/prng.h"
-
-// #include "visual_memory.h"
+#include "lib/camera_flowvectorizer.h"
 
 
 class Narrator
@@ -34,7 +33,7 @@ public:
 
     void run();
 
-    // VisualMemory vismem;
+    CameraFlowVectorizer flow;
     NEffectRunner runner;
     EffectMixer mixer;
 
