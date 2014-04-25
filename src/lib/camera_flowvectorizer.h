@@ -133,17 +133,17 @@ inline void CameraFlowVectorizer::calculateFlow(unsigned field, unsigned stripe)
     printf("SF+\n");
     cv::calcOpticalFlowSF(stripePrev, stripeNext, stripeFlow,
         3,      // layers
-        2,      // averaging_radius
+        2,      // averaging_block_size
         4,      // max_flow
         4.1,    // sigma_dist
         25.5,   // sigma_color
-        18,     // postprocess_window
+        4,      // postprocess_window
         55,     // sigma_dist_fix
         25.5,   // sigma_color_fix
-        0.35,
-        18,
-        55.0,
-        25.5,
-        10);
+        0.35,   // occ_thr
+        4,      // upscale_averaging_radius
+        55.0,   // upscale_sigma_dist
+        25.5,   // upscale_sigma_color
+        10);    // speed_up_thr
     printf("SF-\n");
 }
