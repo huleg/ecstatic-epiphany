@@ -576,6 +576,10 @@ static int somagic_capture()
 	// Keep running until we have no transfers and nothing to resubmit
 	while (pending_requests > 0 || resubmit_bitmask != 0) {
 
+		if (pending_requests == 0) {
+			fprintf(stderr, "camera: buffer underrun (video processing taking too long!)\n");
+		}
+
 		while (resubmit_bitmask) {
 			int i = ffs(resubmit_bitmask) - 1;
 			resubmit_bitmask &= ~(1 << i);
