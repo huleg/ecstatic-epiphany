@@ -33,13 +33,16 @@ public:
     float totalSecondsOfDarkness();
 
 private:
-    static constexpr float flowFilterRate = 0.02;
     static constexpr float launchProbability = 0.1;
+    static constexpr float flowScale = 0.04;
     static constexpr float stepRate = 200.0;
+    static constexpr float particleDuration = 4.0;
     static constexpr float noiseRate = 0.1;
-    static constexpr float ledPull = 0.01;
-    static constexpr float blockPull = 0.00001;
-    static constexpr float radius = 0.08;
+    static constexpr float ledPull = 0.005;
+    static constexpr float blockPull = 0.0001;
+    static constexpr float damping = 0.005;
+    static constexpr float visibleRadius = 0.08;
+    static constexpr float interactionRadius = 0.15;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -88,8 +91,12 @@ inline float Precursor::totalSecondsOfDarkness()
 
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
-    flow.capture(flowFilterRate);
+    // Capture impulse, transfer to all particles
+    flow.capture(1.0);
     flow.origin();
+    for (unsigned i = 0; i < appearance.size(); i++) {
+        appearance[i].point += flow.model * flowScale;
+    }
 
     GridStructure grid;
     grid.init(f.pixels);
@@ -112,7 +119,6 @@ inline void Precursor::beginFrame(const FrameInfo &f)
 
 inline void Precursor::debug(const DebugInfo &di)
 {
-    flow.capture();
     fprintf(stderr, "\t[precursor] particles = %d\n", (int)appearance.size());
     fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
@@ -131,7 +137,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
                          prng.uniform(f.modelMin[1], f.modelMax[1]),
                          prng.uniform(f.modelMin[2], f.modelMax[2]) );
 
-        pd.velocity = flow.model;
+        pd.velocity = Vec3(0, 0, 0);
         pd.time = 0;
 
         appearance.push_back(pa);
@@ -147,7 +153,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         // Update simulation
 
         pa.point += pd.velocity;
-        pd.time += 1.0 / stepRate;
+        pd.time += 1.0f / stepRate / particleDuration;
 
         if (pd.time >= 1.0f) {
             // Discard
@@ -155,15 +161,15 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         }
 
         pa.intensity = sq(std::max(0.0f, sinf(pd.time * M_PI)));
-        pa.radius = radius;
+        pa.radius = visibleRadius;
 
         // Pull toward nearby LEDs, so the particles kinda-follow the grid
 
         ResultSet_t hits;
-        f.radiusSearch(hits, pa.point, pa.radius);
+        f.radiusSearch(hits, pa.point, interactionRadius);
         for (unsigned h = 0; h < hits.size(); h++) {
             const PixelInfo &hit = f.pixels[hits[h].first];
-            float q2 = hits[h].second / sq(pa.radius);
+            float q2 = hits[h].second / sq(interactionRadius);
             if (hit.isMapped() && q2 < 1.0f) {
 
                 float k = kernel2(q2);
@@ -175,7 +181,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
                 // Pull along line to grid square center
                 Vec2 b = blockPull * k * blockXY;
 
-                pd.velocity += d + Vec3(b[0], 0, b[1]);
+                pd.velocity = pd.velocity * (1.0 - damping) + d - Vec3(b[0], 0, b[1]);
             }
         }
 

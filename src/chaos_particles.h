@@ -122,7 +122,7 @@ inline void ChaosParticles::beginFrame(const FrameInfo &f)
     }
 
     // Capture the impulse between the last frame and this one
-    flow.capture();
+    flow.capture(1.0);
     flow.origin();
 
     float t = f.timeDelta + timeDeltaRemainder;
