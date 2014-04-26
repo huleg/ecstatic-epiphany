@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "nanoflann.h"  // Tiny KD-tree library
 #include "svl/SVL.h"
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
@@ -127,6 +128,41 @@ public:
         Vec3 modelCenter() const;
         Vec3 modelSize() const;
         Real distanceOutsideBoundingBox(Vec3 p) const;
+
+        // K-D Tree, for fast spatial lookups
+
+        typedef nanoflann::KDTreeSingleIndexAdaptor<
+            nanoflann::L2_Simple_Adaptor< Real, FrameInfo >,
+            FrameInfo, 3> IndexTree;
+
+        IndexTree tree;
+
+        // Adapter functions for the K-D tree implementation
+
+        inline size_t kdtree_get_point_count() const {
+            return pixels.size();
+        }
+
+        inline Real kdtree_distance(const Real *p1, const size_t idx_p2, size_t size) const {
+            Real d0 = p1[0] - pixels[idx_p2].point[0];
+            Real d1 = p1[1] - pixels[idx_p2].point[1];
+            Real d2 = p1[2] - pixels[idx_p2].point[2];
+            return d0*d0 + d1*d1 + d2*d2;
+        }
+
+        Real kdtree_get_pt(const size_t idx, int dim) const {
+            return pixels[idx].point[dim];
+        }
+
+        template <class BBOX> bool kdtree_get_bbox(BBOX &bb) const {
+            bb[0].low  = modelMin[0];
+            bb[1].low  = modelMin[1];
+            bb[2].low  = modelMin[2];
+            bb[0].high = modelMax[0];
+            bb[1].high = modelMax[1];
+            bb[2].high = modelMax[2];
+            return true;
+        }
     };
 
     // Information passed to debug() callbacks
@@ -194,7 +230,8 @@ inline Vec3 Effect::PixelInfo::getVec3(const char *attribute) const
 }
 
 inline Effect::FrameInfo::FrameInfo()
-    : timeDelta(0) {}
+    : timeDelta(0), tree(3, *this)
+{}
 
 inline void Effect::FrameInfo::init(const rapidjson::Value &layout)
 {
@@ -224,6 +261,10 @@ inline void Effect::FrameInfo::init(const rapidjson::Value &layout)
     for (unsigned i = 0; i < pixels.size(); i++) {
         modelDiameter = std::max(modelDiameter, len(pixels[i].point - modelCenter()));
     }
+
+    // Build K-D Tree index, for fast spatial lookups later
+
+    tree.buildIndex();
 }
 
 inline Vec3 Effect::FrameInfo::modelCenter() const
