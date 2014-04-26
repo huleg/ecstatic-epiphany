@@ -19,7 +19,7 @@
 class OrderParticles : public ParticleEffect
 {
 public:
-    OrderParticles();
+    OrderParticles(CameraFlowAnalyzer& flow);
     void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo &f);
@@ -32,7 +32,12 @@ public:
     float baseAngle;
 
 private:
-    static constexpr unsigned numParticles = 70;
+    static constexpr unsigned numParticles = 60;
+    static constexpr float damping = 0.0002;
+    static constexpr float repelGain = 0.003;
+    static constexpr float flowFilterRate = 0.05;
+    static constexpr float flowScale = 0.012;
+    static constexpr float flowLightAngleRate = 0.03;
     static constexpr float relativeSize = 0.42;
     static constexpr float intensity = 0.16;
     static constexpr float brightness = 1.35;
@@ -40,16 +45,18 @@ private:
     static constexpr float seedRadius = 3.0;
     static constexpr float interactionSize = 0.56;
     static constexpr float colorRate = 0.02;
-    static constexpr float lightSpinRate = 60.0;
     static constexpr float angleGainRate = 0.3;
     static constexpr float angleGainCenter = 0.02;
     static constexpr float angleGainVariation = angleGainCenter * 0.3;
+
+    CameraFlowCapture flow;
 
     unsigned seed;
     float timeDeltaRemainder;
 
     // Calculated per-frame
     Vec3 lightVec;
+    float lightAngle;
     float angleGain;
 
     void runStep(const FrameInfo &f);
@@ -61,8 +68,9 @@ private:
  *****************************************************************************************/
 
 
-inline OrderParticles::OrderParticles()
+inline OrderParticles::OrderParticles(CameraFlowAnalyzer& flow)
     : palette("data/mars-palette.png"),
+      flow(flow),
       timeDeltaRemainder(0)
 {
     reseed(42);
@@ -70,7 +78,11 @@ inline OrderParticles::OrderParticles()
 
 inline void OrderParticles::reseed(unsigned seed)
 {
+    flow.capture();
+    flow.origin();
+
     symmetry = 1000;
+    lightAngle = 0;
 
     appearance.resize(numParticles);
 
@@ -88,6 +100,9 @@ inline void OrderParticles::reseed(unsigned seed)
 
 inline void OrderParticles::beginFrame(const FrameInfo &f)
 {    
+    flow.capture(flowFilterRate);
+    flow.origin();
+
     // Rebuild index
     ParticleEffect::beginFrame(f);
 
@@ -99,6 +114,9 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     for (unsigned i = 0; i < appearance.size(); i++) {
         appearance[i].intensity = intensity;
         appearance[i].radius = f.modelDiameter * relativeSize;
+
+        // Viewpoint adjustment
+        appearance[i].point -= flow.model * flowScale;
     }
 
     while (steps > 0) {
@@ -111,7 +129,7 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
     // Lighting
     colorCycle += f.timeDelta * colorRate;
-    float lightAngle = fbm_noise2(colorCycle * 0.08f, seed * 1e-6, 2) * lightSpinRate;
+    lightAngle += flow.model[0] * flowLightAngleRate;
     lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
 
     // Angular speed and direction
@@ -121,6 +139,8 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
 inline void OrderParticles::runStep(const FrameInfo &f)
 {
+    lightAngle *= 1.0f - damping;
+
     // Particle interactions
     for (unsigned i = 0; i < appearance.size(); i++) {
 
@@ -152,11 +172,18 @@ inline void OrderParticles::runStep(const FrameInfo &f)
                 float angleDelta = fabsf(snapAngle - angle);
 
                 // Spin perpendicular to 'd'
-                Vec3 da = angleGain * angleDelta * kernel2(q2) * Vec3( d[2], 0, -d[0] );
+                Vec3 da = angleGain * angleDelta * Vec3( d[2], 0, -d[0] );
+
+                // Repel
+                da -= repelGain * d;
+
+                da *= kernel2(q2);
                 p += da;
                 hit.point -= da;
             }
         }
+
+        p *= 1.0f - damping;
     }
 }
 
@@ -164,6 +191,7 @@ inline void OrderParticles::debug(const DebugInfo &di)
 {
     fprintf(stderr, "\t[order-particles] symmetry = %d\n", symmetry);
     fprintf(stderr, "\t[order-particles] colorCycle = %f\n", colorCycle);
+    fprintf(stderr, "\t[order-particles] lightAngle = %f\n", lightAngle);
 }
 
 inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
@@ -174,8 +202,8 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     Vec3 gradient = sampleIntensityGradient(p.point);
     float gradientMagnitude = len(gradient);
     Vec3 normal = gradientMagnitude ? (gradient / gradientMagnitude) : Vec3(0, 0, 0);
-    float lambert = 0.4f * std::max(0.0f, dot(normal, lightVec));
-    float ambient = 1.0f;
+    float lambert = 0.7f * std::max(0.0f, dot(normal, lightVec));
+    float ambient = 0.9f;
 
     rgb = (brightness * (ambient + lambert)) * 
         palette.sample(0.5 + 0.5 * sinf(colorCycle), intensity);

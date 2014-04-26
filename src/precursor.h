@@ -15,12 +15,13 @@
 #include "lib/prng.h"
 #include "lib/texture.h"
 #include "lib/noise.h"
+#include "lib/camera_flow.h"
 
 
 class Precursor : public Effect
 {
 public:
-    Precursor();
+    Precursor(CameraFlowAnalyzer& flow);
     void reseed(unsigned seed);
     void resetCycle();
 
@@ -56,6 +57,8 @@ private:
         float strength;         // From timeAxis
     };
 
+    CameraFlowCapture flow;
+
     std::vector<PixelState> pixelState;
     Texture palette;
     unsigned seed;
@@ -76,14 +79,19 @@ private:
  *****************************************************************************************/
 
 
-inline Precursor::Precursor()
-    : palette("data/darkmatter-palette.png"), seed(0), timeDeltaRemainder(0)
+inline Precursor::Precursor(CameraFlowAnalyzer& flow)
+    : flow(flow),
+      palette("data/darkmatter-palette.png"),
+      seed(0),
+      timeDeltaRemainder(0)
 {
     reseed(42);
 }
 
 inline void Precursor::reseed(unsigned seed)
 {
+    flow.capture();
+    flow.origin();
     pixelState.clear();
     this->seed = seed;
     resetCycle();
@@ -237,6 +245,8 @@ inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 
 inline void Precursor::debug(const DebugInfo &di)
 {
+    flow.capture();
+    fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[precursor] cycle = %f\n", cycle);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[precursor] propagationRate = %f\n", propagationRate);

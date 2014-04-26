@@ -18,11 +18,11 @@ int Narrator::script(int st, PRNG &prng)
 {
     static ChaosParticles chaosA(flow);
     static ChaosParticles chaosB(flow);
-    static OrderParticles orderParticles;
-    static Precursor precursor;
+    static OrderParticles orderParticles(flow);
+    static Precursor precursor(flow);
     static RingsEffect ringsA(flow);
     static RingsEffect ringsB(flow);
-    static PartnerDance partnerDance;
+    static PartnerDance partnerDance(flow);
     static VisionDebug visionDebug(flow);
 
     switch (st) {

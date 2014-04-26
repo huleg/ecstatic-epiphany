@@ -18,7 +18,7 @@
 class PartnerDance : public ParticleEffect
 {
 public:
-    PartnerDance();
+    PartnerDance(CameraFlowAnalyzer& flow);
     void reseed(uint32_t seed);
 
     virtual void beginFrame(const FrameInfo &f);
@@ -57,6 +57,8 @@ private:
         Vec2 velocity;
     };
 
+    CameraFlowCapture flow;
+
     std::vector<ParticleDynamics> dynamics;
     float timeDeltaRemainder;
     float noiseCycle;
@@ -72,8 +74,13 @@ private:
  *****************************************************************************************/
 
 
-inline PartnerDance::PartnerDance()
-    : targetGain(0), targetSpin(0), damping(0), dampingRate(0), interactionRate(0),
+inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow)
+    : targetGain(0),
+      targetSpin(0),
+      damping(0),
+      dampingRate(0),
+      interactionRate(0),
+      flow(flow),
       timeDeltaRemainder(0)
 {
     // Sky at (0,0), lightness along +X, darkness along +Y. Fire encircles the void at (1,1)
@@ -84,6 +91,9 @@ inline PartnerDance::PartnerDance()
 
 inline void PartnerDance::reseed(uint32_t seed)
 {
+    flow.capture();
+    flow.origin();
+
     PRNG prng;
     prng.seed(seed);
 
