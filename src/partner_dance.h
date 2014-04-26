@@ -182,11 +182,8 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             v += normal * targetSpin;
 
             // Particle interactions
-            std::vector<std::pair<size_t, Real> > hits;
-            nanoflann::SearchParams params;
-            params.sorted = false;
-            float searchRadius2 = sq(interactionRadius);
-            index.tree.radiusSearch(&pa->point[0], searchRadius2, hits, params);
+            ResultSet_t hits;
+            index.radiusSearch(hits, pa->point, interactionRadius);
 
             for (unsigned i = 0; i < hits.size(); i++) {
                 unsigned hitDancer = hits[i].first / particlesPerDancer;
@@ -196,7 +193,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
                 }
 
                 // Check distance
-                float q2 = hits[i].second / searchRadius2;
+                float q2 = hits[i].second / sq(interactionRadius);
                 if (q2 >= 1.0f) {
                     continue;
                 }

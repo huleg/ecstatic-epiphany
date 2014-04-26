@@ -69,14 +69,11 @@ inline void DarkFollowers::snap(Vec3 location, float rate)
 inline void DarkFollowers::push(Vec3 location, float radius, Vec3 displacement)
 {
     std::vector<std::pair<size_t, Real> > hits;
-    nanoflann::SearchParams params;
-    params.sorted = false;
-    float searchRadius2 = sq(radius);
-    unsigned numHits = index.tree.radiusSearch(&location[0], searchRadius2, hits, params);
+    index.radiusSearch(hits, location, radius);
 
     for (unsigned i = 0; i < numHits; i++) {
         ParticleAppearance &hit = appearance[hits[i].first];
-        float q2 = hits[i].second / searchRadius2;
+        float q2 = hits[i].second / sq(radius);
         if (q2 < 1.0f) {
             hit.point += displacement * kernel2(q2);
         }

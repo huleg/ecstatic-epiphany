@@ -151,10 +151,10 @@ inline void OrderParticles::runStep(const FrameInfo &f)
         nanoflann::SearchParams params;
         params.sorted = false;
 
-        float searchRadius2 = sq(interactionSize * f.modelDiameter);
-        unsigned numHits = index.tree.radiusSearch(&p[0], searchRadius2, hits, params);
+        float searchRadius = interactionSize * f.modelDiameter;
+        index.radiusSearch(hits, p, searchRadius);
 
-        for (unsigned i = 0; i < numHits; i++) {
+        for (unsigned i = 0; i < hits.size(); i++) {
             if (hits[i].first <= i) {
                 // Only count each interaction once
                 continue;
@@ -162,7 +162,7 @@ inline void OrderParticles::runStep(const FrameInfo &f)
 
             // Check distance
             ParticleAppearance &hit = appearance[hits[i].first];
-            float q2 = hits[i].second / searchRadius2;
+            float q2 = hits[i].second / sq(searchRadius);
             if (q2 < 1.0f) {
                 // These particles influence each other
                 Vec3 d = hit.point - p;

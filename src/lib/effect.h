@@ -135,6 +135,10 @@ public:
             nanoflann::L2_Simple_Adaptor< Real, FrameInfo >,
             FrameInfo, 3> IndexTree;
 
+        typedef std::vector<std::pair<size_t, Real> > ResultSet_t;
+
+        void radiusSearch(ResultSet_t& hits, Vec3 point, float radius) const;
+
         IndexTree tree;
 
         // Adapter functions for the K-D tree implementation
@@ -287,6 +291,13 @@ inline Real Effect::FrameInfo::distanceOutsideBoundingBox(Vec3 p) const
     }
 
     return d;
+}
+
+inline void Effect::FrameInfo::radiusSearch(ResultSet_t& hits, Vec3 point, float radius) const
+{
+    nanoflann::SearchParams params;
+    params.sorted = false;
+    tree.radiusSearch(&point[0], radius * radius, hits, params);
 }
 
 inline Effect::DebugInfo::DebugInfo(EffectRunner &runner)

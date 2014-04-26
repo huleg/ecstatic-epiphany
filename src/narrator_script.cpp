@@ -45,11 +45,9 @@ int Narrator::script(int st, PRNG &prng)
             // Special state; precursor only (sleep mode)            
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 1);
-            precursor.resetCycle();
-            while (precursor.cycle < 1.0f) {
+            while (true) {
                 doFrame();
             }
-            delay(prng.uniform(1, 45));
             return 1;
         }
 
@@ -70,13 +68,8 @@ int Narrator::script(int st, PRNG &prng)
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 20);
 
-            // Some quiet
-            precursor.resetCycle();
-            delay(4);
-            precursor.resetCycle();
-
-            // Run for a randomly determined amount of time
-            do { doFrame(); } while (precursor.totalSecondsOfDarkness() < 6.1);
+            // XXX: Temporary
+            delay(30);
 
             // Make sure we get a little bit of quiet before the bang
             mixer.setFader(0, 0.0f);

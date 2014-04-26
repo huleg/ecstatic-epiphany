@@ -12,63 +12,48 @@
 #include <vector>
 #include "grid_structure.h" 
 #include "lib/effect.h"
+#include "lib/particle.h"
 #include "lib/prng.h"
 #include "lib/texture.h"
 #include "lib/noise.h"
 #include "lib/camera_flow.h"
 
 
-class Precursor : public Effect
+
+class Precursor : public ParticleEffect
 {
 public:
-    Precursor(CameraFlowAnalyzer& flow);
+    Precursor(const CameraFlowAnalyzer &flow);
     void reseed(unsigned seed);
-    void resetCycle();
 
     virtual void beginFrame(const FrameInfo &f);
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
     virtual void debug(const DebugInfo &di);
 
     float totalSecondsOfDarkness();
-    float cycle;
 
 private:
-    static constexpr float stepSize = 0.01;
-    static constexpr float cycleRate = stepSize / (60 * 1);
-    static constexpr float speed = stepSize * 0.4;
-    static constexpr float potentialBackground = 5e-6;
-    static constexpr float potentialSettle = 0.2;
-    static constexpr float potentialTransfer = 0.1;
-    static constexpr float maxBrightness = 1.2;
-    static constexpr float maxPropagationDistance = 0.1;
-    static constexpr float maxPropagationRate = 0.05;
-    static constexpr float energyRateScale = 10.5;
+    static constexpr float flowFilterRate = 0.02;
+    static constexpr float launchProbability = 0.1;
+    static constexpr float stepRate = 200.0;
+    static constexpr float noiseRate = 0.1;
+    static constexpr float ledPull = 0.01;
+    static constexpr float blockPull = 0.00001;
+    static constexpr float radius = 0.08;
 
-    struct PixelState {
-        PixelState();
-
-        // State
-        float timeAxis;         // Progresses from 0 to 1
-        float potential;        // Probability to restart
-        float energy;           // Resource needed to restart
-        unsigned generation;
-
-        // Calculated
-        float strength;         // From timeAxis
+    struct ParticleDynamics {
+        Vec3 velocity;
+        float time;
     };
 
     CameraFlowCapture flow;
 
-    std::vector<PixelState> pixelState;
+    std::vector<ParticleDynamics> dynamics;
     Texture palette;
-    unsigned seed;
+    PRNG prng;
     unsigned darkStepCount;
     float noiseCycle;
     float timeDeltaRemainder;
-
-    // Calculated
-    float propagationRate;
-    float energyRate;
 
     void runStep(GridStructure &grid, const FrameInfo &f);
 };
@@ -79,10 +64,9 @@ private:
  *****************************************************************************************/
 
 
-inline Precursor::Precursor(CameraFlowAnalyzer& flow)
+inline Precursor::Precursor(const CameraFlowAnalyzer& flow)
     : flow(flow),
       palette("data/darkmatter-palette.png"),
-      seed(0),
       timeDeltaRemainder(0)
 {
     reseed(42);
@@ -92,164 +76,135 @@ inline void Precursor::reseed(unsigned seed)
 {
     flow.capture();
     flow.origin();
-    pixelState.clear();
-    this->seed = seed;
-    resetCycle();
+    prng.seed(seed);
     noiseCycle = 0;
     darkStepCount = 0;
 }
 
-inline void Precursor::resetCycle()
-{
-    cycle = 0;
-}
-
-inline Precursor::PixelState::PixelState()
-    : timeAxis(1), potential(potentialBackground), energy(1), generation(0)
-{}
-
 inline float Precursor::totalSecondsOfDarkness()
 {
-    return darkStepCount * stepSize;
+    return darkStepCount / stepRate;
 }
 
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
+    flow.capture(flowFilterRate);
+    flow.origin();
+
     GridStructure grid;
     grid.init(f.pixels);
 
-    pixelState.resize(f.pixels.size());
+    // Simple time-varying parameters
+    noiseCycle += f.timeDelta * noiseRate;
 
     // Fixed timestep
     float t = f.timeDelta + timeDeltaRemainder;
-    int steps = t / stepSize;
-    timeDeltaRemainder = t - steps * stepSize;
+    int steps = t * stepRate;
+    timeDeltaRemainder = t - steps / stepRate;
 
     while (steps > 0) {
         runStep(grid, f);
         steps--;
     }
+
+    ParticleEffect::beginFrame(f);
+}
+
+inline void Precursor::debug(const DebugInfo &di)
+{
+    flow.capture();
+    fprintf(stderr, "\t[precursor] particles = %d\n", (int)appearance.size());
+    fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
+    fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
+    fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }
 
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
-    bool isDark = true;
+    // Launch new particles
+    unsigned launchCount = prng.uniform(0, 1.0f + launchProbability);
+    for (unsigned i = 0; i < launchCount; i++) {
+        ParticleAppearance pa;
+        ParticleDynamics pd;
 
-    PRNG prng;
-    prng.seed(seed);
-    seed++;
+        pa.point = Vec3( prng.uniform(f.modelMin[0], f.modelMax[0]),
+                         prng.uniform(f.modelMin[1], f.modelMax[1]),
+                         prng.uniform(f.modelMin[2], f.modelMax[2]) );
 
-    // Propagation rate varies over time, to give it an arc
-    cycle += cycleRate;
-    noiseCycle += cycleRate;
-    propagationRate = sq(sinf(cycle * M_PI)) * maxPropagationRate;
-    energyRate = propagationRate * energyRateScale;
+        pd.velocity = flow.model;
+        pd.time = 0;
 
-    for (unsigned i = 0; i < pixelState.size(); i++) {
-        if (!f.pixels[i].isMapped()) {
-            continue;
-        }
-
-        PixelState &pix = pixelState[i];
-
-        // Can restart?
-        if (pix.timeAxis == 1.0f && prng.uniform() < pix.potential && cycle < 1.0f) {
-
-            if (pix.energy == 1.0f) {
-                // Restart
-                pix.timeAxis = 0;
-                pix.energy = 0;
-                pix.generation++;
-            }
-
-            // Approach background potential
-            pix.potential += (potentialBackground - pix.potential) * potentialSettle;
-        }
-
-        // Linear progression
-        pix.timeAxis = std::min(1.0f, pix.timeAxis + speed);
-
-        // Energy refill
-        pix.energy = std::min(1.0f, pix.energy + energyRate * speed);
-
-        // Early out for dead cells
-        if (pix.timeAxis <= 0.0f || pix.timeAxis >= 1.0f) {
-            pix.strength = 0.0f;
-            continue;
-        }
-
-        // Strength curve, fade in and out
-        pix.strength = sq(std::max(0.0f, sinf(pix.timeAxis * M_PI)));
-        if (pix.strength > 0) {
-            isDark = false;
-        }
-
-        // Propagation
-        if (prng.uniform() < pix.strength * propagationRate) {
-            const GridStructure::PixelIndexSet *set = NULL;
-
-            // Direction, pick a target set. Low probability of jumping grid squares
-            switch (prng.uniform32() & 63) {
-                case 0:  set = &grid.coordIndex[0][f.pixels[i].point[0]]; break;
-                case 1:  set = &grid.coordIndex[2][f.pixels[i].point[2]]; break;
-                default: set = &grid.gridIndex[ GridStructure::intGridXY(f.pixels[i]) ]; break;
-            };
-
-            // Pick closest among target set
-            GridStructure::PixelIndexSet::const_iterator iter;
-            int best = -1;
-            float bestDistSqr = sq(maxPropagationDistance);
-
-            for (iter = set->begin(); iter != set->end(); iter++) {
-                const PixelInfo &other = f.pixels[*iter];
-                PixelState &oPix = pixelState[*iter];
-
-                float distSqr = sqrlen(other.point - f.pixels[i].point);
-                if (distSqr > sq(maxPropagationDistance)) {
-                    continue;
-                }
-
-                // Might be closest
-                if (distSqr < bestDistSqr && *iter != i && oPix.timeAxis == 1.0f) {
-                    bestDistSqr = distSqr;
-                    best = *iter;
-                }
-            }
-
-            // Transfer potential
-            if (best >= 0) {
-                pixelState[best].potential += potentialTransfer;
-            }
-        }
+        appearance.push_back(pa);
+        dynamics.push_back(pd);
     }
 
-    if (isDark) {
+    // Iterate through and update all particles, discarding any that have expired
+    unsigned j = 0;
+    for (unsigned i = 0; i < appearance.size(); i++) {
+        ParticleAppearance pa = appearance[i];
+        ParticleDynamics pd = dynamics[i];
+
+        // Update simulation
+
+        pa.point += pd.velocity;
+        pd.time += 1.0 / stepRate;
+
+        if (pd.time >= 1.0f) {
+            // Discard
+            continue;
+        }
+
+        pa.intensity = sq(std::max(0.0f, sinf(pd.time * M_PI)));
+        pa.radius = radius;
+
+        // Pull toward nearby LEDs, so the particles kinda-follow the grid
+
+        ResultSet_t hits;
+        f.radiusSearch(hits, pa.point, pa.radius);
+        for (unsigned h = 0; h < hits.size(); h++) {
+            const PixelInfo &hit = f.pixels[hits[h].first];
+            float q2 = hits[h].second / sq(pa.radius);
+            if (hit.isMapped() && q2 < 1.0f) {
+
+                float k = kernel2(q2);
+                Vec2 blockXY = hit.getVec2("blockXY");
+
+                // Pull toward LED
+                Vec3 d = ledPull * k * (hit.point - pa.point);
+
+                // Pull along line to grid square center
+                Vec2 b = blockPull * k * blockXY;
+
+                pd.velocity += d + Vec3(b[0], 0, b[1]);
+            }
+        }
+
+        // Write out
+        appearance[j] = pa;
+        dynamics[j] = pd;
+        j++;
+    }
+
+    appearance.resize(j);
+    dynamics.resize(j);
+
+    if (appearance.empty()) {
         darkStepCount++;
     }
 }
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 {
-    const PixelState &pix = pixelState[p.index];
+    // // Sample noise with grid square granularity
+    // float n = fbm_noise2(p.getVec2("gridXY") * 0.1 + Vec2(noiseCycle, 0), 2);
 
-    // Sample noise with grid square granularity
-    float n = fbm_noise2(p.getVec2("gridXY") * 0.1 + Vec2(noiseCycle, 0), 2);
+    // // Lissajous sampling on palette
+    // float t = (pix.generation + pix.timeAxis) * 1e-5 + n * 1.5;
+    // float u = 2.3f;
+    // rgb = palette.sample(0.5 + 0.5 * cos(t),
+    //                      0.5 + 0.5 * sin(t*u + seed * 1e-4))
+    //     * (maxBrightness * pix.strength);
 
-    // Lissajous sampling on palette
-    float t = (pix.generation + pix.timeAxis) * 1e-5 + n * 1.5;
-    float u = 2.3f;
-    rgb = palette.sample(0.5 + 0.5 * cos(t),
-                         0.5 + 0.5 * sin(t*u + seed * 1e-4))
-        * (maxBrightness * pix.strength);
+    rgb = Vec3(1,1,1) * sampleIntensity(p.point);
 }
 
-inline void Precursor::debug(const DebugInfo &di)
-{
-    flow.capture();
-    fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
-    fprintf(stderr, "\t[precursor] cycle = %f\n", cycle);
-    fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
-    fprintf(stderr, "\t[precursor] propagationRate = %f\n", propagationRate);
-    fprintf(stderr, "\t[precursor] seed = 0x%08x\n", seed);
-    fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
-}
