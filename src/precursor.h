@@ -33,17 +33,19 @@ public:
     float totalSecondsOfDarkness();
 
 private:
-    static constexpr float launchProbability = 0.1;
+    static constexpr float launchProbabilityBaseline = 0.004;
+    static constexpr float launchProbabilityScale = 0.002;
     static constexpr float flowScale = 0.04;
     static constexpr float stepRate = 200.0;
     static constexpr float noiseRate = 0.03;
     static constexpr float brightness = 2.5;
     static constexpr float particleDuration = 4.0;
-    static constexpr float ledPull = 0.005;
-    static constexpr float blockPull = 0.0001;
-    static constexpr float damping = 0.005;
+    static constexpr float ledPull = 0.007;
+    static constexpr float ledPullRadius = 0.04;
+    static constexpr float blockPull = 0.000001;
+    static constexpr float blockPullRadius = 0.2;
+    static constexpr float damping = 0.00005;
     static constexpr float visibleRadius = 0.08;
-    static constexpr float interactionRadius = 0.15;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -131,6 +133,7 @@ inline void Precursor::debug(const DebugInfo &di)
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
     // Launch new particles
+    float launchProbability = launchProbabilityBaseline + flow.motionLength * launchProbabilityScale;
     unsigned launchCount = prng.uniform(0, 1.0f + launchProbability);
     for (unsigned i = 0; i < launchCount; i++) {
         ParticleAppearance pa;
@@ -169,23 +172,30 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         // Pull toward nearby LEDs, so the particles kinda-follow the grid
 
         ResultSet_t hits;
-        f.radiusSearch(hits, pa.point, interactionRadius);
+        f.radiusSearch(hits, pa.point, blockPullRadius);
         for (unsigned h = 0; h < hits.size(); h++) {
             const PixelInfo &hit = f.pixels[hits[h].first];
-            float q2 = hits[h].second / sq(interactionRadius);
-            if (hit.isMapped() && q2 < 1.0f) {
-
-                float k = kernel2(q2);
-                Vec2 blockXY = hit.getVec2("blockXY");
-
-                // Pull toward LED
-                Vec3 d = ledPull * k * (hit.point - pa.point);
-
-                // Pull along line to grid square center
-                Vec2 b = blockPull * k * blockXY;
-
-                pd.velocity = pd.velocity * (1.0 - damping) + d - Vec3(b[0], 0, b[1]);
+            if (!hit.isMapped()) {
+                continue;
             }
+
+            Vec3 v = pd.velocity * (1.0f - damping);
+
+            // Pull toward LED
+            float q2 = hits[h].second / sq(ledPullRadius);
+            if (q2 < 1.0f) {
+                v += ledPull * kernel2(q2) * (hit.point - pa.point);
+            }
+
+            // Pull toward grid square center
+            q2 = hits[h].second / sq(blockPullRadius);
+            if (q2 < 1.0f) {
+                Vec2 blockXY = hit.getVec2("blockXY");
+                Vec2 b = blockPull * kernel2(q2) * blockXY;
+                v += Vec3(-b[0], 0, b[1]);
+            }
+
+            pd.velocity = v;
         }
 
         // Write out
