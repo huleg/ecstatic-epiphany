@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "lib/rapidjson/rapidjson.h"
+#include "lib/rapidjson/document.h"
 #include "lib/effect.h"
 #include "lib/effect_mixer.h"
 #include "lib/effect_runner.h"
@@ -23,7 +25,11 @@ public:
     {   
     public:
         NEffectRunner();
+        bool setConfig(const char *filename);
+
         int initialState;
+        rapidjson::Document config;
+
     protected:
         virtual bool parseArgument(int &i, int &argc, char **argv);
         virtual void argumentUsage();
@@ -36,9 +42,6 @@ public:
     CameraFlowAnalyzer flow;
     NEffectRunner runner;
     EffectMixer mixer;
-
-    // Globally accessible command line argument for tweaking algorithm parameters
-    static double tweak;
 
 private:
     int script(int st, PRNG &prng);

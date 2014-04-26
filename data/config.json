@@ -1,0 +1,33 @@
+{
+    "initialState": 0,
+
+    "flow": {
+        "debug": false,
+        "maxPoints": 50,
+        "decimate": 3,
+        "discoveryGridSpacing": 4,
+        "pointTrialPeriod": 4,
+        "maxPointAge": 300,
+        "minPointSpeed": 0.1,
+        "minEigThreshold": 0.004
+    },
+
+    "precursor": {
+        "palette": "data/darkmatter-palette.png",
+        "maxParticles": 150,
+        "launchProbabilityBaseline": 0.008,
+        "launchProbabilityScale": 1.5,
+        "flowScale": 0.0002,
+        "stepRate": 200.0,
+        "noiseRate": 0.015,
+        "brightness": 3.0,
+        "particleDuration": 0.75,
+        "ledPull": 0.006,
+        "ledPullRadius": 0.05,
+        "blockPull": 0.00005,
+        "blockPullRadius": 0.1,
+        "damping": 0.00005,
+        "visibleRadius": 0.08
+    }
+
+}

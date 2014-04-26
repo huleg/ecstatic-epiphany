@@ -17,13 +17,13 @@
 #include "lib/texture.h"
 #include "lib/noise.h"
 #include "lib/camera_flow.h"
-
+#include "lib/rapidjson/document.h"
 
 
 class Precursor : public ParticleEffect
 {
 public:
-    Precursor(const CameraFlowAnalyzer &flow);
+    Precursor(const CameraFlowAnalyzer &flow, const rapidjson::Value &config);
     void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo &f);
@@ -33,20 +33,20 @@ public:
     float totalSecondsOfDarkness();
 
 private:
-    static constexpr unsigned maxParticles = 150;
-    static constexpr float launchProbabilityBaseline = 0.008;
-    static constexpr float launchProbabilityScale = 1.5;
-    static constexpr float flowScale = 0.0002;
-    static constexpr float stepRate = 200.0;
-    static constexpr float noiseRate = 0.015;
-    static constexpr float brightness = 3.0;
-    static constexpr float particleDuration = 0.75;
-    static constexpr float ledPull = 0.006;
-    static constexpr float ledPullRadius = 0.05;
-    static constexpr float blockPull = 0.00005;
-    static constexpr float blockPullRadius = 0.1;
-    static constexpr float damping = 0.00005;
-    static constexpr float visibleRadius = 0.08;
+    unsigned maxParticles;
+    float launchProbabilityBaseline;
+    float launchProbabilityScale;
+    float flowScale;
+    float stepRate;
+    float noiseRate;
+    float brightness;
+    float particleDuration;
+    float ledPull;
+    float ledPullRadius;
+    float blockPull;
+    float blockPullRadius;
+    float damping;
+    float visibleRadius;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -72,9 +72,23 @@ private:
  *****************************************************************************************/
 
 
-inline Precursor::Precursor(const CameraFlowAnalyzer& flow)
-    : flow(flow),
-      palette("data/darkmatter-palette.png"),
+inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Value &config)
+    : maxParticles(config["maxParticles"].GetUint()),
+      launchProbabilityBaseline(config["launchProbabilityBaseline"].GetDouble()),
+      launchProbabilityScale(config["launchProbabilityScale"].GetDouble()),
+      flowScale(config["flowScale"].GetDouble()),
+      stepRate(config["stepRate"].GetDouble()),
+      noiseRate(config["noiseRate"].GetDouble()),
+      brightness(config["brightness"].GetDouble()),
+      particleDuration(config["particleDuration"].GetDouble()),
+      ledPull(config["ledPull"].GetDouble()),
+      ledPullRadius(config["ledPullRadius"].GetDouble()),
+      blockPull(config["blockPull"].GetDouble()),
+      blockPullRadius(config["blockPullRadius"].GetDouble()),
+      damping(config["damping"].GetDouble()),
+      visibleRadius(config["visibleRadius"].GetDouble()),
+      flow(flow),
+      palette(config["palette"].GetString()),
       timeDeltaRemainder(0)
 {
     reseed(42);

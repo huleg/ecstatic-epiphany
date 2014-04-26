@@ -19,7 +19,7 @@ int Narrator::script(int st, PRNG &prng)
     static ChaosParticles chaosA(flow);
     static ChaosParticles chaosB(flow);
     static OrderParticles orderParticles(flow);
-    static Precursor precursor(flow);
+    static Precursor precursor(flow, runner.config["precursor"]);
     static RingsEffect ringsA(flow);
     static RingsEffect ringsB(flow);
     static PartnerDance partnerDance(flow);

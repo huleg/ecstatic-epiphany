@@ -7,17 +7,10 @@
 
 #include "narrator.h"
 
-double Narrator::tweak = 0;
-
 
 Narrator::Narrator()
 {
     runner.setEffect(&mixer);
-
-    // Approximate transform from camera coordinates to model coordinates.
-    flow.setTransform( Vec3(1, 0,  0),
-                       Vec3(0, 0, -1.25),
-                       Vec3(0, 0,  0) );
 }
 
 void Narrator::run()
@@ -29,6 +22,13 @@ void Narrator::run()
     prng.seed(time(0));
 
     currentState = runner.initialState;
+
+    // Approximate transform from camera coordinates to model coordinates.
+    flow.setTransform( Vec3(1, 0,  0),
+                       Vec3(0, 0, -1.25),
+                       Vec3(0, 0,  0) );
+
+    flow.setConfig(runner.config["flow"]);
 
     while (true) {
         if (runner.isVerbose()) {
@@ -102,7 +102,11 @@ void Narrator::formatTime(double s)
 
 Narrator::NEffectRunner::NEffectRunner()
     : initialState(0)
-{}
+{
+    if (!setConfig("data/config.json")) {
+        fprintf(stderr, "Can't load default configuration file\n");
+    }
+}
 
 bool Narrator::NEffectRunner::parseArgument(int &i, int &argc, char **argv)
 {
@@ -110,15 +114,45 @@ bool Narrator::NEffectRunner::parseArgument(int &i, int &argc, char **argv)
         initialState = atoi(argv[++i]);
         return true;
     }
-    if (!strcmp(argv[i], "-tweak") && (i+1 < argc)) {
-        tweak = atof(argv[++i]);
+
+    if (!strcmp(argv[i], "-config") && (i+1 < argc)) {
+        if (!setConfig(argv[++i])) {
+            fprintf(stderr, "Can't load config from %s\n", argv[i]);
+            return false;
+        }
         return true;
     }
+
     return EffectRunner::parseArgument(i, argc, argv);
 }
 
 void Narrator::NEffectRunner::argumentUsage()
 {
     EffectRunner::argumentUsage();
-    fprintf(stderr, " [-state ST] [-tweak ARG]");
+    fprintf(stderr, " [-state ST] [-config FILE.json]");
 }
+
+
+bool Narrator::NEffectRunner::setConfig(const char *filename)
+{
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        return false;
+    }
+
+    rapidjson::FileStream istr(f);
+    config.ParseStream<0>(istr);
+    fclose(f);
+
+    if (config.HasParseError()) {
+        return false;
+    }
+    if (!config.IsObject()) {
+        return false;
+    }
+
+    initialState = config["initialState"].GetInt();
+
+    return true;
+}
+

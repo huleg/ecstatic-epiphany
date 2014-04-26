@@ -61,17 +61,20 @@ public:
     // Change the transform we use to calculate model coordinates.
     void setTransform(Vec3 basisX, Vec3 basisY, Vec3 origin);
 
+    // Set vision parameters from JSON object
+    void setConfig(const rapidjson::Value &config);
+
 private:
     friend class CameraFlowCapture;
 
-    static constexpr bool kDebug = false;                 // Super-verbose console and screenshot output
-    static constexpr unsigned kMaxPoints = 50;            // Max number of corner points to track at once
-    static constexpr unsigned kDecimate = 3;              // Divide horizontal video resolution by skipping samples
-    static constexpr unsigned kDiscoveryGridSpacing = 4;  // Pixels per unit in the low-res point discovery sampling grid
-    static constexpr unsigned kPointTrialPeriod = 15;     // Number of frames to keep a point before discarding
-    static constexpr unsigned kMaxPointAge = 30 * 10;     // Limit stale points; always discard after this age
-    static constexpr float kMinPointSpeed = 0.1;          // Minimum speed in pixels/frame to keep a point
-    static constexpr float kMinEigThreshold = 0.004;      // Minimum eigenvalue threshold to keep a point
+    bool debug;                     // Super-verbose console and screenshot output
+    unsigned maxPoints;             // Max number of corner points to track at once
+    unsigned decimate;              // Divide horizontal video resolution by skipping samples
+    unsigned discoveryGridSpacing;  // Pixels per unit in the low-res point discovery sampling grid
+    unsigned pointTrialPeriod;      // Number of frames to keep a point before discarding
+    unsigned maxPointAge;           // Limit stale points; always discard after this age
+    float minPointSpeed;            // Minimum speed in pixels/frame to keep a point
+    float minEigThreshold;          // Minimum eigenvalue threshold to keep a point
 
     struct PointInfo {
         float distanceTraveled;
@@ -133,19 +136,7 @@ private:
 
 
 inline CameraFlowAnalyzer::CameraFlowAnalyzer()
-{
-    integratorX = integratorY = integratorL = 0;
-
-    // Default transform is identity
-    setTransform( Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 0) );
-
-    for (unsigned i = 0; i < Camera::kFields; i++) {
-        for (unsigned j = 0; j < 2; j++) {
-            fields[i].frames[j] = cv::Mat::zeros(Camera::kLinesPerField, Camera::kPixelsPerLine / kDecimate, CV_8UC1);
-        }
-        fields[i].points.clear();
-    }
-}
+{}
 
 
 inline void CameraFlowAnalyzer::setTransform(Vec3 basisX, Vec3 basisY, Vec3 origin)
@@ -155,13 +146,37 @@ inline void CameraFlowAnalyzer::setTransform(Vec3 basisX, Vec3 basisY, Vec3 orig
     this->origin = origin;
 }
 
+inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
+{
+    debug = config["debug"].GetBool();
+    maxPoints = config["maxPoints"].GetUint();
+    decimate = config["decimate"].GetUint();
+    discoveryGridSpacing = config["discoveryGridSpacing"].GetUint();
+    pointTrialPeriod = config["pointTrialPeriod"].GetUint();
+    maxPointAge = config["maxPointAge"].GetUint();
+    minPointSpeed = config["minPointSpeed"].GetDouble();
+    minEigThreshold = config["minEigThreshold"].GetDouble();
+
+    integratorX = integratorY = integratorL = 0;
+
+    // Default transform is identity
+    setTransform( Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 0) );
+
+    for (unsigned i = 0; i < Camera::kFields; i++) {
+        for (unsigned j = 0; j < 2; j++) {
+            fields[i].frames[j] = cv::Mat::zeros(Camera::kLinesPerField, Camera::kPixelsPerLine / decimate, CV_8UC1);
+        }
+        fields[i].points.clear();
+    }
+}
+
 inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
 {
     // Store decimated luminance values only
 
     Camera::VideoChunk iter = chunk;
     const uint8_t *limit = iter.data + chunk.byteCount;
-    const unsigned bytesPerSample = kDecimate * 2;
+    const unsigned bytesPerSample = decimate * 2;
 
     // Align to the next stored luminance value
     while ((iter.byteOffset % bytesPerSample) != 1) {
@@ -172,7 +187,7 @@ inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
     Field &f = fields[iter.field];
     cv::Mat &image = f.frames[1];
     uint8_t *dest = image.data +
-        iter.line * (Camera::kPixelsPerLine / kDecimate)
+        iter.line * (Camera::kPixelsPerLine / decimate)
         + iter.byteOffset / bytesPerSample;
 
     while (iter.data < limit) {
@@ -198,7 +213,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
     cv::TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 20, 0.03);
     cv::Size subPixWinSize(6,6), winSize(15,15);
 
-    if (f.points.size() < kMaxPoints) {
+    if (f.points.size() < maxPoints) {
         /*
          * Look for more points to track. We specifically want to focus on areas that are moving,
          * as if we were subtracting the background. (Actual background subtraction isn't
@@ -210,8 +225,8 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
          */
 
         cv::Size frameSize = f.frames[0].size();
-        int gridWidth = frameSize.width / kDiscoveryGridSpacing;
-        int gridHeight = frameSize.height / kDiscoveryGridSpacing;
+        int gridWidth = frameSize.width / discoveryGridSpacing;
+        int gridHeight = frameSize.height / discoveryGridSpacing;
 
         std::vector<bool> gridCoverage;
         gridCoverage.resize(gridWidth * gridHeight);
@@ -219,8 +234,8 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
         // Calculate coverage of the discovery grid 
         for (unsigned i = 0; i < f.points.size(); i++) {
-            int x = f.points[i].x / kDiscoveryGridSpacing;
-            int y = f.points[i].y / kDiscoveryGridSpacing;
+            int x = f.points[i].x / discoveryGridSpacing;
+            int y = f.points[i].y / discoveryGridSpacing;
             unsigned idx = x + y * gridWidth;
             if (idx < gridCoverage.size()) {
                 gridCoverage[idx] = true;
@@ -235,8 +250,8 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         for (int y = 1; y < gridHeight - 1; y++) {
             for (int x = 1; x < gridWidth - 1; x++) {
                 if (!gridCoverage[x + y * gridWidth]) {
-                    int pixX = x * kDiscoveryGridSpacing;
-                    int pixY = y * kDiscoveryGridSpacing;
+                    int pixX = x * discoveryGridSpacing;
+                    int pixY = y * discoveryGridSpacing;
 
                     int diff = (int)f.frames[1].at<uint8_t>(pixY, pixX) - (int)f.frames[0].at<uint8_t>(pixY, pixX);
                     int diff2 = diff * diff;
@@ -259,7 +274,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             f.points.push_back(newPoint[0]);
             f.pointInfo.push_back(PointInfo());
 
-            if (kDebug) {
+            if (debug) {
                 fprintf(stderr, "flow: Detecting new point (%f, %f) -> (%f, %f). %d points total\n",
                     bestPoint.x, bestPoint.y, newPoint[0].x, newPoint[0].y, (int)f.points.size());
             }
@@ -278,7 +293,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         uint32_t numeratorL = 0, denominatorL = 0;
 
         cv::calcOpticalFlowPyrLK(f.frames[0], f.frames[1], f.points,
-            points, status, err, winSize, 3, termcrit, 3, kMinEigThreshold);
+            points, status, err, winSize, 3, termcrit, 3, minEigThreshold);
 
         unsigned j = 0;
         for (unsigned i = 0; i < status.size(); i++) {
@@ -302,8 +317,8 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
                 // the initial trial period. Points that are too old will be discarded too, so stale
                 // unreachable points don't get permanently included.
 
-                if (info.age < kPointTrialPeriod || 
-                    (info.age < kMaxPointAge && info.distanceTraveled / info.age > kMinPointSpeed)) {
+                if (info.age < pointTrialPeriod || 
+                    (info.age < maxPointAge && info.distanceTraveled / info.age > minPointSpeed)) {
 
                     // Store point for next time
                     f.pointInfo[j] = info;
@@ -311,18 +326,18 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
                     j++;
 
                     // Add to overall flow vector, using the point age and error to weight it
-                    if (info.age > kPointTrialPeriod) {
-                        float weight = (info.age - kPointTrialPeriod) / err[i];
+                    if (info.age > pointTrialPeriod) {
+                        float weight = (info.age - pointTrialPeriod) / err[i];
                         numerator.x += motion.x * weight;
                         numerator.y += motion.y * weight;
                         denominator += weight;
                     }
 
-                } else if (kDebug) {
+                } else if (debug) {
                     fprintf(stderr, "flow: Forgetting point %d with age=%d distance=%f speed=%f\n",
                         i, info.age, info.distanceTraveled, info.distanceTraveled / info.age);
                 }
-            } else if (kDebug) {
+            } else if (debug) {
                 fprintf(stderr, "flow: Point %d lost tracking\n", i);
             }
         }
@@ -339,13 +354,13 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             integratorL += numeratorL / denominatorL;
         }
 
-        if (kDebug) {
+        if (debug) {
             fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) L=%08x denominator=%f\n",
                 (int)f.points.size(), integratorX, integratorY, integratorL, denominator);
         }
     }
 
-    if (kDebug) {
+    if (debug) {
         // Debug screenshots
 
         static int num = 0;
