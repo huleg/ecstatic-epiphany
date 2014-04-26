@@ -37,6 +37,9 @@ public:
     NEffectRunner runner;
     EffectMixer mixer;
 
+    // Globally accessible command line argument for tweaking algorithm parameters
+    static double tweak;
+
 private:
     int script(int st, PRNG &prng);
     float doFrame();

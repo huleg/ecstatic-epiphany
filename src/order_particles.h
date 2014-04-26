@@ -14,6 +14,7 @@
 #include "lib/prng.h"
 #include "lib/noise.h"
 #include "lib/texture.h"
+#include "narrator.h"
 
 
 class OrderParticles : public ParticleEffect
@@ -34,12 +35,13 @@ public:
 private:
     static constexpr unsigned numParticles = 60;
     static constexpr float damping = 0.0002;
-    static constexpr float repelGain = 0.003;
+    static constexpr float repelGain = 0.0009;
     static constexpr float flowFilterRate = 0.05;
     static constexpr float flowScale = 0.012;
     static constexpr float flowLightAngleRate = 0.03;
+    static constexpr float flowColorCycleRate = 0.002;
     static constexpr float relativeSize = 0.42;
-    static constexpr float intensity = 0.16;
+    static constexpr float intensity = 0.12;
     static constexpr float brightness = 1.35;
     static constexpr float stepSize = 1.0 / 300;
     static constexpr float seedRadius = 3.0;
@@ -116,7 +118,7 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
         appearance[i].radius = f.modelDiameter * relativeSize;
 
         // Viewpoint adjustment
-        appearance[i].point -= flow.model * flowScale;
+        appearance[i].point += flow.model * flowScale;
     }
 
     while (steps > 0) {
@@ -128,7 +130,7 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     }
 
     // Lighting
-    colorCycle += f.timeDelta * colorRate;
+    colorCycle += flow.model[2] * flowColorCycleRate + f.timeDelta * colorRate;
     lightAngle += flow.model[0] * flowLightAngleRate;
     lightVec = Vec3(sin(lightAngle), 0, cos(lightAngle));
 
@@ -202,8 +204,8 @@ inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const
     Vec3 gradient = sampleIntensityGradient(p.point);
     float gradientMagnitude = len(gradient);
     Vec3 normal = gradientMagnitude ? (gradient / gradientMagnitude) : Vec3(0, 0, 0);
-    float lambert = 0.7f * std::max(0.0f, dot(normal, lightVec));
-    float ambient = 0.9f;
+    float lambert = 0.6f * std::max(0.0f, dot(normal, lightVec));
+    float ambient = 1.0f;
 
     rgb = (brightness * (ambient + lambert)) * 
         palette.sample(0.5 + 0.5 * sinf(colorCycle), intensity);

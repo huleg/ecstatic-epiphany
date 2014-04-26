@@ -7,6 +7,8 @@
 
 #include "narrator.h"
 
+double Narrator::tweak = 0;
+
 
 Narrator::Narrator()
 {
@@ -110,11 +112,15 @@ bool Narrator::NEffectRunner::parseArgument(int &i, int &argc, char **argv)
         initialState = atoi(argv[++i]);
         return true;
     }
+    if (!strcmp(argv[i], "-tweak") && (i+1 < argc)) {
+        tweak = atof(argv[++i]);
+        return true;
+    }
     return EffectRunner::parseArgument(i, argc, argv);
 }
 
 void Narrator::NEffectRunner::argumentUsage()
 {
     EffectRunner::argumentUsage();
-    fprintf(stderr, " [-state ST]");
+    fprintf(stderr, " [-state ST] [-tweak ARG]");
 }
