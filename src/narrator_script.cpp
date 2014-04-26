@@ -16,7 +16,8 @@
 
 int Narrator::script(int st, PRNG &prng)
 {
-    static ChaosParticles chaosParticles[2];
+    static ChaosParticles chaosA(flow);
+    static ChaosParticles chaosB(flow);
     static OrderParticles orderParticles;
     static Precursor precursor;
     static RingsEffect ringsA(flow);
@@ -86,9 +87,9 @@ int Narrator::script(int st, PRNG &prng)
         case 20: {
             // Bang. Explosive energy, hints of self-organization
 
-            ChaosParticles *pChaosA = &chaosParticles[0];
-            ChaosParticles *pChaosB = &chaosParticles[1];
-
+            ChaosParticles *pChaosA = &chaosA;
+            ChaosParticles *pChaosB = &chaosB;
+            
             for (int i = 0; i < prng.uniform(1, 5); i++) {
                 pChaosA->reseed(prng.circularVector() * 0.6, prng.uniform32());
                 crossfade(pChaosA, 0.25);

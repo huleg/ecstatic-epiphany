@@ -33,7 +33,7 @@ public:
 
     static constexpr float xyzSpeed = 0.2;
     static constexpr float xyzScale = 0.3;
-    static constexpr float flowScale = 0.01;
+    static constexpr float flowScale = 0.004;
     static constexpr float wSpeed = 0.1;
     static constexpr float wRate = 0.015;
     static constexpr float ringScale = 1.5;

@@ -10,6 +10,7 @@
 #pragma once
 
 #include <vector>
+#include "lib/camera_flow.h"
 #include "lib/particle.h"
 #include "lib/prng.h"
 #include "lib/texture.h"
@@ -18,7 +19,7 @@
 class ChaosParticles : public ParticleEffect
 {
 public:
-    ChaosParticles();
+    ChaosParticles(const CameraFlowAnalyzer &flow);
     void reseed(Vec2 location, unsigned seed);
 
     bool isRunning();
@@ -44,6 +45,7 @@ private:
     static constexpr float outsideMargin = 6.0;
     static constexpr float darkMultiplier = -8.0;
     static constexpr unsigned maxAge = 18000;
+    static constexpr float flowScale = 0.004;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -52,6 +54,8 @@ private:
         unsigned generation;
         unsigned age;
     };
+
+    CameraFlowCapture flow;
 
     Texture palette;
     std::vector<ParticleDynamics> dynamics;
@@ -69,8 +73,9 @@ private:
  *****************************************************************************************/
 
 
-inline ChaosParticles::ChaosParticles()
-    : palette("data/bang-palette.png"),
+inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow)
+    : flow(flow),
+      palette("data/bang-palette.png"),
       timeDeltaRemainder(0),
       colorCycle(0)
 {
@@ -116,6 +121,10 @@ inline void ChaosParticles::beginFrame(const FrameInfo &f)
         return;
     }
 
+    // Capture the impulse between the last frame and this one
+    flow.capture();
+    flow.origin();
+
     float t = f.timeDelta + timeDeltaRemainder;
     int steps = t / stepSize;
     timeDeltaRemainder = t - steps * stepSize;
@@ -147,7 +156,9 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {
 
-        dynamics[i].position += dynamics[i].velocity;
+        // Horizontal flow -> position
+        dynamics[i].position[0] += dynamics[i].velocity[0] - flow.model[0] * flowScale;
+        dynamics[i].position[1] += dynamics[i].velocity[1];
         dynamics[i].age++;
 
         if (dynamics[i].age > maxAge) {

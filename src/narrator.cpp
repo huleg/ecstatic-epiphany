@@ -11,6 +11,13 @@
 Narrator::Narrator()
 {
     runner.setEffect(&mixer);
+
+    // Approximate transform from camera coordinates to model coordinates.
+    // Note that we exaggerate the Y axis, for more expressiveness.
+
+    flow.setTransform( Vec3(1, 0,  0),
+                       Vec3(0, 0, -2.5),
+                       Vec3(0, 0,  0) );
 }
 
 void Narrator::run()

@@ -2,6 +2,20 @@
  * Camera Flow - an object using sparse optical flow for
  * low-latency non-location-specific motion capture with a camera.
  *
+ * This is based on sparse Lucas-Kanade optical flow estimation
+ * combined with a simple form of foreground detection, allowing
+ * efficient use of a small number of tracking points. This gives
+ * us a rough but very fast optical flow estimate that we crunch
+ * down into a fairly stable set of motion summary values for the
+ * art to use.
+ *
+ * Motion vectors from multiple moving objects in the scene will
+ * be summed. Coordinated motion from multiple objects will be
+ * amplified, uncoordinated movement will become low-level noise.
+ * This object will follow subtle movements from a single participant,
+ * or try its best to account for the contributions of everyone
+ * in a crowd.
+ *
  * Copyright (c) 2014 Micah Elizabeth Scott <micah@scanlime.org>
  *
  * Permission is hereby granted, free of charge, to any person
@@ -44,17 +58,20 @@ public:
     // Process another chunk of video
     void process(const Camera::VideoChunk &chunk);
 
+    // Change the transform we use to calculate model coordinates.
+    void setTransform(Vec3 basisX, Vec3 basisY, Vec3 origin);
+
 private:
     friend class CameraFlowCapture;
 
     static constexpr bool kDebug = false;
     static constexpr unsigned kMaxPoints = 50;
     static constexpr unsigned kDecimate = 3;
-    static constexpr unsigned kDiscoveryGridSpacing = 6;
+    static constexpr unsigned kDiscoveryGridSpacing = 4;
     static constexpr unsigned kPointTrialPeriod = 15;     // Number of frames to keep a point before discarding
     static constexpr unsigned kMaxPointAge = 30 * 10;     // Limit stale points; always discard after this age
     static constexpr float kMinPointSpeed = 0.1;          // Minimum speed in pixels/frame to keep a point
-    static constexpr float kMinEigThreshold = 0.007;      // Minimum eigenvalue threshold to keep a point
+    static constexpr float kMinEigThreshold = 0.004;      // Minimum eigenvalue threshold to keep a point
 
     struct PointInfo {
         float distanceTraveled;
@@ -74,6 +91,9 @@ private:
     // Optical flow integrators, in 16:16 fixed point
     uint32_t integratorX, integratorY;
 
+    // Current transform
+    Vec3 basisX, basisY, origin;
+
     void calculateFlow(Field &f);
 };
 
@@ -82,8 +102,8 @@ class CameraFlowCapture {
 public:
     CameraFlowCapture(const CameraFlowAnalyzer &analyzer);
 
-    // Capture the current flow position, set 'x' and 'y'
-    void capture();
+    // Capture the current flow position, smoothly approach it
+    void capture(float filterRate = 0.1f);
 
     // Set the last captured flow position to be the origin
     void origin();
@@ -110,12 +130,23 @@ inline CameraFlowAnalyzer::CameraFlowAnalyzer()
 {
     integratorX = integratorY = 0;
 
+    // Default transform is identity
+    setTransform( Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 0) );
+
     for (unsigned i = 0; i < Camera::kFields; i++) {
         for (unsigned j = 0; j < 2; j++) {
             fields[i].frames[j] = cv::Mat::zeros(Camera::kLinesPerField, Camera::kPixelsPerLine / kDecimate, CV_8UC1);
         }
         fields[i].points.clear();
     }
+}
+
+
+inline void CameraFlowAnalyzer::setTransform(Vec3 basisX, Vec3 basisY, Vec3 origin)
+{
+    this->basisX = basisX;
+    this->basisY = basisY;
+    this->origin = origin;
 }
 
 inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
@@ -240,7 +271,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         float denominator = 0;
 
         cv::calcOpticalFlowPyrLK(f.frames[0], f.frames[1], f.points,
-            points, status, err, winSize, 3, termcrit, 0, kMinEigThreshold);
+            points, status, err, winSize, 3, termcrit, 3, kMinEigThreshold);
 
         unsigned j = 0;
         for (unsigned i = 0; i < status.size(); i++) {
@@ -332,13 +363,16 @@ inline void CameraFlowCapture::origin()
     originY = captureY;
 }
 
-inline void CameraFlowCapture::capture()
+inline void CameraFlowCapture::capture(float filterRate)
 {
     captureX = analyzer.integratorX;
     captureY = analyzer.integratorY;
 
-    pixels[0] = (int32_t)(captureX - originX) / float(0x10000);
-    pixels[1] = (int32_t)(captureY - originY) / float(0x10000);
+    float targetX = (int32_t)(captureX - originX) / float(0x10000);
+    float targetY = (int32_t)(captureY - originY) / float(0x10000);
 
-    model = Vec3(pixels[0], 0, -pixels[1]);
+    pixels[0] += (targetX - pixels[0]) * filterRate;
+    pixels[1] += (targetY - pixels[1]) * filterRate;
+
+    model = analyzer.origin + analyzer.basisX * pixels[0] + analyzer.basisY * pixels[1];
 }

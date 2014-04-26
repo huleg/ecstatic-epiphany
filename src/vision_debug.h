@@ -19,7 +19,8 @@ public:
     virtual void beginFrame(const FrameInfo &f);
 
 private:
-    static constexpr float originInterval = 2.0f;
+    static constexpr float originInterval = 10.0f;
+    static constexpr float scale = 0.1f;
 
     CameraFlowCapture flow;
     float originTimer;
@@ -50,7 +51,7 @@ inline void VisionDebug::beginFrame(const FrameInfo &f)
     appearance[0].intensity = 0.7f;
     appearance[0].radius = 0.6f;
     appearance[0].color = Vec3(1,1,1);
-    appearance[0].point = flow.model;
+    appearance[0].point = flow.model * scale;
 
     ParticleEffect::beginFrame(f);
 }
