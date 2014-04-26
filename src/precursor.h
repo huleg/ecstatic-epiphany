@@ -33,17 +33,18 @@ public:
     float totalSecondsOfDarkness();
 
 private:
-    static constexpr float launchProbabilityBaseline = 0.004;
-    static constexpr float launchProbabilityScale = 0.002;
-    static constexpr float flowScale = 0.04;
+    static constexpr unsigned maxParticles = 150;
+    static constexpr float launchProbabilityBaseline = 0.008;
+    static constexpr float launchProbabilityScale = 1.5;
+    static constexpr float flowScale = 0.0002;
     static constexpr float stepRate = 200.0;
-    static constexpr float noiseRate = 0.03;
-    static constexpr float brightness = 2.5;
-    static constexpr float particleDuration = 4.0;
-    static constexpr float ledPull = 0.007;
-    static constexpr float ledPullRadius = 0.04;
-    static constexpr float blockPull = 0.000001;
-    static constexpr float blockPullRadius = 0.2;
+    static constexpr float noiseRate = 0.015;
+    static constexpr float brightness = 3.0;
+    static constexpr float particleDuration = 0.75;
+    static constexpr float ledPull = 0.006;
+    static constexpr float ledPullRadius = 0.05;
+    static constexpr float blockPull = 0.00005;
+    static constexpr float blockPullRadius = 0.1;
     static constexpr float damping = 0.00005;
     static constexpr float visibleRadius = 0.08;
 
@@ -100,7 +101,7 @@ inline void Precursor::beginFrame(const FrameInfo &f)
     flow.capture(1.0);
     flow.origin();
     for (unsigned i = 0; i < appearance.size(); i++) {
-        appearance[i].point += flow.model * flowScale;
+        dynamics[i].velocity += flow.model * flowScale;
     }
 
     GridStructure grid;
@@ -132,9 +133,11 @@ inline void Precursor::debug(const DebugInfo &di)
 
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
-    // Launch new particles
+    // Randomly launch particles according to our flow motion total
     float launchProbability = launchProbabilityBaseline + flow.motionLength * launchProbabilityScale;
-    unsigned launchCount = prng.uniform(0, 1.0f + launchProbability);
+    unsigned launchCount = std::min<int>(maxParticles - appearance.size(), prng.uniform(0, 1.0f + launchProbability));
+
+    // Launch new particles
     for (unsigned i = 0; i < launchCount; i++) {
         ParticleAppearance pa;
         ParticleDynamics pd;
@@ -169,7 +172,8 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         pa.intensity = sq(std::max(0.0f, sinf(pd.time * M_PI)));
         pa.radius = visibleRadius;
 
-        // Pull toward nearby LEDs, so the particles kinda-follow the grid
+        // Pull toward nearby LEDs, so the particles kinda-follow the grid.
+        // We only pull if the direction matches where we're already headed.
 
         ResultSet_t hits;
         f.radiusSearch(hits, pa.point, blockPullRadius);
@@ -182,9 +186,10 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
             Vec3 v = pd.velocity * (1.0f - damping);
 
             // Pull toward LED
+            Vec3 d = hit.point - pa.point;
             float q2 = hits[h].second / sq(ledPullRadius);
-            if (q2 < 1.0f) {
-                v += ledPull * kernel2(q2) * (hit.point - pa.point);
+            if (q2 < 1.0f && dot(d, v) > 0.0f) {
+                v += ledPull * kernel2(q2) * d;
             }
 
             // Pull toward grid square center
