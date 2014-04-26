@@ -64,10 +64,10 @@ public:
 private:
     friend class CameraFlowCapture;
 
-    static constexpr bool kDebug = false;
-    static constexpr unsigned kMaxPoints = 50;
-    static constexpr unsigned kDecimate = 3;
-    static constexpr unsigned kDiscoveryGridSpacing = 4;
+    static constexpr bool kDebug = false;                 // Super-verbose console and screenshot output
+    static constexpr unsigned kMaxPoints = 50;            // Max number of corner points to track at once
+    static constexpr unsigned kDecimate = 3;              // Divide horizontal video resolution by skipping samples
+    static constexpr unsigned kDiscoveryGridSpacing = 4;  // Pixels per unit in the low-res point discovery sampling grid
     static constexpr unsigned kPointTrialPeriod = 15;     // Number of frames to keep a point before discarding
     static constexpr unsigned kMaxPointAge = 30 * 10;     // Limit stale points; always discard after this age
     static constexpr float kMinPointSpeed = 0.1;          // Minimum speed in pixels/frame to keep a point
@@ -90,6 +90,9 @@ private:
 
     // Optical flow integrators, in 16:16 fixed point
     uint32_t integratorX, integratorY;
+
+    // Total motion length integrator, in 16:16 fixed point
+    uint32_t integratorL;
 
     // Current transform
     Vec3 basisX, basisY, origin;
@@ -114,10 +117,13 @@ public:
     // Model coordinates (arbitrary units)
     Vec3 model;
 
+    // Total motion length since origin()
+    float motionLength;
+
 private:
     const CameraFlowAnalyzer &analyzer;
-    uint32_t captureX, captureY;
-    uint32_t originX, originY;
+    uint32_t captureX, captureY, captureL;
+    uint32_t originX, originY, originL;
 };
 
 
@@ -128,7 +134,7 @@ private:
 
 inline CameraFlowAnalyzer::CameraFlowAnalyzer()
 {
-    integratorX = integratorY = 0;
+    integratorX = integratorY = integratorL = 0;
 
     // Default transform is identity
     setTransform( Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 0) );
@@ -191,6 +197,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
     cv::TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 20, 0.03);
     cv::Size subPixWinSize(6,6), winSize(15,15);
+    uint32_t accumulatorL = integratorL;
 
     if (f.points.size() < kMaxPoints) {
         /*
@@ -287,6 +294,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
                 info.age++;
                 info.distanceTraveled += distance;
+                accumulatorL += (int)(distance * 0x10000);
 
                 // Is the point stale? Points that haven't moved will be discarded unless they're in
                 // the initial trial period. Points that are too old will be discarded too, so stale
@@ -323,10 +331,11 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         // Update integrator using this field's data
         integratorX += int32_t(numerator.x * 0x10000 / denominator);
         integratorY += int32_t(numerator.y * 0x10000 / denominator);
+        integratorL = accumulatorL;
 
         if (kDebug) {
-            fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) denominator=%f\n",
-                f.points.size(), integratorX, integratorY, denominator);
+            fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) L=%08x denominator=%f\n",
+                f.points.size(), integratorX, integratorY, integratorL, denominator);
         }
     }
 
@@ -354,6 +363,7 @@ inline CameraFlowCapture::CameraFlowCapture(const CameraFlowAnalyzer &analyzer)
 {
     originX = analyzer.integratorX;
     originY = analyzer.integratorY;
+    originL = analyzer.integratorL;
     capture();
 }       
 
@@ -361,18 +371,24 @@ inline void CameraFlowCapture::origin()
 {
     originX = captureX;
     originY = captureY;
+    originL = captureL;
 }
 
 inline void CameraFlowCapture::capture(float filterRate)
 {
     captureX = analyzer.integratorX;
     captureY = analyzer.integratorY;
+    captureL = analyzer.integratorL;
 
+    // Fixed point to floating point
     float targetX = (int32_t)(captureX - originX) / float(0x10000);
     float targetY = (int32_t)(captureY - originY) / float(0x10000);
+    motionLength = (int32_t)(captureL - originL) / float(0x10000);
 
+    // Smoothing filter for pixel location
     pixels[0] += (targetX - pixels[0]) * filterRate;
     pixels[1] += (targetY - pixels[1]) * filterRate;
 
+    // Transform to model coordinates
     model = analyzer.origin + analyzer.basisX * pixels[0] + analyzer.basisY * pixels[1];
 }
