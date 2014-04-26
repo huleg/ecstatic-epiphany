@@ -23,9 +23,12 @@ LDFLAGS += -g
 # Dependency generation
 CPPFLAGS += -MMD
 
+# C++11 code, needed for constexpr
+CPPFLAGS += -std=c++11
+
 ifeq ($(UNAME), Linux)
 	# Use a recent toolchain (Linux)
-	CXX := gcc-4.8 -std=c++11
+	CXX := gcc-4.8
 	CPPFLAGS += -march=native
 	LDFLAGS += -march=native
 	CPPFLAGS += -pthread

@@ -261,7 +261,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
             if (kDebug) {
                 fprintf(stderr, "flow: Detecting new point (%f, %f) -> (%f, %f). %d points total\n",
-                    bestPoint.x, bestPoint.y, newPoint[0].x, newPoint[0].y, f.points.size());
+                    bestPoint.x, bestPoint.y, newPoint[0].x, newPoint[0].y, (int)f.points.size());
             }
         }
     }
@@ -341,7 +341,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
         if (kDebug) {
             fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) L=%08x denominator=%f\n",
-                f.points.size(), integratorX, integratorY, integratorL, denominator);
+                (int)f.points.size(), integratorX, integratorY, integratorL, denominator);
         }
     }
 
