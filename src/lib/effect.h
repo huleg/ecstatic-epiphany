@@ -187,9 +187,7 @@ public:
 inline Effect::PixelInfo::PixelInfo(unsigned index, const rapidjson::Value* layout)
     : index(index), layout(layout)
 {
-    if (isMapped()) {
-        point = getVec3("point");
-    }
+    point = isMapped() ? getVec3("point") : Vec3(0, 0, 0);
 }
 
 inline bool Effect::PixelInfo::isMapped() const
