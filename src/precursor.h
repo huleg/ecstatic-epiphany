@@ -36,7 +36,8 @@ private:
     static constexpr float flowFilterRate = 0.02;
     static constexpr float launchProbability = 0.1;
     static constexpr float stepRate = 200.0;
-    static constexpr float noiseRate = 0.1;
+    static constexpr float noiseRate = 0.03;
+    static constexpr float brightness = 2.5;
     static constexpr float ledPull = 0.01;
     static constexpr float blockPull = 0.00001;
     static constexpr float radius = 0.08;
@@ -54,6 +55,7 @@ private:
     unsigned darkStepCount;
     float noiseCycle;
     float timeDeltaRemainder;
+    float colorSeed;
 
     void runStep(GridStructure &grid, const FrameInfo &f);
 };
@@ -79,6 +81,7 @@ inline void Precursor::reseed(unsigned seed)
     prng.seed(seed);
     noiseCycle = 0;
     darkStepCount = 0;
+    colorSeed = prng.uniform(2, 5);
 }
 
 inline float Precursor::totalSecondsOfDarkness()
@@ -195,16 +198,12 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 {
-    // // Sample noise with grid square granularity
-    // float n = fbm_noise2(p.getVec2("gridXY") * 0.1 + Vec2(noiseCycle, 0), 2);
+    // Sample noise with grid square granularity
+    float n = 1.5 + fbm_noise2(p.getVec2("gridXY") * 0.3 + Vec2(noiseCycle, 0), 2);
 
-    // // Lissajous sampling on palette
-    // float t = (pix.generation + pix.timeAxis) * 1e-5 + n * 1.5;
-    // float u = 2.3f;
-    // rgb = palette.sample(0.5 + 0.5 * cos(t),
-    //                      0.5 + 0.5 * sin(t*u + seed * 1e-4))
-    //     * (maxBrightness * pix.strength);
-
-    rgb = Vec3(1,1,1) * sampleIntensity(p.point);
+    // Lissajous sampling on palette
+    rgb = sampleIntensity(p.point) * brightness *
+          palette.sample(0.5 + 0.5 * cos(n),
+                         0.5 + 0.5 * sin(n * colorSeed));
 }
 
