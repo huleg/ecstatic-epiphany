@@ -197,7 +197,6 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
     cv::TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 20, 0.03);
     cv::Size subPixWinSize(6,6), winSize(15,15);
-    uint32_t accumulatorL = integratorL;
 
     if (f.points.size() < kMaxPoints) {
         /*
@@ -276,6 +275,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
         cv::Point2f numerator = cv::Point2f(0, 0);
         float denominator = 0;
+        uint32_t numeratorL = 0, denominatorL = 0;
 
         cv::calcOpticalFlowPyrLK(f.frames[0], f.frames[1], f.points,
             points, status, err, winSize, 3, termcrit, 3, kMinEigThreshold);
@@ -294,7 +294,9 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
                 info.age++;
                 info.distanceTraveled += distance;
-                accumulatorL += (int)(distance * 0x10000);
+
+                numeratorL += (int)(distance * 0x10000);
+                denominatorL++;
 
                 // Is the point stale? Points that haven't moved will be discarded unless they're in
                 // the initial trial period. Points that are too old will be discarded too, so stale
@@ -329,9 +331,13 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         f.pointInfo.resize(j);
 
         // Update integrator using this field's data
-        integratorX += int32_t(numerator.x * 0x10000 / denominator);
-        integratorY += int32_t(numerator.y * 0x10000 / denominator);
-        integratorL = accumulatorL;
+        if (denominator) {
+            integratorX += int32_t(numerator.x * 0x10000 / denominator);
+            integratorY += int32_t(numerator.y * 0x10000 / denominator);
+        }
+        if (denominatorL) {
+            integratorL += numeratorL / denominatorL;
+        }
 
         if (kDebug) {
             fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) L=%08x denominator=%f\n",
