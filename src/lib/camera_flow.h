@@ -289,9 +289,11 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
         int i = std::min<int>(f.points.size()-1, prng.uniform(0, f.points.size()));
 
-        fprintf(stderr, "flow[%d]: Random delete of point %d (age = %d, distance = %f)\n",
-            (int)(&f - &fields[0]),
-            i, f.pointInfo[i].age, f.pointInfo[i].distanceTraveled);
+        if (debug) {
+            fprintf(stderr, "flow[%d]: Random delete of point %d (age = %d, distance = %f)\n",
+                (int)(&f - &fields[0]),
+                i, f.pointInfo[i].age, f.pointInfo[i].distanceTraveled);
+        }
 
         f.points.erase(f.points.begin() + i, f.points.begin() + i + 1);
         f.pointInfo.erase(f.pointInfo.begin() + i, f.pointInfo.begin() + i + 1);

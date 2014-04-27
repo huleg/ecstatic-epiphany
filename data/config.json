@@ -14,7 +14,7 @@
         "maxPointAge": 400,
         "minPointSpeed": 0.02,
         "minEigThreshold": 0.003,
-        "deletePointProbability": 0.07,
+        "deletePointProbability": 0.1,
 
         "transform": [
             1, 0, 0,
