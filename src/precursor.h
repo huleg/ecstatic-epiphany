@@ -35,12 +35,15 @@ public:
 private:
     unsigned maxParticles;
     float launchProbabilityBaseline;
-    float launchProbabilityScale;
+    float launchProbabilityGain;
+    float launchProbabilityDecay;
     float flowScale;
     float stepRate;
     float noiseRate;
+    float noiseScale;
     float brightness;
     float particleDuration;
+    float particleRampup;
     float ledPull;
     float ledPullRadius;
     float blockPull;
@@ -63,6 +66,7 @@ private:
     float noiseCycle;
     float timeDeltaRemainder;
     float colorSeed;
+    float launchProbability;
 
     void runStep(GridStructure &grid, const FrameInfo &f);
 };
@@ -76,12 +80,15 @@ private:
 inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : maxParticles(config["maxParticles"].GetUint()),
       launchProbabilityBaseline(config["launchProbabilityBaseline"].GetDouble()),
-      launchProbabilityScale(config["launchProbabilityScale"].GetDouble()),
+      launchProbabilityGain(config["launchProbabilityGain"].GetDouble()),
+      launchProbabilityDecay(config["launchProbabilityDecay"].GetDouble()),
       flowScale(config["flowScale"].GetDouble()),
       stepRate(config["stepRate"].GetDouble()),
       noiseRate(config["noiseRate"].GetDouble()),
+      noiseScale(config["noiseScale"].GetDouble()),
       brightness(config["brightness"].GetDouble()),
       particleDuration(config["particleDuration"].GetDouble()),
+      particleRampup(config["particleRampup"].GetDouble()),
       ledPull(config["ledPull"].GetDouble()),
       ledPullRadius(config["ledPullRadius"].GetDouble()),
       blockPull(config["blockPull"].GetDouble()),
@@ -98,11 +105,13 @@ inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Val
 
 inline void Precursor::reseed(unsigned seed)
 {
-    flow.capture();
+    flow.capture(1.0);
     flow.origin();
+
     prng.seed(seed);
     noiseCycle = 0;
     darkStepCount = 0;
+    launchProbability = 0;
     colorSeed = prng.uniform(2, 5);
 }
 
@@ -144,13 +153,15 @@ inline void Precursor::debug(const DebugInfo &di)
     fprintf(stderr, "\t[precursor] particles = %d\n", (int)appearance.size());
     fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
+    fprintf(stderr, "\t[precursor] launchProbability = %f\n", launchProbability);
     fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }
 
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
     // Randomly launch particles according to our flow motion total
-    float launchProbability = launchProbabilityBaseline + flow.motionLength * launchProbabilityScale;
+    launchProbability += sq(flow.motionLength) * launchProbabilityGain;
+    launchProbability += (launchProbabilityBaseline - launchProbability) * launchProbabilityDecay;
     unsigned launchCount = std::min<int>(maxParticles - appearance.size(), prng.uniform(0, 1.0f + launchProbability));
 
     // Launch new particles
@@ -190,7 +201,9 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
             continue;
         }
 
-        pa.intensity = sq(std::max(0.0f, sinf(pd.time * M_PI)));
+        // Ramp up, then fade
+        pa.intensity = kernel(pd.time) * kernel(1.0f - std::min(1.0f, pd.time / particleRampup));
+
         pa.radius = visibleRadius;
 
         // Pull toward nearby LEDs, so the particles kinda-follow the grid.
@@ -241,7 +254,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 {
     // Sample noise with grid square granularity
-    float n = 1.5 + fbm_noise2(p.getVec2("gridXY") * 0.3 + Vec2(noiseCycle, 0), 2);
+    float n = 1.5 + fbm_noise2(p.getVec2("gridXY") * noiseScale + Vec2(noiseCycle, 0), 2);
 
     // Lissajous sampling on palette
     rgb = sampleIntensity(p.point) * brightness *

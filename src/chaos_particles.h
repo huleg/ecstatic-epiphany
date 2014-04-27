@@ -19,7 +19,7 @@
 class ChaosParticles : public ParticleEffect
 {
 public:
-    ChaosParticles(const CameraFlowAnalyzer &flow);
+    ChaosParticles(const CameraFlowAnalyzer &flow, const rapidjson::Value &config);
     void reseed(Vec2 location, unsigned seed);
 
     bool isRunning();
@@ -29,23 +29,23 @@ public:
     virtual void debug(const DebugInfo &di);
 
 private:
-    static constexpr unsigned numParticles = 600;
-    static constexpr unsigned numDarkParticles = numParticles / 20;
-    static constexpr float generationScale = 1.0 / 14;
-    static constexpr float speedMin = 0.97;
-    static constexpr float speedMax = 1.8;
-    static constexpr float spinMin = M_PI / 6;
-    static constexpr float spinMax = spinMin + M_PI * 0.08;
-    static constexpr float relativeSize = 0.36;
-    static constexpr float intensity = 1.4;
-    static constexpr float intensityExp = 1.0 / 2.5;
-    static constexpr float initialSpeed = 0.008;
-    static constexpr float stepSize = 1.0 / 200;
-    static constexpr float colorRate = 0.02;
-    static constexpr float outsideMargin = 6.0;
-    static constexpr float darkMultiplier = -8.0;
-    static constexpr unsigned maxAge = 18000;
-    static constexpr float flowScale = 0.004;
+    unsigned numParticles;
+    unsigned numDarkParticles;
+    unsigned maxAge;
+    float generationScale;
+    float speedMin;
+    float speedMax;
+    float spinMin;
+    float spinMax;
+    float relativeSize;
+    float intensity;
+    float intensityExp;
+    float initialSpeed;
+    float stepSize;
+    float colorRate;
+    float outsideMargin;
+    float darkMultiplier;
+    float flowScale;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -73,9 +73,42 @@ private:
  *****************************************************************************************/
 
 
-inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow)
-    : flow(flow),
-      palette("data/bang-palette.png"),
+    unsigned numParticles;
+    unsigned numDarkParticles;
+    unsigned maxAge;
+    float generationScale;
+    float speedMin;
+    float speedMax;
+    float spinMin;
+    float spinMax;
+    float relativeSize;
+    float intensity;
+    float intensityExp;
+    float initialSpeed;
+    float stepSize;
+    float colorRate;
+    float outsideMargin;
+    float darkMultiplier;
+    float flowScale;
+
+inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow, const rapidjson::Value &config)
+    : numParticles(config["numParticles"].GetUint()),
+      numDarkParticles(config["numDarkParticles"].GetUint()),
+      maxAge(config["maxAge"].GetUint()),
+      generationScale(config["generationScale"].GetDouble()),
+      speedMin(config["speedMin"].GetDouble()),
+      speedMax(config["speedMax"].GetDouble()),
+      relativeSize(config["relativeSize"].GetDouble()),
+      intensity(config["intensity"].GetDouble()),
+      intensityExp(config["intensityExp"].GetDouble()),
+      initialSpeed(config["initialSpeed"].GetDouble()),
+      stepSize(config["stepSize"].GetDouble()),
+      colorRate(config["colorRate"].GetDouble()),
+      outsideMargin(config["outsideMargin"].GetDouble()),
+      darkMultiplier(config["darkMultiplier"].GetDouble()),
+      flowScale(config["flowScale"].GetDouble()),
+      flow(flow),
+      palette(config["palette"].GetString()),
       timeDeltaRemainder(0),
       colorCycle(0)
 {
