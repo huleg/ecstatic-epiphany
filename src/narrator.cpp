@@ -13,6 +13,18 @@ Narrator::Narrator()
     runner.setEffect(&mixer);
 }
 
+void Narrator::setup()
+{
+    // Approximate transform from camera coordinates to model coordinates.
+    flow.setTransform( Vec3(1, 0,  0),
+                       Vec3(0, 0, -1.25),
+                       Vec3(0, 0,  0) );
+
+    flow.setConfig(runner.config["flow"]);
+
+    currentState = runner.initialState;
+}    
+
 void Narrator::run()
 {
     PRNG prng;
@@ -20,15 +32,6 @@ void Narrator::run()
     totalTime = 0;
     totalLoops = 0;
     prng.seed(time(0));
-
-    currentState = runner.initialState;
-
-    // Approximate transform from camera coordinates to model coordinates.
-    flow.setTransform( Vec3(1, 0,  0),
-                       Vec3(0, 0, -1.25),
-                       Vec3(0, 0,  0) );
-
-    flow.setConfig(runner.config["flow"]);
 
     while (true) {
         if (runner.isVerbose()) {

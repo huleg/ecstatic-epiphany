@@ -3,13 +3,15 @@
 
     "flow": {
         "debug": false,
+        "debugFrameInterval": 4,
         "maxPoints": 50,
         "decimate": 3,
         "discoveryGridSpacing": 4,
-        "pointTrialPeriod": 4,
+        "pointTrialPeriod": 8,
         "maxPointAge": 300,
-        "minPointSpeed": 0.1,
-        "minEigThreshold": 0.004
+        "minPointSpeed": 0.06,
+        "minEigThreshold": 0.004,
+        "deletePointProbability": 0.1
     },
 
     "precursor": {

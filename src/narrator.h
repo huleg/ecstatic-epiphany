@@ -37,6 +37,7 @@ public:
 
     Narrator();
 
+    void setup();
     void run();
 
     CameraFlowAnalyzer flow;

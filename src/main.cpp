@@ -17,13 +17,14 @@ static void videoCallback(const Camera::VideoChunk &video, void *)
 
 int main(int argc, char **argv)
 {
-    Camera::start(videoCallback);
-
     narrator.runner.setLayout("layouts/window6x12.json");
     if (!narrator.runner.parseArguments(argc, argv)) {
         return 1;
     }
 
+    narrator.setup();
+    Camera::start(videoCallback);
     narrator.run();
+
     return 0;
 }

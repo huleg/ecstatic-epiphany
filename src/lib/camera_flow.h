@@ -46,6 +46,7 @@
 #include <stdio.h>
 #include "effect.h"
 #include "camera.h"
+#include "prng.h"
 
 
 class CameraFlowCapture;
@@ -64,10 +65,14 @@ public:
     // Set vision parameters from JSON object
     void setConfig(const rapidjson::Value &config);
 
+    // Random number generator including entropy from video data
+    PRNG prng;
+
 private:
     friend class CameraFlowCapture;
 
     bool debug;                     // Super-verbose console and screenshot output
+    unsigned debugFrameInterval;    // How often to output frames; 0 = never
     unsigned maxPoints;             // Max number of corner points to track at once
     unsigned decimate;              // Divide horizontal video resolution by skipping samples
     unsigned discoveryGridSpacing;  // Pixels per unit in the low-res point discovery sampling grid
@@ -75,6 +80,7 @@ private:
     unsigned maxPointAge;           // Limit stale points; always discard after this age
     float minPointSpeed;            // Minimum speed in pixels/frame to keep a point
     float minEigThreshold;          // Minimum eigenvalue threshold to keep a point
+    float deletePointProbability;   // Probability we'll delete a random tracking point to make room for a new one
 
     struct PointInfo {
         float distanceTraveled;
@@ -100,7 +106,10 @@ private:
     // Current transform
     Vec3 basisX, basisY, origin;
 
+    unsigned debugFrameCounter;
+
     void calculateFlow(Field &f);
+    void clear();
 };
 
 
@@ -136,8 +145,13 @@ private:
 
 
 inline CameraFlowAnalyzer::CameraFlowAnalyzer()
-{}
+    : decimate(0)
+{
+    prng.seed(29);
 
+    // Default transform is identity
+    setTransform( Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 0) );
+}
 
 inline void CameraFlowAnalyzer::setTransform(Vec3 basisX, Vec3 basisY, Vec3 origin)
 {
@@ -154,17 +168,25 @@ inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
     discoveryGridSpacing = config["discoveryGridSpacing"].GetUint();
     pointTrialPeriod = config["pointTrialPeriod"].GetUint();
     maxPointAge = config["maxPointAge"].GetUint();
+    debugFrameInterval = config["debugFrameInterval"].GetUint();
     minPointSpeed = config["minPointSpeed"].GetDouble();
     minEigThreshold = config["minEigThreshold"].GetDouble();
+    deletePointProbability = config["deletePointProbability"].GetDouble();
 
+    // Resize arrays
+    clear();
+}
+
+inline void CameraFlowAnalyzer::clear()
+{
     integratorX = integratorY = integratorL = 0;
-
-    // Default transform is identity
-    setTransform( Vec3(1, 0, 0), Vec3(0, 1, 0), Vec3(0, 0, 0) );
+    debugFrameCounter = 0;
 
     for (unsigned i = 0; i < Camera::kFields; i++) {
-        for (unsigned j = 0; j < 2; j++) {
-            fields[i].frames[j] = cv::Mat::zeros(Camera::kLinesPerField, Camera::kPixelsPerLine / decimate, CV_8UC1);
+        if (decimate != 0) {
+            for (unsigned j = 0; j < 2; j++) {
+                fields[i].frames[j] = cv::Mat::zeros(Camera::kLinesPerField, Camera::kPixelsPerLine / decimate, CV_8UC1);
+            }
         }
         fields[i].points.clear();
     }
@@ -172,11 +194,19 @@ inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
 
 inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
 {
+    if (decimate == 0) {
+        // Unconfigured
+        return;
+    }
+
     // Store decimated luminance values only
 
     Camera::VideoChunk iter = chunk;
     const uint8_t *limit = iter.data + chunk.byteCount;
     const unsigned bytesPerSample = decimate * 2;
+
+    prng.remix(iter.byteOffset);
+    prng.remix(iter.line);
 
     // Align to the next stored luminance value
     while ((iter.byteOffset % bytesPerSample) != 1) {
@@ -212,6 +242,18 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
     cv::TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 20, 0.03);
     cv::Size subPixWinSize(6,6), winSize(15,15);
+
+    int pointsToDelete = (int) prng.uniform(0, 1.0f + deletePointProbability);
+    while (pointsToDelete > 0 && !f.points.empty()) {
+
+        // Randomly delete a tracking point, to keep them from getting stuck in unhelpful
+        // places and to help ensure there's a steady flow of slots for new points to spawn into.
+
+        int i = std::min<int>(f.points.size()-1, prng.uniform(0, f.points.size()));
+
+        f.points.erase(f.points.begin() + i, f.points.begin() + i + 1);
+        f.pointInfo.erase(f.pointInfo.begin() + i, f.pointInfo.begin() + i + 1);
+    }
 
     if (f.points.size() < maxPoints) {
         /*
@@ -250,8 +292,11 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         for (int y = 1; y < gridHeight - 1; y++) {
             for (int x = 1; x < gridWidth - 1; x++) {
                 if (!gridCoverage[x + y * gridWidth]) {
-                    int pixX = x * discoveryGridSpacing;
-                    int pixY = y * discoveryGridSpacing;
+
+                    // Random sampling bias, to avoid creating identical tracking points
+                    const float s = discoveryGridSpacing * 0.4;
+                    int pixX = x * discoveryGridSpacing + prng.uniform(-s, s);
+                    int pixY = y * discoveryGridSpacing + prng.uniform(-s, s);
 
                     int diff = (int)f.frames[1].at<uint8_t>(pixY, pixX) - (int)f.frames[0].at<uint8_t>(pixY, pixX);
                     int diff2 = diff * diff;
@@ -360,20 +405,21 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         }
     }
 
-    if (debug) {
-        // Debug screenshots
+    // Write frames to disk periodically in super-verbose debug mode
+    if (debug && debugFrameInterval) {
+        debugFrameCounter++;
+        if ((debugFrameCounter % debugFrameInterval) == 0) {
 
-        static int num = 0;
-        ++num;
+            // Draw circles over each point; shade = age
+            for (unsigned i = 0; i < f.points.size(); ++i) {
+                int l = std::min<int>(255, f.pointInfo[i].age);
+                cv::circle(f.frames[1], f.points[i], 3, cv::Scalar(l));
+            }
 
-        for (unsigned i = 0; i < f.points.size(); ++i) {
-            int l = std::min<int>(255, f.pointInfo[i].age);
-            cv::circle(f.frames[1], f.points[i], 3, cv::Scalar(l));
+            char fn[256];
+            snprintf(fn, sizeof fn, "frame-%04d.png", debugFrameCounter / debugFrameInterval);
+            cv::imwrite(fn, f.frames[1]);
         }
-
-        char fn[256];
-        snprintf(fn, sizeof fn, "frame-%04d.png", num);
-        cv::imwrite(fn, f.frames[1]);
     }
 
     std::swap(f.frames[0], f.frames[1]);
