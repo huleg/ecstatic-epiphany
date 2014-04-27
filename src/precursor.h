@@ -47,6 +47,7 @@ private:
     float blockPullRadius;
     float damping;
     float visibleRadius;
+    float outsideMargin;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -87,6 +88,7 @@ inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Val
       blockPullRadius(config["blockPullRadius"].GetDouble()),
       damping(config["damping"].GetDouble()),
       visibleRadius(config["visibleRadius"].GetDouble()),
+      outsideMargin(config["outsideMargin"].GetDouble()),
       flow(flow),
       palette(config["palette"].GetString()),
       timeDeltaRemainder(0)
@@ -179,7 +181,12 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         pd.time += 1.0f / stepRate / particleDuration;
 
         if (pd.time >= 1.0f) {
-            // Discard
+            // Discard, too old
+            continue;
+        }
+
+        if (f.distanceOutsideBoundingBox(pa.point) > outsideMargin * visibleRadius) {
+            // Outside bounding box, discard
             continue;
         }
 

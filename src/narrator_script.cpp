@@ -20,8 +20,8 @@ int Narrator::script(int st, PRNG &prng)
     static ChaosParticles chaosB(flow);
     static OrderParticles orderParticles(flow);
     static Precursor precursor(flow, runner.config["precursor"]);
-    static RingsEffect ringsA(flow);
-    static RingsEffect ringsB(flow);
+    static RingsEffect ringsA(flow, runner.config["ringsA"]);
+    static RingsEffect ringsB(flow, runner.config["ringsB"]);
     static PartnerDance partnerDance(flow);
     static VisionDebug visionDebug(flow);
 
@@ -105,7 +105,6 @@ int Narrator::script(int st, PRNG &prng)
         case 30: {
             // Textures of light, slow crossfade in
             ringsA.reseed();
-            ringsA.palette.load("data/glass.png");
             crossfade(&ringsA, prng.uniform(15, 25));
             delay(prng.uniform(25, 90));
             return 40;
@@ -114,7 +113,6 @@ int Narrator::script(int st, PRNG &prng)
         case 40: {
             // Textures of energy, slow crossfade in
             ringsB.reseed();
-            ringsB.palette.load("data/darkmatter-palette.png");
             crossfade(&ringsB, prng.uniform(30, 90));
             delay(prng.uniform(25, 160));
             return 50;

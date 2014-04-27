@@ -3,33 +3,84 @@
 
     "flow": {
         "debug": false,
-        "debugFrameInterval": 4,
+        "debugFrameInterval": 2,
         "maxPoints": 50,
         "decimate": 3,
         "discoveryGridSpacing": 4,
         "pointTrialPeriod": 8,
         "maxPointAge": 300,
-        "minPointSpeed": 0.06,
-        "minEigThreshold": 0.004,
-        "deletePointProbability": 0.1
+        "minPointSpeed": 0.03,
+        "minEigThreshold": 0.002,
+        "deletePointProbability": 0.03,
+        "transform": [
+            1, 0, 0,
+            0, 0, -1.25,
+            0, 0, 0
+        ]
     },
 
     "precursor": {
         "palette": "data/darkmatter-palette.png",
         "maxParticles": 150,
-        "launchProbabilityBaseline": 0.008,
-        "launchProbabilityScale": 1.5,
-        "flowScale": 0.0002,
+        "launchProbabilityBaseline": 0.004,
+        "launchProbabilityScale": 2.0,
+        "flowScale": -0.00002,
         "stepRate": 200.0,
         "noiseRate": 0.015,
         "brightness": 3.0,
-        "particleDuration": 0.75,
-        "ledPull": 0.006,
+        "particleDuration": 15.0,
+        "ledPull": 0.0003,
         "ledPullRadius": 0.05,
-        "blockPull": 0.00005,
+        "blockPull": 0.000003,
         "blockPullRadius": 0.1,
-        "damping": 0.00005,
-        "visibleRadius": 0.08
-    }
+        "damping": 0.000002,
+        "visibleRadius": 0.12,
+        "outsideMargin": 6.0
+    },
 
+    "ringsA": {
+        "palette": "data/glass.png",
+        "xyzSpeed": 0.2,
+        "xyzScale": 0.3,
+        "flowScale": 0.004,
+        "wSpeed": 0.1,
+        "wRate": 0.015,
+        "ringScale": 1.5,
+        "ringScaleRate": 0.035,
+        "ringDepth": 0.4,
+        "wanderSpeed": 0.04,
+        "wanderSize": 1.5,
+        "brightnessContrast": 4.0,
+        "colorContrast": 0.8,
+        "colorShiftRate": 0.12,
+        "targetBrightness": 0.15,
+        "thresholdGain": 0.1,
+        "thresholdStepLimit": 0.02,
+        "initialThreshold": -1.0,
+        "brightnessOctaves": 7,
+        "colorOctaves": 3
+    },
+
+    "ringsB": {
+        "palette": "data/darkmatter-palette.png",
+        "xyzSpeed": 0.2,
+        "xyzScale": 0.3,
+        "flowScale": 0.0035,
+        "wSpeed": 0.4,
+        "wRate": 0.015,
+        "ringScale": 1.5,
+        "ringScaleRate": 0.035,
+        "ringDepth": 0.4,
+        "wanderSpeed": 0.015,
+        "wanderSize": 1.5,
+        "brightnessContrast": 7.0,
+        "colorContrast": 0.8,
+        "colorShiftRate": 0.12,
+        "targetBrightness": 0.08,
+        "thresholdGain": 0.1,
+        "thresholdStepLimit": 0.02,
+        "initialThreshold": -1.0,
+        "brightnessOctaves": 7,
+        "colorOctaves": 3
+    }
 }

@@ -25,32 +25,52 @@
 class RingsEffect : public Effect
 {
 public:
-    RingsEffect(CameraFlowAnalyzer& flow)
-        : flow(flow)
+    RingsEffect(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
+        : xyzSpeed(config["xyzSpeed"].GetDouble()),
+          xyzScale(config["xyzScale"].GetDouble()),
+          flowScale(config["flowScale"].GetDouble()),
+          wSpeed(config["wSpeed"].GetDouble()),
+          wRate(config["wRate"].GetDouble()),
+          ringScale(config["ringScale"].GetDouble()),
+          ringScaleRate(config["ringScaleRate"].GetDouble()),
+          ringDepth(config["ringDepth"].GetDouble()),
+          wanderSpeed(config["wanderSpeed"].GetDouble()),
+          wanderSize(config["wanderSize"].GetDouble()),
+          brightnessContrast(config["brightnessContrast"].GetDouble()),
+          colorContrast(config["colorContrast"].GetDouble()),
+          colorShiftRate(config["colorShiftRate"].GetDouble()),
+          targetBrightness(config["targetBrightness"].GetDouble()),
+          thresholdGain(config["thresholdGain"].GetDouble()),
+          thresholdStepLimit(config["thresholdStepLimit"].GetDouble()),
+          initialThreshold(config["initialThreshold"].GetDouble()),
+          brightnessOctaves(config["brightnessOctaves"].GetUint()),
+          colorOctaves(config["colorOctaves"].GetUint()),
+          flow(flow),
+          palette(config["palette"].GetString())
     {
         reseed();
     }
 
-    static constexpr float xyzSpeed = 0.2;
-    static constexpr float xyzScale = 0.3;
-    static constexpr float flowScale = 0.004;
-    static constexpr float wSpeed = 0.1;
-    static constexpr float wRate = 0.015;
-    static constexpr float ringScale = 1.5;
-    static constexpr float ringScaleRate = 0.035;
-    static constexpr float ringDepth = 0.4;
-    static constexpr float wanderSpeed = 0.015;
-    static constexpr float wanderSize = 1.5;
-    static constexpr float brightnessContrast = 6;
-    static constexpr float colorContrast = 0.8;
-    static constexpr float colorShiftRate = 0.12;
-    static constexpr float targetBrightness = 0.15;
-    static constexpr float thresholdGain = 0.1;
-    static constexpr float thresholdStepLimit = 0.02;
-    static constexpr float initialThreshold = -1.0f;
-    static constexpr unsigned brightnessOctaves = 7;
-    static constexpr unsigned colorOctaves = 3;
-
+    float xyzSpeed;
+    float xyzScale;
+    float flowScale;
+    float wSpeed;
+    float wRate;
+    float ringScale;
+    float ringScaleRate;
+    float ringDepth;
+    float wanderSpeed;
+    float wanderSize;
+    float brightnessContrast;
+    float colorContrast;
+    float colorShiftRate;
+    float targetBrightness;
+    float thresholdGain;
+    float thresholdStepLimit;
+    float initialThreshold;
+    unsigned brightnessOctaves;
+    unsigned colorOctaves;
+    
     CameraFlowCapture flow;
 
     // Sample colors along a curved path through a texture

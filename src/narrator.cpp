@@ -15,13 +15,7 @@ Narrator::Narrator()
 
 void Narrator::setup()
 {
-    // Approximate transform from camera coordinates to model coordinates.
-    flow.setTransform( Vec3(1, 0,  0),
-                       Vec3(0, 0, -1.25),
-                       Vec3(0, 0,  0) );
-
     flow.setConfig(runner.config["flow"]);
-
     currentState = runner.initialState;
 }    
 

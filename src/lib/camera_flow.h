@@ -173,6 +173,13 @@ inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
     minEigThreshold = config["minEigThreshold"].GetDouble();
     deletePointProbability = config["deletePointProbability"].GetDouble();
 
+    const rapidjson::Value& t = config["transform"];
+    if (t.IsArray() && t.Size() == 9) {
+        setTransform( Vec3( t[0u].GetDouble(), t[1].GetDouble(), t[2].GetDouble() ),
+                      Vec3( t[3 ].GetDouble(), t[4].GetDouble(), t[5].GetDouble() ),
+                      Vec3( t[6 ].GetDouble(), t[7].GetDouble(), t[8].GetDouble() ));
+    }
+
     // Resize arrays
     clear();
 }
