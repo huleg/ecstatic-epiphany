@@ -44,6 +44,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <stdio.h>
+#include <string>
 #include "effect.h"
 #include "camera.h"
 #include "prng.h"
@@ -73,6 +74,8 @@ private:
 
     bool debug;                     // Super-verbose console and screenshot output
     unsigned debugFrameInterval;    // How often to output frames; 0 = never
+    std::string debugVideoFile;     // Where to save encoded video debug output
+    std::string debugVideoFourcc;   // FOURCC format code for debug video output
     unsigned maxPoints;             // Max number of corner points to track at once
     unsigned decimate;              // Divide horizontal video resolution by skipping samples
     unsigned discoveryGridSpacing;  // Pixels per unit in the low-res point discovery sampling grid
@@ -85,8 +88,15 @@ private:
     struct PointInfo {
         float distanceTraveled;
         unsigned age;
+        unsigned maxAge;
 
-        PointInfo() : distanceTraveled(0), age(0) {}
+        PointInfo()
+            : distanceTraveled(0), age(0), maxAge(0)
+        {}
+
+        PointInfo(unsigned maxAge)
+            : distanceTraveled(0), age(0), maxAge(maxAge)
+        {}
     };
 
     struct Field {
@@ -95,6 +105,7 @@ private:
         std::vector<PointInfo> pointInfo;
     };
 
+    cv::VideoWriter debugVideoWriter;
     Field fields[Camera::kFields];
 
     // Optical flow integrators, in 16:16 fixed point
@@ -108,6 +119,7 @@ private:
 
     unsigned debugFrameCounter;
 
+    static uint32_t stringToFourCC(const std::string &f);
     void calculateFlow(Field &f);
     void clear();
 };
@@ -163,12 +175,17 @@ inline void CameraFlowAnalyzer::setTransform(Vec3 basisX, Vec3 basisY, Vec3 orig
 inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
 {
     debug = config["debug"].GetBool();
+    if (debug) {
+        debugFrameInterval = config["debugFrameInterval"].GetUint();
+        debugVideoFile = config["debugVideoFile"].GetString();
+        debugVideoFourcc = config["debugVideoFourcc"].GetString();
+    }
+
     maxPoints = config["maxPoints"].GetUint();
     decimate = config["decimate"].GetUint();
     discoveryGridSpacing = config["discoveryGridSpacing"].GetUint();
     pointTrialPeriod = config["pointTrialPeriod"].GetUint();
     maxPointAge = config["maxPointAge"].GetUint();
-    debugFrameInterval = config["debugFrameInterval"].GetUint();
     minPointSpeed = config["minPointSpeed"].GetDouble();
     minEigThreshold = config["minEigThreshold"].GetDouble();
     deletePointProbability = config["deletePointProbability"].GetDouble();
@@ -196,6 +213,12 @@ inline void CameraFlowAnalyzer::clear()
             }
         }
         fields[i].points.clear();
+    }
+
+    if (debug && debugFrameInterval) {
+        float fps = 60 / 1.001 / debugFrameInterval;
+        debugVideoWriter.open(debugVideoFile.c_str(),
+            stringToFourCC(debugVideoFourcc), fps, fields[0].frames[0].size());
     }
 }
 
@@ -240,6 +263,14 @@ inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
     }
 }
 
+inline uint32_t CameraFlowAnalyzer::stringToFourCC(const std::string &f)
+{
+    return CV_FOURCC(f.size() >= 1 ? f[0] : 0,
+                     f.size() >= 2 ? f[1] : 0,
+                     f.size() >= 3 ? f[2] : 0,
+                     f.size() >= 4 ? f[3] : 0);
+}
+
 inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 {            
     /*
@@ -258,8 +289,13 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
         int i = std::min<int>(f.points.size()-1, prng.uniform(0, f.points.size()));
 
+        fprintf(stderr, "flow[%d]: Random delete of point %d (age = %d, distance = %f)\n",
+            (int)(&f - &fields[0]),
+            i, f.pointInfo[i].age, f.pointInfo[i].distanceTraveled);
+
         f.points.erase(f.points.begin() + i, f.points.begin() + i + 1);
         f.pointInfo.erase(f.pointInfo.begin() + i, f.pointInfo.begin() + i + 1);
+        pointsToDelete--;
     }
 
     if (f.points.size() < maxPoints) {
@@ -323,12 +359,16 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             cv::cornerSubPix(f.frames[0], newPoint, subPixWinSize, cv::Size(-1,-1), termcrit);
 
             // New point
+            unsigned maxAge = prng.uniform(0, maxPointAge);
             f.points.push_back(newPoint[0]);
-            f.pointInfo.push_back(PointInfo());
+            f.pointInfo.push_back(PointInfo(maxAge));
 
             if (debug) {
-                fprintf(stderr, "flow: Detecting new point (%f, %f) -> (%f, %f). %d points total\n",
-                    bestPoint.x, bestPoint.y, newPoint[0].x, newPoint[0].y, (int)f.points.size());
+                fprintf(stderr, "flow[%d]: Detecting new point (%f, %f) -> (%f, %f). %d points total\n",
+                    (int)(&f - &fields[0]),
+                    bestPoint.x, bestPoint.y,
+                    newPoint[0].x, newPoint[0].y,
+                    (int)f.points.size());
             }
         }
     }
@@ -370,7 +410,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
                 // unreachable points don't get permanently included.
 
                 if (info.age < pointTrialPeriod || 
-                    (info.age < maxPointAge && info.distanceTraveled / info.age > minPointSpeed)) {
+                    (info.age < info.maxAge && info.distanceTraveled / info.age > minPointSpeed)) {
 
                     // Store point for next time
                     f.pointInfo[j] = info;
@@ -386,11 +426,14 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
                     }
 
                 } else if (debug) {
-                    fprintf(stderr, "flow: Forgetting point %d with age=%d distance=%f speed=%f\n",
-                        i, info.age, info.distanceTraveled, info.distanceTraveled / info.age);
+                    fprintf(stderr, "flow[%d]: Forgetting point %d with age=%d distance=%f speed=%f\n",
+                        (int)(&f - &fields[0]),
+                        i, info.age,
+                        info.distanceTraveled, info.distanceTraveled / info.age);
                 }
             } else if (debug) {
-                fprintf(stderr, "flow: Point %d lost tracking\n", i);
+                fprintf(stderr, "flow[%d]: Point %d lost tracking\n",
+                    (int)(&f - &fields[0]), i);
             }
         }
 
@@ -407,25 +450,29 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         }
 
         if (debug) {
-            fprintf(stderr, "flow: Tracking %d points, integrator (%08x, %08x) L=%08x denominator=%f\n",
-                (int)f.points.size(), integratorX, integratorY, integratorL, denominator);
+            fprintf(stderr, "flow[%d]: Tracking %d points, integrator (%08x, %08x) L=%08x denominator=%f\n",
+                (int)(&f - &fields[0]),
+                (int)f.points.size(),
+                integratorX, integratorY, integratorL,
+                denominator);
         }
     }
 
     // Write frames to disk periodically in super-verbose debug mode
     if (debug && debugFrameInterval) {
         debugFrameCounter++;
-        if ((debugFrameCounter % debugFrameInterval) == 0) {
+        if ((debugFrameCounter % debugFrameInterval) == 0 && debugVideoWriter.isOpened()) {
+
+            cv::Mat frame;
+            cv::cvtColor(f.frames[1], frame, cv::COLOR_GRAY2BGR);
 
             // Draw circles over each point; shade = age
             for (unsigned i = 0; i < f.points.size(); ++i) {
                 int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(f.frames[1], f.points[i], 3, cv::Scalar(l));
+                cv::circle(frame, f.points[i], 3, cv::Scalar(l, l, 255 - l));
             }
 
-            char fn[256];
-            snprintf(fn, sizeof fn, "frame-%04d.png", debugFrameCounter / debugFrameInterval);
-            cv::imwrite(fn, f.frames[1]);
+            debugVideoWriter.write(frame);
         }
     }
 

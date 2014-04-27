@@ -2,16 +2,20 @@
     "initialState": 0,
 
     "flow": {
-        "debug": true,
-        "debugFrameInterval": 2,
+        "debug": false,
+        "debugFrameInterval": 4,
+        "debugVideoFile": "debug-output.avi",
+        "debugVideoFourcc": "XVID",
+
         "maxPoints": 50,
         "decimate": 3,
-        "discoveryGridSpacing": 4,
-        "pointTrialPeriod": 5,
-        "maxPointAge": 300,
-        "minPointSpeed": 0.01,
-        "minEigThreshold": 0.0008,
-        "deletePointProbability": 0.03,
+        "discoveryGridSpacing": 5,
+        "pointTrialPeriod": 10,
+        "maxPointAge": 400,
+        "minPointSpeed": 0.02,
+        "minEigThreshold": 0.003,
+        "deletePointProbability": 0.07,
+
         "transform": [
             1, 0, 0,
             0, 0, -1.1,
@@ -20,8 +24,9 @@
     },
 
     "visionDebug": {
-        "originInterval": 10.0,
-        "scale": 0.02
+        "originInterval": 5.0,
+        "scale": 0.02,
+        "radius": 0.4
     },
 
     "precursor": {

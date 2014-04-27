@@ -21,6 +21,7 @@ public:
 private:
     float originInterval;
     float scale;
+    float radius;
 
     CameraFlowCapture flow;
     float originTimer;
@@ -35,6 +36,7 @@ private:
 inline VisionDebug::VisionDebug(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : originInterval(config["originInterval"].GetDouble()),
       scale(config["scale"].GetDouble()),
+      radius(config["radius"].GetDouble()),
       flow(flow),
       originTimer(0)
 {}
@@ -52,7 +54,7 @@ inline void VisionDebug::beginFrame(const FrameInfo &f)
     appearance.resize(1);
 
     appearance[0].intensity = 0.7f;
-    appearance[0].radius = 0.6f;
+    appearance[0].radius = radius;
     appearance[0].color = Vec3(1,1,1);
     appearance[0].point = flow.model * scale;
 
