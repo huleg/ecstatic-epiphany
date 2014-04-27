@@ -2,7 +2,7 @@
     "initialState": 0,
 
     "flow": {
-        "debug": false,
+        "debug": true,
         "debugFrameInterval": 4,
         "debugVideoFile": "debug-output.avi",
         "debugVideoFourcc": "XVID",
@@ -13,7 +13,7 @@
         "pointTrialPeriod": 10,
         "maxPointAge": 400,
         "minPointSpeed": 0.02,
-        "minEigThreshold": 0.003,
+        "minEigThreshold": 0.0055,
         "deletePointProbability": 0.1,
 
         "transform": [

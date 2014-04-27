@@ -384,7 +384,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
 
         cv::Point2f numerator = cv::Point2f(0, 0);
         float denominator = 0;
-        uint32_t numeratorL = 0, denominatorL = 0;
+        float numeratorL = 0, denominatorL = 0;
 
         cv::calcOpticalFlowPyrLK(f.frames[0], f.frames[1], f.points,
             points, status, err, winSize, 3, termcrit, 3, minEigThreshold);
@@ -404,9 +404,6 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
                 info.age++;
                 info.distanceTraveled += distance;
 
-                numeratorL += (int)(distance * 0x10000);
-                denominatorL++;
-
                 // Is the point stale? Points that haven't moved will be discarded unless they're in
                 // the initial trial period. Points that are too old will be discarded too, so stale
                 // unreachable points don't get permanently included.
@@ -422,9 +419,13 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
                     // Add to overall flow vector, using the point age and error to weight it
                     if (info.age > pointTrialPeriod) {
                         float weight = (info.age - pointTrialPeriod) / err[i];
+
                         numerator.x += motion.x * weight;
                         numerator.y += motion.y * weight;
                         denominator += weight;
+
+                        numeratorL += distance * weight;
+                        denominatorL += weight;
                     }
 
                 } else if (debug) {
@@ -448,7 +449,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             integratorY += int32_t(numerator.y * 0x10000 / denominator);
         }
         if (denominatorL) {
-            integratorL += numeratorL / denominatorL;
+            integratorL += int32_t(numeratorL * 0x10000 / denominatorL);
         }
 
         if (debug) {
@@ -471,7 +472,10 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             // Draw circles over each point; shade = age
             for (unsigned i = 0; i < f.points.size(); ++i) {
                 int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(frame, f.points[i], 3, cv::Scalar(l, l, 255 - l));
+                cv::circle(frame, f.points[i], 3,
+                        f.pointInfo[i].age < pointTrialPeriod
+                            ? cv::Scalar(0, 0, 0)
+                            : cv::Scalar(l, 64 + l/2, 255 - l));
             }
 
             debugVideoWriter.write(frame);
