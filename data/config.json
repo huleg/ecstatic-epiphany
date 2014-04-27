@@ -2,7 +2,7 @@
     "initialState": 0,
 
     "flow": {
-        "debug": true,
+        "debug": false,
         "debugFrameInterval": 4,
         "debugVideoFile": "debug-output.avi",
         "debugVideoFourcc": "XVID",
