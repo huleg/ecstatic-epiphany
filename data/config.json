@@ -2,7 +2,7 @@
     "initialState": 0,
 
     "flow": {
-        "debug": false,
+        "debug": true,
         "debugFrameInterval": 2,
         "maxPoints": 50,
         "decimate": 3,
@@ -10,13 +10,18 @@
         "pointTrialPeriod": 5,
         "maxPointAge": 300,
         "minPointSpeed": 0.01,
-        "minEigThreshold": 0.0012,
+        "minEigThreshold": 0.0008,
         "deletePointProbability": 0.03,
         "transform": [
             1, 0, 0,
             0, 0, -1.1,
             0, 0, 0
         ]
+    },
+
+    "visionDebug": {
+        "originInterval": 10.0,
+        "scale": 0.02
     },
 
     "precursor": {
@@ -62,6 +67,46 @@
         "flowScale": 0.004
     },
 
+    "orderParticles": {
+        "palette": "data/mars-palette.png",
+        "numParticles": 100,
+        "damping": 0.0002,
+        "repelGain": 0.0001,
+        "flowFilterRate": 0.05,
+        "flowScale": 0.016,
+        "flowLightAngleRate": 0.03,
+        "flowColorCycleRate": 0.002,
+        "relativeSize": 0.52,
+        "intensity": 0.02,
+        "brightness": 1.35,
+        "stepSize": 0.0033,
+        "seedRadius": 4.0,
+        "interactionSize": 0.6,
+        "colorRate": 0.035,
+        "angleGainRate": 0.3,
+        "angleGainCenter": 0.02,
+        "angleGainVariation": 0.006
+    },
+
+    "partnerDance": {
+        "palette": "data/foggy-bay-palette.png",
+        "particlesPerDancer": 30,
+        "stepSize": 0.0033,
+        "colorRate": 0.8,
+        "noiseRate": 0.4,
+        "radius": 0.9,
+        "radiusScale": 0.3,
+        "intensityScale": 20.0,
+        "maxIntensity": 0.3,
+        "minIntensity": 0.01,
+        "targetRadius": 0.5,
+        "interactionRadius": 0.4,
+        "jitterRate": 0.66,
+        "jitterStrength": 0.6,
+        "jitterScale": 0.7,
+        "flowScale": 0.02
+    },
+
     "ringsA": {
         "palette": "data/glass.png",
         "xyzSpeed": 0.2,
@@ -90,7 +135,7 @@
         "xyzSpeed": 0.2,
         "xyzScale": 0.3,
         "flowScale": 0.0035,
-        "wSpeed": 0.4,
+        "wSpeed": 0.15,
         "wRate": 0.015,
         "ringScale": 1.5,
         "ringScaleRate": 0.035,

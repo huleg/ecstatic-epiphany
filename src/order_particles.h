@@ -20,7 +20,7 @@
 class OrderParticles : public ParticleEffect
 {
 public:
-    OrderParticles(CameraFlowAnalyzer& flow);
+    OrderParticles(CameraFlowAnalyzer& flow, const rapidjson::Value &config);
     void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo &f);
@@ -33,23 +33,23 @@ public:
     float baseAngle;
 
 private:
-    static constexpr unsigned numParticles = 60;
-    static constexpr float damping = 0.0002;
-    static constexpr float repelGain = 0.0009;
-    static constexpr float flowFilterRate = 0.05;
-    static constexpr float flowScale = 0.012;
-    static constexpr float flowLightAngleRate = 0.03;
-    static constexpr float flowColorCycleRate = 0.002;
-    static constexpr float relativeSize = 0.42;
-    static constexpr float intensity = 0.12;
-    static constexpr float brightness = 1.35;
-    static constexpr float stepSize = 1.0 / 300;
-    static constexpr float seedRadius = 3.0;
-    static constexpr float interactionSize = 0.56;
-    static constexpr float colorRate = 0.02;
-    static constexpr float angleGainRate = 0.3;
-    static constexpr float angleGainCenter = 0.02;
-    static constexpr float angleGainVariation = angleGainCenter * 0.3;
+    unsigned numParticles;
+    float damping;
+    float repelGain;
+    float flowFilterRate;
+    float flowScale;
+    float flowLightAngleRate;
+    float flowColorCycleRate;
+    float relativeSize;
+    float intensity;
+    float brightness;
+    float stepSize;
+    float seedRadius;
+    float interactionSize;
+    float colorRate;
+    float angleGainRate;
+    float angleGainCenter;
+    float angleGainVariation;
 
     CameraFlowCapture flow;
 
@@ -70,8 +70,24 @@ private:
  *****************************************************************************************/
 
 
-inline OrderParticles::OrderParticles(CameraFlowAnalyzer& flow)
-    : palette("data/mars-palette.png"),
+inline OrderParticles::OrderParticles(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
+    : palette(config["palette"].GetString()),
+      numParticles(config["numParticles"].GetUint()),
+      damping(config["damping"].GetDouble()),
+      repelGain(config["repelGain"].GetDouble()),
+      flowFilterRate(config["flowFilterRate"].GetDouble()),
+      flowScale(config["flowScale"].GetDouble()),
+      flowLightAngleRate(config["flowLightAngleRate"].GetDouble()),
+      relativeSize(config["relativeSize"].GetDouble()),
+      intensity(config["intensity"].GetDouble()),
+      brightness(config["brightness"].GetDouble()),
+      stepSize(config["stepSize"].GetDouble()),
+      seedRadius(config["seedRadius"].GetDouble()),
+      interactionSize(config["interactionSize"].GetDouble()),
+      colorRate(config["colorRate"].GetDouble()),
+      angleGainRate(config["angleGainRate"].GetDouble()),
+      angleGainCenter(config["angleGainCenter"].GetDouble()),
+      angleGainVariation(config["angleGainVariation"].GetDouble()),
       flow(flow),
       timeDeltaRemainder(0)
 {

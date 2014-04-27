@@ -18,7 +18,7 @@
 class PartnerDance : public ParticleEffect
 {
 public:
-    PartnerDance(CameraFlowAnalyzer& flow);
+    PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Value &config);
     void reseed(uint32_t seed);
 
     virtual void beginFrame(const FrameInfo &f);
@@ -34,23 +34,24 @@ public:
     float interactionRate;
 
 private:
-    static constexpr unsigned particlesPerDancer = 30;
     static constexpr unsigned numDancers = 2;
-    static constexpr unsigned numParticles = numDancers * particlesPerDancer;
-    static constexpr float stepSize = 1.0 / 300;
 
-    static constexpr float colorRate = 0.8;
-    static constexpr float noiseRate = 0.4;
-    static constexpr float radius = 0.9;
-    static constexpr float radiusScale = 0.3;
-    static constexpr float intensityScale = 20.0;
-    static constexpr float maxIntensity = 0.3;
-    static constexpr float minIntensity = 0.01;
-    static constexpr float targetRadius = 0.5;
-    static constexpr float interactionRadius = 0.4;
-    static constexpr float jitterRate = 0.66;
-    static constexpr float jitterStrength = 0.6;
-    static constexpr float jitterScale = 0.7;
+    unsigned particlesPerDancer;
+    unsigned numParticles;
+    float stepSize;
+    float colorRate;
+    float noiseRate;
+    float radius;
+    float radiusScale;
+    float intensityScale;
+    float maxIntensity;
+    float minIntensity;
+    float targetRadius;
+    float interactionRadius;
+    float jitterRate;
+    float jitterStrength;
+    float jitterScale;
+    float flowScale;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -74,18 +75,31 @@ private:
  *****************************************************************************************/
 
 
-inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow)
-    : targetGain(0),
+inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
+    : palette(config["palette"].GetString()),
+      targetGain(0),
       targetSpin(0),
       damping(0),
       dampingRate(0),
       interactionRate(0),
+      particlesPerDancer(config["particlesPerDancer"].GetUint()),
+      numParticles(particlesPerDancer * numDancers),
+      stepSize(config["stepSize"].GetDouble()),
+      colorRate(config["colorRate"].GetDouble()),
+      radius(config["radius"].GetDouble()),
+      radiusScale(config["radiusScale"].GetDouble()),
+      intensityScale(config["intensityScale"].GetDouble()),
+      maxIntensity(config["maxIntensity"].GetDouble()),
+      minIntensity(config["minIntensity"].GetDouble()),
+      targetRadius(config["targetRadius"].GetDouble()),
+      interactionRadius(config["interactionRadius"].GetDouble()),
+      jitterRate(config["jitterRate"].GetDouble()),
+      jitterStrength(config["jitterStrength"].GetDouble()),
+      jitterScale(config["jitterScale"].GetDouble()),
+      flowScale(config["flowScale"].GetDouble()),
       flow(flow),
       timeDeltaRemainder(0)
 {
-    // Sky at (0,0), lightness along +X, darkness along +Y. Fire encircles the void at (1,1)
-    palette.load("data/foggy-bay-palette.png"),
-
     reseed(42);
 }
 
@@ -166,6 +180,10 @@ inline void PartnerDance::runStep(const FrameInfo &f)
     PRNG prng;
     prng.seed(42);
 
+    // Capture the impulse between the last step and this one
+    flow.capture(1.0);
+    flow.origin();
+
     for (unsigned dancer = 0; dancer < numDancers; dancer++) {
         for (unsigned i = 0; i < particlesPerDancer; i++, pa++, pd++) {
 
@@ -180,6 +198,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             v *= 1.0 - damping;
             v += disparity * targetGain;
             v += normal * targetSpin;
+            v += Vec2(flow.model[0], flow.model[2]) * flowScale;
 
             // Particle interactions
             ResultSet_t hits;

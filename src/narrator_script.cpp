@@ -18,12 +18,12 @@ int Narrator::script(int st, PRNG &prng)
 {
     static ChaosParticles chaosA(flow, runner.config["chaosParticles"]);
     static ChaosParticles chaosB(flow, runner.config["chaosParticles"]);
-    static OrderParticles orderParticles(flow);
+    static OrderParticles orderParticles(flow, runner.config["orderParticles"]);
     static Precursor precursor(flow, runner.config["precursor"]);
     static RingsEffect ringsA(flow, runner.config["ringsA"]);
     static RingsEffect ringsB(flow, runner.config["ringsB"]);
-    static PartnerDance partnerDance(flow);
-    static VisionDebug visionDebug(flow);
+    static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
+    static VisionDebug visionDebug(flow, runner.config["visionDebug"]);
 
     switch (st) {
 

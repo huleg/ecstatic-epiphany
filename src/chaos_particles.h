@@ -154,10 +154,6 @@ inline void ChaosParticles::beginFrame(const FrameInfo &f)
         return;
     }
 
-    // Capture the impulse between the last frame and this one
-    flow.capture(1.0);
-    flow.origin();
-
     float t = f.timeDelta + timeDeltaRemainder;
     int steps = t / stepSize;
     timeDeltaRemainder = t - steps * stepSize;
@@ -185,6 +181,10 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
 
     unsigned numLiveParticles = 0;
     float intensityAccumulator = 0;
+
+    // Capture the impulse between the last step and this one
+    flow.capture(1.0);
+    flow.origin();
 
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {

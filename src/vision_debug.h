@@ -14,13 +14,13 @@
 class VisionDebug : public ParticleEffect
 {
 public:
-    VisionDebug(CameraFlowAnalyzer& flow);
+    VisionDebug(CameraFlowAnalyzer& flow, const rapidjson::Value &config);
 
     virtual void beginFrame(const FrameInfo &f);
 
 private:
-    static constexpr float originInterval = 10.0f;
-    static constexpr float scale = 0.1f;
+    float originInterval;
+    float scale;
 
     CameraFlowCapture flow;
     float originTimer;
@@ -32,8 +32,11 @@ private:
  *****************************************************************************************/
 
 
-inline VisionDebug::VisionDebug(CameraFlowAnalyzer& flow)
-    : flow(flow), originTimer(0)
+inline VisionDebug::VisionDebug(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
+    : originInterval(config["originInterval"].GetDouble()),
+      scale(config["scale"].GetDouble()),
+      flow(flow),
+      originTimer(0)
 {}
 
 inline void VisionDebug::beginFrame(const FrameInfo &f)
