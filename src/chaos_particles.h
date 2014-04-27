@@ -172,6 +172,7 @@ inline void ChaosParticles::debug(const DebugInfo &di)
 {
     fprintf(stderr, "\t[chaos-particles] running = %d\n", running);
     fprintf(stderr, "\t[chaos-particles] totalIntensity = %f\n", totalIntensity);
+    ParticleEffect::debug(di);
 }
 
 inline void ChaosParticles::runStep(const FrameInfo &f)

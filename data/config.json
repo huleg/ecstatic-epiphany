@@ -156,5 +156,25 @@
         "initialThreshold": -1.0,
         "brightnessOctaves": 7,
         "colorOctaves": 3
+    },
+
+    "glowPoi": {
+        "palette": "data/poi-palette.png",
+        "numPoi": 2,
+        "particlesPerPoi": 120,
+        "radius": 1.2,
+        "intensity": 0.019,
+        "rate": 1.2,
+        "flowScale": 0.2,
+
+        "r1": 1.0,
+        "a1": 6.0,
+        "u1": 2.14,
+        "v1": 0.08,
+
+        "r2": 0.9,
+        "a2": 5.7,
+        "u2": 8.4,
+        "v2": 0.03
     }
 }

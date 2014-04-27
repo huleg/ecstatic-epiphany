@@ -210,6 +210,7 @@ inline void OrderParticles::debug(const DebugInfo &di)
     fprintf(stderr, "\t[order-particles] symmetry = %d\n", symmetry);
     fprintf(stderr, "\t[order-particles] colorCycle = %f\n", colorCycle);
     fprintf(stderr, "\t[order-particles] lightAngle = %f\n", lightAngle);
+    ParticleEffect::debug(di);
 }
 
 inline void OrderParticles::shader(Vec3& rgb, const PixelInfo& p) const

@@ -170,6 +170,7 @@ inline void PartnerDance::debug(const DebugInfo& d)
     fprintf(stderr, "\t[partner-dance] radius = %f\n", appearance[0].radius);
     fprintf(stderr, "\t[partner-dance] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[partner-dance] damping = %f\n", damping);
+    ParticleEffect::debug(d);
 }
 
 inline void PartnerDance::runStep(const FrameInfo &f)

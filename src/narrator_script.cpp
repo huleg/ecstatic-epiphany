@@ -12,6 +12,7 @@
 #include "rings.h"
 #include "partner_dance.h"
 #include "vision_debug.h"
+#include "glowpoi.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -24,6 +25,7 @@ int Narrator::script(int st, PRNG &prng)
     static RingsEffect ringsB(flow, runner.config["ringsB"]);
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static VisionDebug visionDebug(flow, runner.config["visionDebug"]);
+    static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
 
     switch (st) {
 
@@ -103,7 +105,7 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 30: {
-            // Textures of light, slow crossfade in
+            // Textures of light, exploring something formless. Slow crossfade in
             ringsA.reseed();
             crossfade(&ringsA, prng.uniform(15, 25));
             delay(prng.uniform(25, 90));
@@ -111,7 +113,7 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 40: {
-            // Textures of energy, slow crossfade in
+            // Add energy, explore another layer.
             ringsB.reseed();
             crossfade(&ringsB, prng.uniform(30, 90));
             delay(prng.uniform(25, 160));
@@ -135,9 +137,7 @@ int Narrator::script(int st, PRNG &prng)
 
         case 60: {
             // Two partners, populations of particles.
-            // Act one, spiralling inwards. Depression.
-            // Sparks happen at the edge of the void.
-            // Foam on the edge of the apocalypse.
+            // Spiralling inwards. Depression. Beauty on the edge of destruction
 
             partnerDance.reseed(prng.uniform32());
 
@@ -160,14 +160,15 @@ int Narrator::script(int st, PRNG &prng)
             partnerDance.targetSpin = 0.0001;
             delay(prng.uniform(20, 30));
 
-            // Start interacting; agency overpowers the void
-            partnerDance.targetGain = 0.000015;
-            partnerDance.targetSpin = 0;
-            partnerDance.damping = 0.0075;
-            partnerDance.dampingRate = 0;
-            partnerDance.interactionRate = 0.00007;
-            delay(prng.uniform(80, 120));
+            return 70;
+        }
 
+        case 70: {
+            // Agency, creative energy.
+
+            glowPoi.reseed(prng.uniform32());
+            crossfade(&glowPoi, prng.uniform(10, 15));
+            delay(prng.uniform(45, 90));
             return 80;
         }
     }
