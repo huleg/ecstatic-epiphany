@@ -11,7 +11,6 @@
 #include "precursor.h"
 #include "rings.h"
 #include "partner_dance.h"
-#include "vision_debug.h"
 #include "glowpoi.h"
 
 
@@ -24,7 +23,7 @@ int Narrator::script(int st, PRNG &prng)
     static RingsEffect ringsA(flow, runner.config["ringsA"]);
     static RingsEffect ringsB(flow, runner.config["ringsB"]);
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
-    static VisionDebug visionDebug(flow, runner.config["visionDebug"]);
+    static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
 
     switch (st) {
@@ -47,19 +46,13 @@ int Narrator::script(int st, PRNG &prng)
             // Special state; precursor only (sleep mode)            
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 1);
-            while (true) {
-                doFrame();
-            }
-            return 1;
+            delayForever();
         }
 
         case 2: {
             // Debugging the computer vision system
-            crossfade(&visionDebug, 1);
-            while (true) {
-                doFrame();
-            }
-            return 2;
+            crossfade(&flowDebugEffect, 1);
+            delayForever();
         }
 
         //////////////////////////////////////////////////////////////////////////////////////////////

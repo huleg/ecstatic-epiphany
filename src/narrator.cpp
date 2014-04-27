@@ -92,6 +92,13 @@ void Narrator::delay(float seconds)
     }
 }
 
+void Narrator::delayForever()
+{
+    for (;;) {
+        doFrame();
+    }
+}
+
 void Narrator::formatTime(double s)
 {
     fprintf(stderr, "%02d:%02d:%05.2f", (int)s / (60*60), ((int)s / 60) % 60, fmod(s, 60));

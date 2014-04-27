@@ -23,32 +23,34 @@
         ]
     },
 
-    "visionDebug": {
+    "flowDebugEffect": {
         "originInterval": 5.0,
         "scale": 0.02,
-        "radius": 0.4
+        "radius": 0.4,
+        "motionLengthToHue": 0.01
     },
 
     "precursor": {
         "palette": "data/darkmatter-palette.png",
         "maxParticles": 120,
         "launchProbabilityBaseline": 0.0001,
-        "launchProbabilityGain": 0.02,
-        "launchProbabilityDecay": 0.1,
-        "flowScale": 0.00005,
-        "stepRate": 200.0,
+        "launchProbabilityGain": 0.01,
+        "launchProbabilityDecay": 0.001,
+        "flowScale": 0.00012,
+        "stepRate": 120.0,
         "noiseRate": 0.01,
         "noiseScale": 0.2,
         "brightness": 1.8,
-        "particleDuration": 4.0,
+        "particleDuration": 6.0,
         "particleRampup": 0.1, 
-        "ledPull": 0.001,
+        "ledPull": 0.002,
         "ledPullRadius": 0.05,
-        "blockPull": -0.000004,
-        "blockPullRadius": 0.12,
-        "damping": 0.0004,
-        "visibleRadius": 0.12,
-        "outsideMargin": 6.0
+        "blockPull": -0.00001,
+        "blockPullRadius": 0.09,
+        "damping": 0.0002,
+        "visibleRadius": 0.3,
+        "outsideMargin": 1.2,
+        "flowFilterRate": 0.1
     },
 
     "chaosParticles": {

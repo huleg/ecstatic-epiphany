@@ -46,6 +46,8 @@
 #include <stdio.h>
 #include <string>
 #include "effect.h"
+#include "particle.h"
+#include "color.h"
 #include "camera.h"
 #include "prng.h"
 
@@ -148,6 +150,24 @@ private:
     const CameraFlowAnalyzer &analyzer;
     uint32_t captureX, captureY, captureL;
     uint32_t originX, originY, originL;
+};
+
+
+class CameraFlowDebugEffect : public ParticleEffect
+{
+public:
+    CameraFlowDebugEffect(CameraFlowAnalyzer& flow, const rapidjson::Value &config);
+
+    virtual void beginFrame(const FrameInfo &f);
+
+private:
+    float originInterval;
+    float scale;
+    float radius;
+    float motionLengthToHue;
+
+    CameraFlowCapture flow;
+    float originTimer;
 };
 
 
@@ -510,12 +530,44 @@ inline void CameraFlowCapture::capture(float filterRate)
     // Fixed point to floating point
     float targetX = (int32_t)(captureX - originX) / float(0x10000);
     float targetY = (int32_t)(captureY - originY) / float(0x10000);
-    motionLength = (int32_t)(captureL - originL) / float(0x10000);
+    float targetMotionLength = (int32_t)(captureL - originL) / float(0x10000);
 
-    // Smoothing filter for pixel location
+    // Smoothing filter
     pixels[0] += (targetX - pixels[0]) * filterRate;
     pixels[1] += (targetY - pixels[1]) * filterRate;
+    motionLength += (targetMotionLength - motionLength) * filterRate;
 
     // Transform to model coordinates
     model = analyzer.origin + analyzer.basisX * pixels[0] + analyzer.basisY * pixels[1];
 }
+
+inline CameraFlowDebugEffect::CameraFlowDebugEffect(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
+    : originInterval(config["originInterval"].GetDouble()),
+      scale(config["scale"].GetDouble()),
+      radius(config["radius"].GetDouble()),
+      motionLengthToHue(config["motionLengthToHue"].GetDouble()),
+      flow(flow),
+      originTimer(0)
+{}
+
+inline void CameraFlowDebugEffect::beginFrame(const FrameInfo &f)
+{
+    flow.capture();
+
+    originTimer += f.timeDelta;
+    if (originTimer > originInterval) {
+        originTimer -= originInterval;
+        flow.origin();
+    }
+
+    appearance.resize(1);
+
+    appearance[0].point = flow.model * scale;
+    appearance[0].intensity = 1.0f;
+    appearance[0].radius = radius;
+
+    hsv2rgb(appearance[0].color, flow.motionLength * motionLengthToHue, 0.8, 0.8);
+
+    ParticleEffect::beginFrame(f);
+}
+

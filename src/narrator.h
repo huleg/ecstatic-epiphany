@@ -50,6 +50,7 @@ private:
 
     void crossfade(Effect *to, float duration);
     void delay(float seconds);
+    void delayForever();
 
     void formatTime(double s);
 

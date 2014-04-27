@@ -51,6 +51,7 @@ private:
     float damping;
     float visibleRadius;
     float outsideMargin;
+    float flowFilterRate;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -96,6 +97,7 @@ inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Val
       damping(config["damping"].GetDouble()),
       visibleRadius(config["visibleRadius"].GetDouble()),
       outsideMargin(config["outsideMargin"].GetDouble()),
+      flowFilterRate(config["flowFilterRate"].GetDouble()),      
       flow(flow),
       palette(config["palette"].GetString()),
       timeDeltaRemainder(0)
@@ -123,8 +125,9 @@ inline float Precursor::totalSecondsOfDarkness()
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
     // Capture impulse, transfer to all particles
-    flow.capture(1.0);
+    flow.capture(flowFilterRate);
     flow.origin();
+
     for (unsigned i = 0; i < appearance.size(); i++) {
         dynamics[i].velocity += flow.model * flowScale;
     }
