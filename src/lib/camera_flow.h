@@ -78,6 +78,7 @@ private:
     unsigned debugFrameInterval;    // How often to output frames; 0 = never
     std::string debugVideoFile;     // Where to save encoded video debug output
     std::string debugVideoFourcc;   // FOURCC format code for debug video output
+    float debugMotionZoom;          // Scale factor for motion bars in debug video
     unsigned maxPoints;             // Max number of corner points to track at once
     unsigned decimate;              // Divide horizontal video resolution by skipping samples
     unsigned discoveryGridSpacing;  // Pixels per unit in the low-res point discovery sampling grid
@@ -86,6 +87,8 @@ private:
     float minPointSpeed;            // Minimum speed in pixels/frame to keep a point
     float minEigThreshold;          // Minimum eigenvalue threshold to keep a point
     float deletePointProbability;   // Probability we'll delete a random tracking point to make room for a new one
+    float motionFilterFast;         // First motion filter, higher frequency
+    float motionFilterSlow;         // Second motion filter, low frequency
 
     struct PointInfo {
         float distanceTraveled;
@@ -116,6 +119,11 @@ private:
     // Total motion length integrator, in 16:16 fixed point
     uint32_t integratorL;
 
+    // Length filtered at video rate
+    uint32_t filterCaptureL;
+    float filterSlowL;
+    float filterFastL;
+
     // Current transform
     Vec3 basisX, basisY, origin;
 
@@ -125,6 +133,7 @@ private:
     static uint32_t stringToFourCC(const std::string &f);
     void calculateFlow(Field &f);
     void clear();
+    float instantaneousMotion() const;
 };
 
 
@@ -137,6 +146,11 @@ public:
 
     // Set the last captured flow position to be the origin
     void origin();
+
+    // Retrieve instantaneous, not integrated, value of the motion
+    // per video field, filtered on the video thread. Not affected
+    // by capture() / origin()
+    float instantaneousMotion() const;
 
     // Raw x/y in pixels
     Vec2 pixels;
@@ -210,6 +224,9 @@ inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
     minPointSpeed = config["minPointSpeed"].GetDouble();
     minEigThreshold = config["minEigThreshold"].GetDouble();
     deletePointProbability = config["deletePointProbability"].GetDouble();
+    motionFilterFast = config["motionFilterFast"].GetDouble();
+    motionFilterSlow = config["motionFilterSlow"].GetDouble();
+    debugMotionZoom = config["debugMotionZoom"].GetDouble();
 
     const rapidjson::Value& t = config["transform"];
     if (t.IsArray() && t.Size() == 9) {
@@ -227,6 +244,9 @@ inline void CameraFlowAnalyzer::clear()
     integratorX = integratorY = integratorL = 0;
     debugFrameCounter = 0;
     debugCaptureL = 0;
+    filterSlowL = 0;
+    filterFastL = 0;
+    filterCaptureL = 0; 
 
     for (unsigned i = 0; i < Camera::kFields; i++) {
         if (decimate != 0) {
@@ -291,6 +311,14 @@ inline uint32_t CameraFlowAnalyzer::stringToFourCC(const std::string &f)
                      f.size() >= 2 ? f[1] : 0,
                      f.size() >= 3 ? f[2] : 0,
                      f.size() >= 4 ? f[3] : 0);
+}
+
+inline float CameraFlowAnalyzer::instantaneousMotion() const
+{
+    float f = filterFastL;  // Filtered signal
+    float s = filterSlowL;  // Approximate noise floor
+
+    return log2f(f / (s + 1e-10));
 }
 
 inline void CameraFlowAnalyzer::calculateFlow(Field &f)
@@ -483,6 +511,13 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
         }
     }
 
+    // Update fixed-timestep motion filters on each field
+    uint32_t cL = integratorL;
+    float fL = int32_t(cL - filterCaptureL) * (1.0f / 0x10000);
+    filterCaptureL = cL;
+    filterSlowL += (fL - filterSlowL) * motionFilterSlow;
+    filterFastL += (fL - filterFastL) * motionFilterFast;
+
     // Write frames to disk periodically in super-verbose debug mode
     if (debug && debugFrameInterval) {
         debugFrameCounter++;
@@ -494,22 +529,40 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             // Draw circles over each point; shade = age
             for (unsigned i = 0; i < f.points.size(); ++i) {
                 int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(frame, f.points[i], 2.0,
+                cv::circle(frame, f.points[i], 2.68,
                         f.pointInfo[i].age < pointTrialPeriod
                             ? cv::Scalar(0, 0, 0)
                             : cv::Scalar(l, 64 + l/2, 255 - l),
                         1, CV_AA);
             }
 
-            // Motion length since the last debug frame
+            // Motion length since the last debug frame, scaled to units of pixels per field
             uint32_t prevL = debugCaptureL;
             uint32_t nextL = integratorL;
+            float zoom = debugMotionZoom;
             debugCaptureL = nextL;
-            float debugL = int32_t(nextL - prevL) * (4.0f / 0x10000);
+            float debugL = int32_t(nextL - prevL) * (zoom / 0x10000 / debugFrameInterval);
             cv::rectangle(frame,
                 cv::Point2f(1, 1),
-                cv::Point2f(1 + debugL, 4),
+                cv::Point2f(3 + debugL, 4),
                 cv::Scalar(250, 176, 0), -1, CV_AA);
+
+            // Filtered motion length dots
+            cv::rectangle(frame,
+                cv::Point2f(1 + filterFastL * zoom, 6),
+                cv::Point2f(3 + filterFastL * zoom, 8),
+                cv::Scalar(255, 255, 190), -1, CV_AA);
+            cv::rectangle(frame,
+                cv::Point2f(1 + filterSlowL * zoom, 10),
+                cv::Point2f(3 + filterSlowL * zoom, 12),
+                cv::Scalar(255, 190, 255), -1, CV_AA);
+
+            // Computed instantaneoud motion
+            float iM = instantaneousMotion();
+            cv::rectangle(frame,
+                cv::Point2f(1, 14),
+                cv::Point2f(3 + iM * zoom, 16),
+                cv::Scalar(64, 64, 255), -1, CV_AA);
 
             debugVideoWriter.write(frame);
         }
@@ -532,6 +585,11 @@ inline void CameraFlowCapture::origin()
     originX = captureX;
     originY = captureY;
     originL = captureL;
+}
+
+inline float CameraFlowCapture::instantaneousMotion() const
+{
+    return analyzer.instantaneousMotion();
 }
 
 inline void CameraFlowCapture::capture(float filterRate)

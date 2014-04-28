@@ -6,6 +6,7 @@
         "debugFrameInterval": 4,
         "debugVideoFile": "debug-output.avi",
         "debugVideoFourcc": "XVID",
+        "debugMotionZoom": 10.0,
 
         "maxPoints": 50,
         "decimate": 3,
@@ -14,7 +15,10 @@
         "maxPointAge": 400,
         "minPointSpeed": 0.02,
         "minEigThreshold": 0.0055,
-        "deletePointProbability": 0.1,
+        "deletePointProbability": 0.02,
+
+        "motionFilterFast": 0.3,
+        "motionFilterSlow": 0.007,
 
         "transform": [
             1, 0, 0,
@@ -34,24 +38,27 @@
         "palette": "data/darkmatter-palette.png",
         "maxParticles": 100,
         "minParticles": 0.4,
+        "launchProbability": 0.12,
         "particleNoise": 0.7,
-        "particlesPerFlowPixel": 60.0,
-        "particleExpirationGain": 0.7,
-        "flowScale": 0.00012,
+        "particlesPerFlowPixel": 25.0,
+        "particleExpirationGain": 0.08,
+        "flowScale": 0.00017,
         "stepRate": 120.0,
-        "noiseRate": 0.02,
+        "noiseRate": 0.03,
         "noiseScale": 0.2,
-        "brightness": 4.0,
+        "brightness": 2.0,
         "particleDuration": 10.0,
-        "particleRampup": 0.2, 
-        "ledPull": 0.00018,
+        "particleRampup": 0.02, 
+        "ledPull": 0.00032,
         "ledPullRadius": 0.18,
         "blockPull": -0.000025,
         "blockPullRadius": 0.22,
         "damping": 0.0002,
-        "visibleRadius": 0.12,
+        "visibleRadius": 0.29,
         "outsideMargin": 1.2,
-        "flowFilterRate": 0.05
+        "flowFilterRate": 0.4,
+        "bmScale": 3.0,
+        "bmDepth": 15.0
     },
 
     "chaosParticles": {

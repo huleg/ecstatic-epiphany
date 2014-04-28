@@ -35,6 +35,7 @@ public:
 private:
     unsigned maxParticles;
     float minParticles;
+    float launchProbability;
     float particleNoise;
     float particlesPerFlowPixel;
     float particleExpirationGain;
@@ -53,6 +54,8 @@ private:
     float visibleRadius;
     float outsideMargin;
     float flowFilterRate;
+    float bmScale;
+    float bmDepth;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -83,6 +86,7 @@ private:
 inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : maxParticles(config["maxParticles"].GetUint()),
       minParticles(config["minParticles"].GetDouble()),
+      launchProbability(config["launchProbability"].GetDouble()),
       particleNoise(config["particleNoise"].GetDouble()),
       particlesPerFlowPixel(config["particlesPerFlowPixel"].GetDouble()),
       particleExpirationGain(config["particleExpirationGain"].GetDouble()),
@@ -101,6 +105,8 @@ inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Val
       visibleRadius(config["visibleRadius"].GetDouble()),
       outsideMargin(config["outsideMargin"].GetDouble()),
       flowFilterRate(config["flowFilterRate"].GetDouble()),      
+      bmScale(config["bmScale"].GetDouble()),      
+      bmDepth(config["bmDepth"].GetDouble()),      
       flow(flow),
       palette(config["palette"].GetString()),
       timeDeltaRemainder(0)
@@ -137,9 +143,9 @@ inline void Precursor::beginFrame(const FrameInfo &f)
     flow.origin();
 
     // Particle count based on flow motion
-    targetParticleCount = std::min<int>(maxParticles,
+    targetParticleCount = std::min<int>(maxParticles, std::max<int>(0,
         minParticles + prng.uniform(0, particleNoise) +
-        particlesPerFlowPixel * flow.motionLength + 0.5);
+        particlesPerFlowPixel * flow.instantaneousMotion() + 0.5));
 
     for (unsigned i = 0; i < appearance.size(); i++) {
         dynamics[i].velocity += flow.model * flowScale;
@@ -168,6 +174,7 @@ inline void Precursor::debug(const DebugInfo &di)
 {
     fprintf(stderr, "\t[precursor] particles = %d -> %d\n", (int)appearance.size(), targetParticleCount);
     fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
+    fprintf(stderr, "\t[precursor] instantaneousMotion = %f\n", flow.instantaneousMotion());
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }
@@ -175,7 +182,7 @@ inline void Precursor::debug(const DebugInfo &di)
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
     // Launch new particles
-    if (appearance.size() < targetParticleCount) {
+    if (appearance.size() < targetParticleCount && prng.uniform(0,1) < launchProbability) {
         ParticleAppearance pa;
         ParticleDynamics pd;
 
@@ -269,8 +276,12 @@ inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
     // Sample noise with grid square granularity
     float n = 1.5 + fbm_noise2(p.getVec2("gridXY") * noiseScale + Vec2(noiseCycle, 0), 2);
 
+    // Brightness modifier noise
+    float bm = std::min(1.0f, std::max(0.0f, 0.5f + bmDepth *
+        fbm_noise3(p.point * bmScale + Vec3(0, noiseCycle, 0), 3)));
+
     // Lissajous sampling on palette
-    rgb = sampleIntensity(p.point) * brightness *
+    rgb = sampleIntensity(p.point) * bm * brightness *
           palette.sample(0.5 + 0.5 * cos(n),
                          0.5 + 0.5 * sin(n * colorSeed));
 }
