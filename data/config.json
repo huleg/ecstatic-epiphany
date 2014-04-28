@@ -6,7 +6,7 @@
         "debugFrameInterval": 4,
         "debugVideoFile": "debug-output.avi",
         "debugVideoFourcc": "XVID",
-        "debugMotionZoom": 10.0,
+        "debugMotionZoom": 20.0,
 
         "maxPoints": 50,
         "decimate": 3,
@@ -17,8 +17,8 @@
         "minEigThreshold": 0.0055,
         "deletePointProbability": 0.02,
 
-        "motionFilterFast": 0.3,
-        "motionFilterSlow": 0.007,
+        "motionFilterFast": 0.4,
+        "motionFilterSlow": 0.02,
 
         "transform": [
             1, 0, 0,
@@ -28,17 +28,16 @@
     },
 
     "flowDebugEffect": {
-        "originInterval": 5.0,
-        "scale": 0.02,
+        "scale": 0.3,
         "radius": 0.4,
-        "motionLengthToHue": 0.01
+        "motionLengthToHue": 0.5
     },
 
     "precursor": {
         "palette": "data/darkmatter-palette.png",
-        "maxParticles": 100,
+        "maxParticles": 500,
         "minParticles": 0.4,
-        "launchProbability": 0.12,
+        "launchProbability": 0.7,
         "particleNoise": 0.7,
         "particlesPerFlowPixel": 25.0,
         "particleExpirationGain": 0.08,
@@ -47,7 +46,7 @@
         "noiseRate": 0.03,
         "noiseScale": 0.2,
         "brightness": 2.0,
-        "particleDuration": 10.0,
+        "particleDuration": 4.0,
         "particleRampup": 0.02, 
         "ledPull": 0.00032,
         "ledPullRadius": 0.18,

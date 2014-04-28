@@ -10,7 +10,6 @@
 #pragma once
 
 #include <vector>
-#include "grid_structure.h" 
 #include "lib/effect.h"
 #include "lib/particle.h"
 #include "lib/prng.h"
@@ -74,7 +73,7 @@ private:
     unsigned targetParticleCount;
 
     float particleIntensity(float t) const;
-    void runStep(GridStructure &grid, const FrameInfo &f);
+    void runStep(const FrameInfo &f);
 };
 
 
@@ -151,9 +150,6 @@ inline void Precursor::beginFrame(const FrameInfo &f)
         dynamics[i].velocity += flow.model * flowScale;
     }
 
-    GridStructure grid;
-    grid.init(f.pixels);
-
     // Simple time-varying parameters
     noiseCycle += f.timeDelta * noiseRate;
 
@@ -163,7 +159,7 @@ inline void Precursor::beginFrame(const FrameInfo &f)
     timeDeltaRemainder = t - steps / stepRate;
 
     while (steps > 0) {
-        runStep(grid, f);
+        runStep(f);
         steps--;
     }
 
@@ -179,7 +175,7 @@ inline void Precursor::debug(const DebugInfo &di)
     fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }
 
-inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
+inline void Precursor::runStep(const FrameInfo &f)
 {
     // Launch new particles
     if (appearance.size() < targetParticleCount && prng.uniform(0,1) < launchProbability) {
@@ -230,7 +226,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         // We only pull if the direction matches where we're already headed.
 
         ResultSet_t hits;
-        f.radiusSearch(hits, pa.point, blockPullRadius);
+        f.radiusSearch(hits, pa.point, std::max(ledPullRadius, blockPullRadius));
         for (unsigned h = 0; h < hits.size(); h++) {
             const PixelInfo &hit = f.pixels[hits[h].first];
             if (!hit.isMapped()) {

@@ -174,6 +174,7 @@ public:
     CameraFlowDebugEffect(CameraFlowAnalyzer& flow, const rapidjson::Value &config);
 
     virtual void beginFrame(const FrameInfo &f);
+    virtual void debug(const DebugInfo &d);
 
 private:
     float originInterval;
@@ -244,7 +245,7 @@ inline void CameraFlowAnalyzer::clear()
     integratorX = integratorY = integratorL = 0;
     debugFrameCounter = 0;
     debugCaptureL = 0;
-    filterSlowL = 0;
+    filterSlowL = 1.0f;
     filterFastL = 0;
     filterCaptureL = 0; 
 
@@ -317,6 +318,10 @@ inline float CameraFlowAnalyzer::instantaneousMotion() const
 {
     float f = filterFastL;  // Filtered signal
     float s = filterSlowL;  // Approximate noise floor
+
+    if (f < s) {
+        return 0;
+    }
 
     return log2f(f / (s + 1e-10));
 }
@@ -613,8 +618,7 @@ inline void CameraFlowCapture::capture(float filterRate)
 }
 
 inline CameraFlowDebugEffect::CameraFlowDebugEffect(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
-    : originInterval(config["originInterval"].GetDouble()),
-      scale(config["scale"].GetDouble()),
+    : scale(config["scale"].GetDouble()),
       radius(config["radius"].GetDouble()),
       motionLengthToHue(config["motionLengthToHue"].GetDouble()),
       flow(flow),
@@ -625,20 +629,28 @@ inline void CameraFlowDebugEffect::beginFrame(const FrameInfo &f)
 {
     flow.capture();
 
-    originTimer += f.timeDelta;
-    if (originTimer > originInterval) {
-        originTimer -= originInterval;
-        flow.origin();
-    }
-
     appearance.resize(1);
 
     appearance[0].point = flow.model * scale;
     appearance[0].intensity = 1.0f;
     appearance[0].radius = radius;
 
-    hsv2rgb(appearance[0].color, flow.motionLength * motionLengthToHue, 0.8, 0.8);
+    for (unsigned i = 0; i < 3; i++) {
+        if (appearance[0].point[i] < f.modelMin[i] || appearance[0].point[i] > f.modelMax[i]) {
+            flow.origin();
+        }
+    }
+
+    hsv2rgb(appearance[0].color, flow.instantaneousMotion() * motionLengthToHue, 0.8, 0.8);
 
     ParticleEffect::beginFrame(f);
 }
+
+inline void CameraFlowDebugEffect::debug(const DebugInfo &di)
+{
+    fprintf(stderr, "\t[flow] model = %f, %f, %f\n", flow.model[0], flow.model[1], flow.model[2]);
+    fprintf(stderr, "\t[flow] motionLength = %f\n", flow.motionLength);
+    fprintf(stderr, "\t[flow] instantaneousMotion = %f\n", flow.instantaneousMotion());
+}
+
 
