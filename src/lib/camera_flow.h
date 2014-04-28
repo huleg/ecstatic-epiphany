@@ -494,7 +494,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             // Draw circles over each point; shade = age
             for (unsigned i = 0; i < f.points.size(); ++i) {
                 int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(frame, f.points[i], 1.25,
+                cv::circle(frame, f.points[i], 2.0,
                         f.pointInfo[i].age < pointTrialPeriod
                             ? cv::Scalar(0, 0, 0)
                             : cv::Scalar(l, 64 + l/2, 255 - l),
