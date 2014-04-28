@@ -120,6 +120,7 @@ private:
     Vec3 basisX, basisY, origin;
 
     unsigned debugFrameCounter;
+    uint32_t debugCaptureL;
 
     static uint32_t stringToFourCC(const std::string &f);
     void calculateFlow(Field &f);
@@ -225,6 +226,7 @@ inline void CameraFlowAnalyzer::clear()
 {
     integratorX = integratorY = integratorL = 0;
     debugFrameCounter = 0;
+    debugCaptureL = 0;
 
     for (unsigned i = 0; i < Camera::kFields; i++) {
         if (decimate != 0) {
@@ -492,11 +494,22 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             // Draw circles over each point; shade = age
             for (unsigned i = 0; i < f.points.size(); ++i) {
                 int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(frame, f.points[i], 3,
+                cv::circle(frame, f.points[i], 1.25,
                         f.pointInfo[i].age < pointTrialPeriod
                             ? cv::Scalar(0, 0, 0)
-                            : cv::Scalar(l, 64 + l/2, 255 - l));
+                            : cv::Scalar(l, 64 + l/2, 255 - l),
+                        1, CV_AA);
             }
+
+            // Motion length since the last debug frame
+            uint32_t prevL = debugCaptureL;
+            uint32_t nextL = integratorL;
+            debugCaptureL = nextL;
+            float debugL = int32_t(nextL - prevL) * (4.0f / 0x10000);
+            cv::rectangle(frame,
+                cv::Point2f(1, 1),
+                cv::Point2f(1 + debugL, 4),
+                cv::Scalar(250, 176, 0), -1, CV_AA);
 
             debugVideoWriter.write(frame);
         }
