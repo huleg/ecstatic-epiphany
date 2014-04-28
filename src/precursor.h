@@ -34,9 +34,10 @@ public:
 
 private:
     unsigned maxParticles;
-    float launchProbabilityBaseline;
-    float launchProbabilityGain;
-    float launchProbabilityDecay;
+    float minParticles;
+    float particleNoise;
+    float particlesPerFlowPixel;
+    float particleExpirationGain;
     float flowScale;
     float stepRate;
     float noiseRate;
@@ -67,8 +68,9 @@ private:
     float noiseCycle;
     float timeDeltaRemainder;
     float colorSeed;
-    float launchProbability;
+    unsigned targetParticleCount;
 
+    float particleIntensity(float t) const;
     void runStep(GridStructure &grid, const FrameInfo &f);
 };
 
@@ -80,9 +82,10 @@ private:
 
 inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : maxParticles(config["maxParticles"].GetUint()),
-      launchProbabilityBaseline(config["launchProbabilityBaseline"].GetDouble()),
-      launchProbabilityGain(config["launchProbabilityGain"].GetDouble()),
-      launchProbabilityDecay(config["launchProbabilityDecay"].GetDouble()),
+      minParticles(config["minParticles"].GetDouble()),
+      particleNoise(config["particleNoise"].GetDouble()),
+      particlesPerFlowPixel(config["particlesPerFlowPixel"].GetDouble()),
+      particleExpirationGain(config["particleExpirationGain"].GetDouble()),
       flowScale(config["flowScale"].GetDouble()),
       stepRate(config["stepRate"].GetDouble()),
       noiseRate(config["noiseRate"].GetDouble()),
@@ -113,7 +116,6 @@ inline void Precursor::reseed(unsigned seed)
     prng.seed(seed);
     noiseCycle = 0;
     darkStepCount = 0;
-    launchProbability = 0;
     colorSeed = prng.uniform(2, 5);
 }
 
@@ -122,11 +124,22 @@ inline float Precursor::totalSecondsOfDarkness()
     return darkStepCount / stepRate;
 }
 
+inline float Precursor::particleIntensity(float t) const
+{
+    // Ramp up, then fade
+    return cos(t * (M_PI/2)) * kernel(1.0f - std::min(1.0f, t / particleRampup));
+}
+
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
     // Capture impulse, transfer to all particles
     flow.capture(flowFilterRate);
     flow.origin();
+
+    // Particle count based on flow motion
+    targetParticleCount = std::min<int>(maxParticles,
+        minParticles + prng.uniform(0, particleNoise) +
+        particlesPerFlowPixel * flow.motionLength + 0.5);
 
     for (unsigned i = 0; i < appearance.size(); i++) {
         dynamics[i].velocity += flow.model * flowScale;
@@ -153,22 +166,16 @@ inline void Precursor::beginFrame(const FrameInfo &f)
 
 inline void Precursor::debug(const DebugInfo &di)
 {
-    fprintf(stderr, "\t[precursor] particles = %d\n", (int)appearance.size());
+    fprintf(stderr, "\t[precursor] particles = %d -> %d\n", (int)appearance.size(), targetParticleCount);
     fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
-    fprintf(stderr, "\t[precursor] launchProbability = %f\n", launchProbability);
     fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }
 
 inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
 {
-    // Randomly launch particles according to our flow motion total
-    launchProbability += sq(flow.motionLength) * launchProbabilityGain;
-    launchProbability += (launchProbabilityBaseline - launchProbability) * launchProbabilityDecay;
-    unsigned launchCount = std::min<int>(maxParticles - appearance.size(), prng.uniform(0, 1.0f + launchProbability));
-
     // Launch new particles
-    for (unsigned i = 0; i < launchCount; i++) {
+    if (appearance.size() < targetParticleCount) {
         ParticleAppearance pa;
         ParticleDynamics pd;
 
@@ -183,6 +190,11 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         dynamics.push_back(pd);
     }
 
+    // Time moves faster when we're trying to expire more particles
+    float timeProgressRate = 1.0f / stepRate / particleDuration;
+    unsigned particlesToExpire = std::max<int>(0, appearance.size() - targetParticleCount);
+    timeProgressRate *= 1.0f + particlesToExpire * particleExpirationGain;
+
     // Iterate through and update all particles, discarding any that have expired
     unsigned j = 0;
     for (unsigned i = 0; i < appearance.size(); i++) {
@@ -192,7 +204,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
         // Update simulation
 
         pa.point += pd.velocity;
-        pd.time += 1.0f / stepRate / particleDuration;
+        pd.time += timeProgressRate;
 
         if (pd.time >= 1.0f) {
             // Discard, too old
@@ -204,9 +216,7 @@ inline void Precursor::runStep(GridStructure &grid, const FrameInfo &f)
             continue;
         }
 
-        // Ramp up, then fade
-        pa.intensity = kernel(pd.time) * kernel(1.0f - std::min(1.0f, pd.time / particleRampup));
-
+        pa.intensity = particleIntensity(pd.time);
         pa.radius = visibleRadius;
 
         // Pull toward nearby LEDs, so the particles kinda-follow the grid.

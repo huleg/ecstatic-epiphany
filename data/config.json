@@ -32,25 +32,26 @@
 
     "precursor": {
         "palette": "data/darkmatter-palette.png",
-        "maxParticles": 120,
-        "launchProbabilityBaseline": 0.0001,
-        "launchProbabilityGain": 0.01,
-        "launchProbabilityDecay": 0.001,
+        "maxParticles": 100,
+        "minParticles": 0.4,
+        "particleNoise": 0.7,
+        "particlesPerFlowPixel": 60.0,
+        "particleExpirationGain": 0.7,
         "flowScale": 0.00012,
         "stepRate": 120.0,
-        "noiseRate": 0.01,
+        "noiseRate": 0.02,
         "noiseScale": 0.2,
-        "brightness": 1.8,
-        "particleDuration": 6.0,
-        "particleRampup": 0.1, 
-        "ledPull": 0.002,
-        "ledPullRadius": 0.05,
-        "blockPull": -0.00001,
-        "blockPullRadius": 0.09,
+        "brightness": 4.0,
+        "particleDuration": 10.0,
+        "particleRampup": 0.2, 
+        "ledPull": 0.00018,
+        "ledPullRadius": 0.18,
+        "blockPull": -0.000025,
+        "blockPullRadius": 0.22,
         "damping": 0.0002,
-        "visibleRadius": 0.3,
+        "visibleRadius": 0.12,
         "outsideMargin": 1.2,
-        "flowFilterRate": 0.1
+        "flowFilterRate": 0.05
     },
 
     "chaosParticles": {
@@ -85,13 +86,13 @@
         "flowColorCycleRate": 0.002,
         "relativeSize": 0.52,
         "intensity": 0.02,
-        "brightness": 1.35,
+        "brightness": 1.45,
         "stepSize": 0.0033,
         "seedRadius": 4.0,
-        "interactionSize": 0.6,
+        "interactionSize": 0.58,
         "colorRate": 0.035,
         "angleGainRate": 0.3,
-        "angleGainCenter": 0.02,
+        "angleGainCenter": 0.017,
         "angleGainVariation": 0.006
     },
 
@@ -111,7 +112,7 @@
         "jitterRate": 0.66,
         "jitterStrength": 0.6,
         "jitterScale": 0.7,
-        "flowScale": 0.02
+        "flowScale": -0.0008
     },
 
     "ringsA": {
