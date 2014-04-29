@@ -26,6 +26,7 @@ public:
           modelScale(config["modelScale"].GetDouble()),
           startRadius(config["startRadius"].GetDouble()),
           brightness(config["brightness"].GetDouble()),
+          flowFilterRate(config["flowFilterRate"].GetDouble()),
           flow(flow),
           map(config["map"].GetString())
     {
@@ -36,6 +37,7 @@ public:
     float modelScale;
     float startRadius;
     float brightness;
+    float flowFilterRate;
     CameraFlowCapture flow;
     Texture map;
     Vec2 start;
@@ -49,7 +51,7 @@ public:
 
     virtual void beginFrame(const FrameInfo &f)
     {
-        flow.capture();
+        flow.capture(flowFilterRate);
     }
 
     virtual void shader(Vec3& rgb, const PixelInfo &p) const

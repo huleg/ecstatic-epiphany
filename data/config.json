@@ -44,18 +44,20 @@
         "noiseScale": 0.0025,
         "noiseDepth": 10.0,
         "brightness": 5.0,
+        "darknessDurationMin": 1.0,
+        "darknessDurationMax": 4.0,
 
         "treeGrowth": {
             "maxParticles": 300,
             "flowLaunchScale": 0.17,
             "flowLaunchSpeed": 0.04,
-            "launchProbability": 0.02,
+            "launchProbability": 0.012,
             "launchPointNoise": 0.019,
             "launchVelocityNoise": 0.0017,
             "launchHistoryDepth": 12,
             "stepRate": 200.0,
             "brightness": 0.3,
-            "particleDuration": 5.0,
+            "particleDuration": 2.4,
             "particleRampup": 0.06,
             "gradientPull": -0.000016,
             "ledPull": -0.000007,
@@ -204,11 +206,13 @@
         "v2": 0.03
     },
 
+    "exploreBr": 0.7,
     "explore": {
-        "map": "data/foggy-bay.png",
-        "flowScale": 0.1,
-        "modelScale": 0.1,
-        "startRadius": 0,
-        "brightness": 0.7
+        "map": "data/evergreen.png",
+        "flowScale": -0.0003,
+        "modelScale": 0.011,
+        "startRadius": 0.3,
+        "brightness": 1.0,
+        "flowFilterRate": 0.06
     }
 }

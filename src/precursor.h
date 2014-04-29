@@ -29,6 +29,8 @@ public:
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
     virtual void debug(const DebugInfo &di);
 
+    bool isDone();
+
     TreeGrowth treeGrowth;
 
 private:
@@ -38,12 +40,15 @@ private:
     float noiseScale;
     float noiseDepth;
     float brightness;
+    float darknessDurationMin;
+    float darknessDurationMax;
 
     CameraFlowCapture flow;
     Texture palette;
 
     float noiseCycle;
     float colorSeed;
+    float darknessDuration;
 };
 
 
@@ -60,6 +65,8 @@ inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Val
       noiseScale(config["noiseScale"].GetDouble()),
       noiseDepth(config["noiseDepth"].GetDouble()),
       brightness(config["brightness"].GetDouble()),
+      darknessDurationMin(config["darknessDurationMin"].GetDouble()),
+      darknessDurationMax(config["darknessDurationMax"].GetDouble()),
       flow(flow),
       palette(config["palette"].GetString())
 {
@@ -76,6 +83,7 @@ inline void Precursor::reseed(unsigned seed)
 
     noiseCycle = prng.uniform(0, 10);
     colorSeed = prng.uniform(2, 5);
+    darknessDuration = prng.uniform(darknessDurationMin, darknessDurationMax);
 }
 
 inline void Precursor::beginFrame(const FrameInfo &f)
@@ -90,8 +98,13 @@ inline void Precursor::debug(const DebugInfo &di)
     treeGrowth.debug(di);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[precursor] colorSeed = %f\n", colorSeed);
+    fprintf(stderr, "\t[precursor] darknessDuration = %f\n", darknessDuration);
 }
 
+inline bool Precursor::isDone()
+{
+    return treeGrowth.darknessDuration >= darknessDuration;
+}
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 {

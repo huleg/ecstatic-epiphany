@@ -13,6 +13,7 @@
 #include "partner_dance.h"
 #include "glowpoi.h"
 #include "explore.h"
+#include "lib/brightness.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -27,6 +28,7 @@ int Narrator::script(int st, PRNG &prng)
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
     static Explore explore(flow, runner.config["explore"]);
+    static Brightness exploreBr(explore);
 
     switch (st) {
 
@@ -75,7 +77,8 @@ int Narrator::script(int st, PRNG &prng)
         case 5: {
             // Explore
             explore.reseed(prng.uniform32());
-            crossfade(&explore, 1);
+            exploreBr.set(runner.config["exploreBr"].GetDouble());
+            crossfade(&exploreBr, 1);
             delayForever();
         }
 
@@ -86,8 +89,14 @@ int Narrator::script(int st, PRNG &prng)
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 20);
-            // XXX: Temporary
-            delay(120);
+
+            // Bootstrap
+            delay(18);
+
+            // Wait for darkness
+            while (!precursor.isDone()) {
+                doFrame();
+            }
             return 20;
         }
 
