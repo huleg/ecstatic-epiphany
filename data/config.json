@@ -1,5 +1,7 @@
 {
     "initialState": 0,
+    "concurrency": 6,
+    "fps": 120.0,
 
     "flow": {
         "debug": false,
@@ -90,7 +92,7 @@
 
     "orderParticles": {
         "palette": "data/mars-palette.png",
-        "numParticles": 100,
+        "numParticles": 60,
         "damping": 0.0002,
         "repelGain": 0.0001,
         "flowFilterRate": 0.05,
@@ -98,7 +100,7 @@
         "flowLightAngleRate": 0.03,
         "flowColorCycleRate": 0.002,
         "relativeSize": 0.52,
-        "intensity": 0.02,
+        "intensity": 0.05,
         "brightness": 1.45,
         "stepSize": 0.0033,
         "seedRadius": 4.0,
@@ -111,21 +113,29 @@
 
     "partnerDance": {
         "palette": "data/foggy-bay-palette.png",
-        "particlesPerDancer": 30,
-        "stepSize": 0.0033,
+        "particlesPerDancer": 60,
+        "stepSize": 0.01,
         "colorRate": 0.8,
         "noiseRate": 0.4,
-        "radius": 0.9,
-        "radiusScale": 0.3,
-        "intensityScale": 20.0,
-        "maxIntensity": 0.3,
+        "radius": 0.64,
+        "radiusScale": 0.4,
+        "intensityScale": 14.0,
+        "maxIntensity": 0.15,
         "minIntensity": 0.01,
         "targetRadius": 0.5,
-        "interactionRadius": 0.4,
-        "jitterRate": 0.66,
-        "jitterStrength": 0.6,
-        "jitterScale": 0.7,
-        "flowScale": -0.0008
+        "interactionRadius": 0.2,
+        "jitterRate": 0.16,
+        "jitterStrength": 0.8,
+        "jitterScale": 0.5,
+        "flowScale": -0.03,
+        "brightness": 0.9,
+        "targetGain": 0.00008,
+        "dampingRate": 0.0003,
+        "targetSpin": 0.000035,
+        "damping": 0.005,
+        "interactionRate": 0.0003,
+        "positionFuzz": 5.0,
+        "separationRadius": 3.0
     },
 
     "ringsA": {

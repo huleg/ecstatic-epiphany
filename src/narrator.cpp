@@ -16,6 +16,8 @@ Narrator::Narrator()
 void Narrator::setup()
 {
     flow.setConfig(runner.config["flow"]);
+    mixer.setConcurrency(runner.config["concurrency"].GetUint());
+    runner.setMaxFrameRate(runner.config["fps"].GetDouble());
     currentState = runner.initialState;
 }    
 

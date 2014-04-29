@@ -77,13 +77,8 @@ int Narrator::script(int st, PRNG &prng)
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 20);
-
             // XXX: Temporary
-            delay(30);
-
-            // Make sure we get a little bit of quiet before the bang
-            mixer.setFader(0, 0.0f);
-            delay(1.0);
+            delay(120);
             return 20;
         }
 
@@ -146,28 +141,9 @@ int Narrator::script(int st, PRNG &prng)
         case 60: {
             // Two partners, populations of particles.
             // Spiralling inwards. Depression. Beauty on the edge of destruction
-
             partnerDance.reseed(prng.uniform32());
-
-            // Start out slow during the crossfade
-            partnerDance.targetGain = 0.00002;
-            partnerDance.targetSpin = 0.000032;
-            partnerDance.damping = 0.0045;
-            partnerDance.dampingRate = 0;
-            partnerDance.interactionRate = 0;
-
             crossfade(&partnerDance, prng.uniform(5, 10));
-
-            // Normal speed
-            partnerDance.targetGain = 0.00005;
-            partnerDance.dampingRate = 0.0001;
-            delay(prng.uniform(50, 75));
-
-            // Damp quickly, fall into the void
-            partnerDance.dampingRate = 0.003;
-            partnerDance.targetSpin = 0.0001;
-            delay(prng.uniform(20, 30));
-
+            delay(prng.uniform(60, 90));
             return 70;
         }
     }

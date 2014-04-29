@@ -27,12 +27,6 @@ public:
 
     Texture palette;
 
-    float targetGain;
-    float targetSpin;
-    float damping;
-    float dampingRate;
-    float interactionRate;
-
 private:
     static constexpr unsigned numDancers = 2;
 
@@ -52,6 +46,14 @@ private:
     float jitterStrength;
     float jitterScale;
     float flowScale;
+    float brightness;
+    float targetGain;
+    float dampingRate;
+    float targetSpin;
+    float damping;
+    float interactionRate;
+    float positionFuzz;
+    float separationRadius;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -77,15 +79,11 @@ private:
 
 inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : palette(config["palette"].GetString()),
-      targetGain(0),
-      targetSpin(0),
-      damping(0),
-      dampingRate(0),
-      interactionRate(0),
       particlesPerDancer(config["particlesPerDancer"].GetUint()),
       numParticles(particlesPerDancer * numDancers),
       stepSize(config["stepSize"].GetDouble()),
       colorRate(config["colorRate"].GetDouble()),
+      noiseRate(config["noiseRate"].GetDouble()),
       radius(config["radius"].GetDouble()),
       radiusScale(config["radiusScale"].GetDouble()),
       intensityScale(config["intensityScale"].GetDouble()),
@@ -97,6 +95,14 @@ inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Val
       jitterStrength(config["jitterStrength"].GetDouble()),
       jitterScale(config["jitterScale"].GetDouble()),
       flowScale(config["flowScale"].GetDouble()),
+      brightness(config["brightness"].GetDouble()),
+      targetGain(config["targetGain"].GetDouble()),
+      dampingRate(config["dampingRate"].GetDouble()),
+      targetSpin(config["targetSpin"].GetDouble()),
+      damping(config["damping"].GetDouble()),
+      interactionRate(config["interactionRate"].GetDouble()),
+      positionFuzz(config["positionFuzz"].GetDouble()),
+      separationRadius(config["separationRadius"].GetDouble()),
       flow(flow),
       timeDeltaRemainder(0)
 {
@@ -181,9 +187,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
     PRNG prng;
     prng.seed(42);
 
-    // Capture the impulse between the last step and this one
-    flow.capture(1.0);
-    flow.origin();
+    flow.capture();
 
     for (unsigned dancer = 0; dancer < numDancers; dancer++) {
         for (unsigned i = 0; i < particlesPerDancer; i++, pa++, pd++) {
@@ -191,7 +195,8 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             prng.remix(pd->position[0] * 1e8);
             prng.remix(pd->position[1] * 1e8);
 
-            Vec2 disparity = target - pd->position;
+            Vec2 fPos = pd->position + Vec2(flow.model[0], flow.model[2]) * flowScale;
+            Vec2 disparity = target - fPos;
             Vec2 normal = Vec2(disparity[1], -disparity[0]);
             Vec2 v = pd->velocity;
 
@@ -199,7 +204,6 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             v *= 1.0 - damping;
             v += disparity * targetGain;
             v += normal * targetSpin;
-            v += Vec2(flow.model[0], flow.model[2]) * flowScale;
 
             // Particle interactions
             ResultSet_t hits;
@@ -231,7 +235,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
             pd->velocity = v;
             pd->position += v;
 
-            pa->point = Vec3(pd->position[0], 0, pd->position[1]);
+            pa->point = Vec3(fPos[0], 0, fPos[1]);
             pa->intensity = std::min(float(maxIntensity), intensityScale * len(v));
 
             if (pa->intensity < minIntensity) {
@@ -244,7 +248,7 @@ inline void PartnerDance::runStep(const FrameInfo &f)
 inline void PartnerDance::resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const
 {
     pd.velocity = Vec2(0, 0);
-    pd.position = prng.circularVector() * 7.0 + (dancer ? Vec2(5, 0) : Vec2(-5, 0));
+    pd.position = prng.circularVector() * positionFuzz + (dancer ? Vec2(separationRadius, 0) : Vec2(-separationRadius, 0));
 }
 
 inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
@@ -258,5 +262,5 @@ inline void PartnerDance::shader(Vec3& rgb, const PixelInfo& p) const
     Vec3 c = sampleColor(p.point) + jitter;
 
     // 2-dimensional palette lookup
-    rgb = palette.sample(c[0], c[1]);
+    rgb = brightness * palette.sample(c[0], c[1]);
 }
