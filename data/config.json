@@ -17,8 +17,8 @@
         "minEigThreshold": 0.0055,
         "deletePointProbability": 0.02,
 
-        "motionFilterFast": 0.25,
-        "motionFilterSlow": 0.001,
+        "motionFilterFast": 0.02,
+        "motionFilterSlow": 0.004,
 
         "transform": [
             1, 0, 0,

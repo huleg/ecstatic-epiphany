@@ -91,17 +91,12 @@ private:
     float motionFilterSlow;         // Second motion filter, low frequency
 
     struct PointInfo {
+        PointInfo();
+        PointInfo(unsigned maxAge);
+
         float distanceTraveled;
         unsigned age;
         unsigned maxAge;
-
-        PointInfo()
-            : distanceTraveled(0), age(0), maxAge(0)
-        {}
-
-        PointInfo(unsigned maxAge)
-            : distanceTraveled(0), age(0), maxAge(maxAge)
-        {}
     };
 
     struct Field {
@@ -239,6 +234,14 @@ inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
     // Resize arrays
     clear();
 }
+
+inline CameraFlowAnalyzer::PointInfo::PointInfo()
+    : distanceTraveled(0), age(0), maxAge(0)
+{}
+
+inline CameraFlowAnalyzer::PointInfo::PointInfo(unsigned maxAge)
+    : distanceTraveled(0), age(0), maxAge(maxAge)
+{}
 
 inline void CameraFlowAnalyzer::clear()
 {
