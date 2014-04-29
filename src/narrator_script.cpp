@@ -12,6 +12,7 @@
 #include "rings.h"
 #include "partner_dance.h"
 #include "glowpoi.h"
+#include "explore.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -25,6 +26,7 @@ int Narrator::script(int st, PRNG &prng)
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
+    static Explore explore(flow, runner.config["explore"]);
 
     switch (st) {
 
@@ -67,6 +69,13 @@ int Narrator::script(int st, PRNG &prng)
             // Agency, creative energy.
             glowPoi.reseed(prng.uniform32());
             crossfade(&glowPoi, 1);
+            delayForever();
+        }
+
+        case 5: {
+            // Explore
+            explore.reseed(prng.uniform32());
+            crossfade(&explore, 1);
             delayForever();
         }
 

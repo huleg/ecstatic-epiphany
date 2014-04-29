@@ -202,5 +202,13 @@
         "a2": 5.7,
         "u2": 8.4,
         "v2": 0.03
+    },
+
+    "explore": {
+        "map": "data/foggy-bay.png",
+        "flowScale": 0.1,
+        "modelScale": 0.1,
+        "startRadius": 0,
+        "brightness": 0.7
     }
 }
