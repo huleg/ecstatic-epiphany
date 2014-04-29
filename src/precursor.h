@@ -11,15 +11,15 @@
 
 #include <vector>
 #include "lib/effect.h"
-#include "lib/particle.h"
 #include "lib/prng.h"
 #include "lib/texture.h"
 #include "lib/noise.h"
 #include "lib/camera_flow.h"
 #include "lib/rapidjson/document.h"
+#include "tree_growth.h"
 
 
-class Precursor : public ParticleEffect
+class Precursor : public Effect
 {
 public:
     Precursor(const CameraFlowAnalyzer &flow, const rapidjson::Value &config);
@@ -29,48 +29,21 @@ public:
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
     virtual void debug(const DebugInfo &di);
 
+    TreeGrowth treeGrowth;
+
 private:
-    unsigned maxParticles;
-    float minParticles;
-    float launchProbability;
-    float particleNoise;
-    float particlesPerFlowPixel;
-    float particleExpirationGain;
     float flowScale;
-    float stepRate;
+    float flowFilterRate;
     float noiseRate;
     float noiseScale;
+    float noiseDepth;
     float brightness;
-    float particleDuration;
-    float particleRampup;
-    float ledPull;
-    float ledPullRadius;
-    float blockPull;
-    float blockPullRadius;
-    float damping;
-    float visibleRadius;
-    float outsideMargin;
-    float flowFilterRate;
-    float bmScale;
-    float bmDepth;
-
-    struct ParticleDynamics {
-        Vec3 velocity;
-        float time;
-    };
 
     CameraFlowCapture flow;
-
-    std::vector<ParticleDynamics> dynamics;
     Texture palette;
-    PRNG prng;
-    float noiseCycle;
-    float timeDeltaRemainder;
-    float colorSeed;
-    unsigned targetParticleCount;
 
-    float particleIntensity(float t) const;
-    void runStep(const FrameInfo &f);
+    float noiseCycle;
+    float colorSeed;
 };
 
 
@@ -80,32 +53,15 @@ private:
 
 
 inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Value &config)
-    : maxParticles(config["maxParticles"].GetUint()),
-      minParticles(config["minParticles"].GetDouble()),
-      launchProbability(config["launchProbability"].GetDouble()),
-      particleNoise(config["particleNoise"].GetDouble()),
-      particlesPerFlowPixel(config["particlesPerFlowPixel"].GetDouble()),
-      particleExpirationGain(config["particleExpirationGain"].GetDouble()),
+    : treeGrowth(flow, config["treeGrowth"]),
       flowScale(config["flowScale"].GetDouble()),
-      stepRate(config["stepRate"].GetDouble()),
+      flowFilterRate(config["flowFilterRate"].GetDouble()),
       noiseRate(config["noiseRate"].GetDouble()),
       noiseScale(config["noiseScale"].GetDouble()),
+      noiseDepth(config["noiseDepth"].GetDouble()),
       brightness(config["brightness"].GetDouble()),
-      particleDuration(config["particleDuration"].GetDouble()),
-      particleRampup(config["particleRampup"].GetDouble()),
-      ledPull(config["ledPull"].GetDouble()),
-      ledPullRadius(config["ledPullRadius"].GetDouble()),
-      blockPull(config["blockPull"].GetDouble()),
-      blockPullRadius(config["blockPullRadius"].GetDouble()),
-      damping(config["damping"].GetDouble()),
-      visibleRadius(config["visibleRadius"].GetDouble()),
-      outsideMargin(config["outsideMargin"].GetDouble()),
-      flowFilterRate(config["flowFilterRate"].GetDouble()),      
-      bmScale(config["bmScale"].GetDouble()),      
-      bmDepth(config["bmDepth"].GetDouble()),      
       flow(flow),
-      palette(config["palette"].GetString()),
-      timeDeltaRemainder(0)
+      palette(config["palette"].GetString())
 {
     reseed(42);
 }
@@ -115,156 +71,37 @@ inline void Precursor::reseed(unsigned seed)
     flow.capture(1.0);
     flow.origin();
 
+    PRNG prng;
     prng.seed(seed);
-    noiseCycle = 0;
-    colorSeed = prng.uniform(2, 5);
-}
 
-inline float Precursor::particleIntensity(float t) const
-{
-    // Ramp up, then fade
-    return cos(t * (M_PI/2)) * kernel(1.0f - std::min(1.0f, t / particleRampup));
+    noiseCycle = prng.uniform(0, 10);
+    colorSeed = prng.uniform(2, 5);
 }
 
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
-    // Particle count based on flow motion
-    targetParticleCount = std::min<int>(maxParticles, std::max<int>(0,
-        minParticles + prng.uniform(0, particleNoise) +
-        particlesPerFlowPixel * flow.instantaneousMotion() + 0.5));
-
-    // Simple time-varying parameters
+    flow.capture(flowFilterRate);
+    treeGrowth.beginFrame(f);
     noiseCycle += f.timeDelta * noiseRate;
-
-    // Fixed timestep
-    float t = f.timeDelta + timeDeltaRemainder;
-    int steps = t * stepRate;
-    timeDeltaRemainder = t - steps / stepRate;
-
-    while (steps > 0) {
-        runStep(f);
-        steps--;
-    }
-
-    ParticleEffect::beginFrame(f);
 }
 
 inline void Precursor::debug(const DebugInfo &di)
 {
-    fprintf(stderr, "\t[precursor] particles = %d -> %d\n", (int)appearance.size(), targetParticleCount);
-    fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
-    fprintf(stderr, "\t[precursor] instantaneousMotion = %f\n", flow.instantaneousMotion());
+    treeGrowth.debug(di);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
+    fprintf(stderr, "\t[precursor] colorSeed = %f\n", colorSeed);
 }
 
-inline void Precursor::runStep(const FrameInfo &f)
-{
-    // Launch new particles
-    if (targetParticleCount > appearance.size()) {
-        int launchCount = prng.uniform(0, 1.0f + launchProbability * (targetParticleCount - appearance.size()));
-        while (launchCount--) {
-            ParticleAppearance pa;
-            ParticleDynamics pd;
-
-            pa.point = Vec3( prng.uniform(f.modelMin[0], f.modelMax[0]),
-                             prng.uniform(f.modelMin[1], f.modelMax[1]),
-                             prng.uniform(f.modelMin[2], f.modelMax[2]) );
-
-            pd.velocity = Vec3(0, 0, 0);
-            pd.time = 0;
-
-            appearance.push_back(pa);
-            dynamics.push_back(pd);
-        }
-    }
-
-    // Time moves faster when we're trying to expire more particles
-    float timeProgressRate = 1.0f / stepRate / particleDuration;
-    unsigned particlesToExpire = std::max<int>(0, appearance.size() - targetParticleCount);
-    timeProgressRate *= 1.0f + particlesToExpire * particleExpirationGain;
-
-    // Capture impulse, transfer to all particles
-    flow.capture(flowFilterRate);
-    flow.origin();
-    Vec3 flowVector = flow.model * flowScale;
-
-    // Iterate through and update all particles, discarding any that have expired
-    unsigned j = 0;
-    for (unsigned i = 0; i < appearance.size(); i++) {
-        ParticleAppearance pa = appearance[i];
-        ParticleDynamics pd = dynamics[i];
-
-        // Update simulation
-
-        pa.point += pd.velocity;
-        pd.time += timeProgressRate;
-
-        if (pd.time >= 1.0f) {
-            // Discard, too old
-            continue;
-        }
-
-        if (f.distanceOutsideBoundingBox(pa.point) > outsideMargin * visibleRadius) {
-            // Outside bounding box, discard
-            continue;
-        }
-
-        pa.intensity = particleIntensity(pd.time);
-        pa.radius = visibleRadius;
-
-        // Pull toward nearby LEDs, so the particles kinda-follow the grid.
-        // We only pull if the direction matches where we're already headed.
-
-        ResultSet_t hits;
-        f.radiusSearch(hits, pa.point, std::max(ledPullRadius, blockPullRadius));
-        for (unsigned h = 0; h < hits.size(); h++) {
-            const PixelInfo &hit = f.pixels[hits[h].first];
-            if (!hit.isMapped()) {
-                continue;
-            }
-
-            Vec3 v = pd.velocity * (1.0f - damping) + flowVector;
-
-            // Pull toward LED
-            Vec3 d = hit.point - pa.point;
-            float dp = dot(d, v);
-            float q2 = hits[h].second / sq(ledPullRadius);
-            if (q2 < 1.0f && dp > 0.0f) {
-                v += ledPull * kernel2(q2) * dp * d;
-            }
-
-            // Pull toward grid square center
-            q2 = hits[h].second / sq(blockPullRadius);
-            if (q2 < 1.0f) {
-                Vec2 blockXY = hit.getVec2("blockXY");
-                Vec2 b = blockPull * kernel2(q2) * blockXY;
-                v += Vec3(-b[0], 0, b[1]);
-            }
-
-            pd.velocity = v;
-        }
-
-        // Write out
-        appearance[j] = pa;
-        dynamics[j] = pd;
-        j++;
-    }
-
-    appearance.resize(j);
-    dynamics.resize(j);
-}
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
 {
-    // Sample noise with grid square granularity
-    float n = 1.5 + fbm_noise2(p.getVec2("gridXY") * noiseScale + Vec2(noiseCycle, 0), 2);
-
-    // Brightness modifier noise
-    float bm = std::min(1.0f, std::max(0.0f, 0.5f + bmDepth *
-        fbm_noise3(p.point * bmScale + Vec3(0, noiseCycle, 0), 3)));
+    float n = 1.5 + noiseDepth * fbm_noise3(
+        XZ(p.getVec2("gridXY") * noiseScale)
+        + flow.model * flowScale
+        + Vec3(0, noiseCycle, 0), 4);
 
     // Lissajous sampling on palette
-    rgb = sampleIntensity(p.point) * bm * brightness *
+    rgb = treeGrowth.sampleIntensity(p.point) * brightness *
           palette.sample(0.5 + 0.5 * cos(n),
                          0.5 + 0.5 * sin(n * colorSeed));
 }
