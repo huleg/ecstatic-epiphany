@@ -180,7 +180,7 @@ private:
     float originInterval;
     float scale;
     float radius;
-    float motionLengthToHue;
+    float motionLengthScale;
 
     CameraFlowCapture flow;
     float originTimer;
@@ -620,7 +620,7 @@ inline void CameraFlowCapture::capture(float filterRate)
 inline CameraFlowDebugEffect::CameraFlowDebugEffect(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : scale(config["scale"].GetDouble()),
       radius(config["radius"].GetDouble()),
-      motionLengthToHue(config["motionLengthToHue"].GetDouble()),
+      motionLengthScale(config["motionLengthScale"].GetDouble()),
       flow(flow),
       originTimer(0)
 {}
@@ -633,15 +633,14 @@ inline void CameraFlowDebugEffect::beginFrame(const FrameInfo &f)
 
     appearance[0].point = flow.model * scale;
     appearance[0].intensity = 1.0f;
-    appearance[0].radius = radius;
+    appearance[0].radius = radius + sqrtf(flow.instantaneousMotion()) * motionLengthScale;
+    appearance[0].color = Vec3(1,1,1);
 
     for (unsigned i = 0; i < 3; i++) {
         if (appearance[0].point[i] < f.modelMin[i] || appearance[0].point[i] > f.modelMax[i]) {
             flow.origin();
         }
     }
-
-    hsv2rgb(appearance[0].color, flow.instantaneousMotion() * motionLengthToHue, 0.8, 0.8);
 
     ParticleEffect::beginFrame(f);
 }

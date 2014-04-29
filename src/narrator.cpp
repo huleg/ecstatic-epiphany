@@ -136,6 +136,10 @@ void Narrator::NEffectRunner::argumentUsage()
     fprintf(stderr, " [-state ST] [-config FILE.json]");
 }
 
+bool Narrator::NEffectRunner::validateArguments()
+{
+    return config.IsObject() && EffectRunner::validateArguments();
+}
 
 bool Narrator::NEffectRunner::setConfig(const char *filename)
 {

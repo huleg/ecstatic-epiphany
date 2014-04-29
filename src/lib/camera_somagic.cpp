@@ -96,7 +96,7 @@ static int cvbs_input = VIDEO3;
 static int luminance_mode = 0;
 
 /* Luminance prefilter: 0 = bypassed, 1 = active */
-static int luminance_prefilter = 0;
+static int luminance_prefilter = 1;
 
 /* Hue phase in degrees: -128 to 127 (-180 to 178.59375), increments of 1.40625 degrees */
 static uint8_t hue = 0;
@@ -105,7 +105,7 @@ static uint8_t hue = 0;
 static uint8_t saturation = 64;
 
 /* Luminance contrast: -128 to 127 (1.984375 to -2.000000), increments of 0.015625 */
-static uint8_t contrast = 71;
+static uint8_t contrast = 90;
 
 /* Luminance brightness: 0 to 255 */
 static uint8_t brightness = 128;
@@ -114,7 +114,7 @@ static uint8_t brightness = 128;
 static int luminance_aperture = 1;
 
 /* Control the number of concurrent ISO transfers we have running. <= 32 */
-static const int num_iso_transfers = 8;
+static const int num_iso_transfers = 16;
 
 enum sync_state {
 	HSYNC = 0,

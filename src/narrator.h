@@ -33,6 +33,7 @@ public:
     protected:
         virtual bool parseArgument(int &i, int &argc, char **argv);
         virtual void argumentUsage();
+        virtual bool validateArguments();
     };
 
     Narrator();

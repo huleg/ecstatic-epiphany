@@ -17,8 +17,8 @@
         "minEigThreshold": 0.0055,
         "deletePointProbability": 0.02,
 
-        "motionFilterFast": 0.4,
-        "motionFilterSlow": 0.02,
+        "motionFilterFast": 0.25,
+        "motionFilterSlow": 0.001,
 
         "transform": [
             1, 0, 0,
@@ -28,36 +28,36 @@
     },
 
     "flowDebugEffect": {
-        "scale": 0.3,
-        "radius": 0.4,
-        "motionLengthToHue": 0.5
+        "scale": 0.1,
+        "radius": 0.3,
+        "motionLengthScale": 0.7
     },
 
     "precursor": {
         "palette": "data/darkmatter-palette.png",
-        "maxParticles": 500,
+        "maxParticles": 200,
         "minParticles": 0.4,
-        "launchProbability": 0.7,
+        "launchProbability": 0.01,
         "particleNoise": 0.7,
-        "particlesPerFlowPixel": 25.0,
-        "particleExpirationGain": 0.08,
-        "flowScale": 0.00017,
-        "stepRate": 120.0,
-        "noiseRate": 0.03,
+        "particlesPerFlowPixel": 90.0,
+        "particleExpirationGain": 0.01,
+        "flowScale": 0.0001,
+        "stepRate": 200.0,
+        "noiseRate": 0.001,
         "noiseScale": 0.2,
-        "brightness": 2.0,
-        "particleDuration": 4.0,
-        "particleRampup": 0.02, 
-        "ledPull": 0.00032,
-        "ledPullRadius": 0.18,
-        "blockPull": -0.000025,
+        "brightness": 4.0,
+        "particleDuration": 2.0,
+        "particleRampup": 0.01, 
+        "ledPull": 2.0,
+        "ledPullRadius": 0.3,
+        "blockPull": 0,
         "blockPullRadius": 0.22,
-        "damping": 0.0002,
-        "visibleRadius": 0.29,
+        "damping": 0.005,
+        "visibleRadius": 0.42,
         "outsideMargin": 1.2,
         "flowFilterRate": 0.4,
         "bmScale": 3.0,
-        "bmDepth": 15.0
+        "bmDepth": 0.5
     },
 
     "chaosParticles": {

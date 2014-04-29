@@ -137,18 +137,10 @@ inline float Precursor::particleIntensity(float t) const
 
 inline void Precursor::beginFrame(const FrameInfo &f)
 {
-    // Capture impulse, transfer to all particles
-    flow.capture(flowFilterRate);
-    flow.origin();
-
     // Particle count based on flow motion
     targetParticleCount = std::min<int>(maxParticles, std::max<int>(0,
         minParticles + prng.uniform(0, particleNoise) +
         particlesPerFlowPixel * flow.instantaneousMotion() + 0.5));
-
-    for (unsigned i = 0; i < appearance.size(); i++) {
-        dynamics[i].velocity += flow.model * flowScale;
-    }
 
     // Simple time-varying parameters
     noiseCycle += f.timeDelta * noiseRate;
@@ -178,25 +170,33 @@ inline void Precursor::debug(const DebugInfo &di)
 inline void Precursor::runStep(const FrameInfo &f)
 {
     // Launch new particles
-    if (appearance.size() < targetParticleCount && prng.uniform(0,1) < launchProbability) {
-        ParticleAppearance pa;
-        ParticleDynamics pd;
+    if (targetParticleCount > appearance.size()) {
+        int launchCount = prng.uniform(0, 1.0f + launchProbability * (targetParticleCount - appearance.size()));
+        while (launchCount--) {
+            ParticleAppearance pa;
+            ParticleDynamics pd;
 
-        pa.point = Vec3( prng.uniform(f.modelMin[0], f.modelMax[0]),
-                         prng.uniform(f.modelMin[1], f.modelMax[1]),
-                         prng.uniform(f.modelMin[2], f.modelMax[2]) );
+            pa.point = Vec3( prng.uniform(f.modelMin[0], f.modelMax[0]),
+                             prng.uniform(f.modelMin[1], f.modelMax[1]),
+                             prng.uniform(f.modelMin[2], f.modelMax[2]) );
 
-        pd.velocity = Vec3(0, 0, 0);
-        pd.time = 0;
+            pd.velocity = Vec3(0, 0, 0);
+            pd.time = 0;
 
-        appearance.push_back(pa);
-        dynamics.push_back(pd);
+            appearance.push_back(pa);
+            dynamics.push_back(pd);
+        }
     }
 
     // Time moves faster when we're trying to expire more particles
     float timeProgressRate = 1.0f / stepRate / particleDuration;
     unsigned particlesToExpire = std::max<int>(0, appearance.size() - targetParticleCount);
     timeProgressRate *= 1.0f + particlesToExpire * particleExpirationGain;
+
+    // Capture impulse, transfer to all particles
+    flow.capture(flowFilterRate);
+    flow.origin();
+    Vec3 flowVector = flow.model * flowScale;
 
     // Iterate through and update all particles, discarding any that have expired
     unsigned j = 0;
@@ -233,13 +233,14 @@ inline void Precursor::runStep(const FrameInfo &f)
                 continue;
             }
 
-            Vec3 v = pd.velocity * (1.0f - damping);
+            Vec3 v = pd.velocity * (1.0f - damping) + flowVector;
 
             // Pull toward LED
             Vec3 d = hit.point - pa.point;
+            float dp = dot(d, v);
             float q2 = hits[h].second / sq(ledPullRadius);
-            if (q2 < 1.0f && dot(d, v) > 0.0f) {
-                v += ledPull * kernel2(q2) * d;
+            if (q2 < 1.0f && dp > 0.0f) {
+                v += ledPull * kernel2(q2) * dp * d;
             }
 
             // Pull toward grid square center
