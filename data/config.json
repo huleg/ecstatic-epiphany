@@ -36,7 +36,7 @@
     "precursor": {
         "palette": "data/darkmatter-palette.png",
 
-        "flowScale": 0.00009,
+        "flowScale": 0.00002,
         "flowFilterRate": 0.3,
         "noiseRate": 0.0002,
         "noiseScale": 0.0025,
