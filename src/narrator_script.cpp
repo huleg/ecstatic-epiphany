@@ -130,11 +130,11 @@ int Narrator::script(int st, PRNG &prng)
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 10;
             crossfade(&orderParticles, 15);
-            while (orderParticles.symmetry > 2) {
-                delay(prng.uniform(3, 20));
+            while (orderParticles.symmetry > 4) {
+                delay(prng.uniform(3, 25));
                 orderParticles.symmetry--;
             }
-            delay(prng.uniform(10, 25));
+            delay(prng.uniform(15, 35));
             return 60;
         }
 

@@ -108,7 +108,7 @@ inline void OrderParticles::reseed(unsigned seed)
     prng.seed(seed);
     this->seed = seed;
 
-    colorCycle = prng.uniform(0, 20 * M_PI);
+    colorCycle = prng.uniform(0, 1000);
 
     for (unsigned i = 0; i < appearance.size(); i++) {
         Vec2 p = prng.ringVector(1e-4, seedRadius);
