@@ -215,7 +215,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         float fade = pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
         float particleIntensity = intensity * fade;
         appearance[i].intensity = darkParticle ? particleIntensity * darkMultiplier : particleIntensity;
-        appearance[i].radius = f.modelDiameter * relativeSize * fade;
+        appearance[i].radius = f.modelRadius * relativeSize * fade;
 
         numLiveParticles++;
         intensityAccumulator += particleIntensity;

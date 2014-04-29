@@ -12,6 +12,7 @@
 #include "rings.h"
 #include "partner_dance.h"
 #include "glowpoi.h"
+#include "tree_growth.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -25,6 +26,7 @@ int Narrator::script(int st, PRNG &prng)
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
+    static TreeGrowth treeGrowth(flow, runner.config["treeGrowth"]);
 
     switch (st) {
 
@@ -52,6 +54,21 @@ int Narrator::script(int st, PRNG &prng)
         case 2: {
             // Debugging the computer vision system
             crossfade(&flowDebugEffect, 1);
+            delayForever();
+        }
+
+        case 3: {
+            // Tree growth only
+            treeGrowth.reseed(prng.uniform32());
+            treeGrowth.launch(Vec3(0,0,0), Vec3(0,0,0));
+            crossfade(&treeGrowth, 1);
+            delayForever();
+        }
+
+        case 4: {
+            // Agency, creative energy.
+            glowPoi.reseed(prng.uniform32());
+            crossfade(&glowPoi, 1);
             delayForever();
         }
 
@@ -154,15 +171,6 @@ int Narrator::script(int st, PRNG &prng)
             delay(prng.uniform(20, 30));
 
             return 70;
-        }
-
-        case 70: {
-            // Agency, creative energy.
-
-            glowPoi.reseed(prng.uniform32());
-            crossfade(&glowPoi, prng.uniform(10, 15));
-            delay(prng.uniform(45, 90));
-            return 80;
         }
     }
 }

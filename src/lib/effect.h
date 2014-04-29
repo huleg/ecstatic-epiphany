@@ -121,8 +121,8 @@ public:
         // Model axis-aligned bounding box
         Vec3 modelMin, modelMax;
 
-        // Diameter measured from center
-        Real modelDiameter;
+        // Radius measured from center
+        Real modelRadius;
 
         // Calculated model info
         Vec3 modelCenter() const;
@@ -257,11 +257,11 @@ inline void Effect::FrameInfo::init(const rapidjson::Value &layout)
         }
     }
 
-    // Calculate diameter
+    // Calculate radius
 
-    modelDiameter = 0;
+    modelRadius = 0;
     for (unsigned i = 0; i < pixels.size(); i++) {
-        modelDiameter = std::max(modelDiameter, len(pixels[i].point - modelCenter()));
+        modelRadius = std::max(modelRadius, len(pixels[i].point - modelCenter()));
     }
 
     // Build K-D Tree index, for fast spatial lookups later
@@ -312,4 +312,10 @@ static inline float sq(float a)
 {
     // Fast square
     return a * a;
+}
+
+static inline Vec3 XZ(Vec2 v)
+{
+    // Put a 2D vector on the XZ plane
+    return Vec3(v[0], 0, v[1]);
 }

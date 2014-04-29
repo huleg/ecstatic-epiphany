@@ -29,8 +29,6 @@ public:
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
     virtual void debug(const DebugInfo &di);
 
-    float totalSecondsOfDarkness();
-
 private:
     unsigned maxParticles;
     float minParticles;
@@ -66,7 +64,6 @@ private:
     std::vector<ParticleDynamics> dynamics;
     Texture palette;
     PRNG prng;
-    unsigned darkStepCount;
     float noiseCycle;
     float timeDeltaRemainder;
     float colorSeed;
@@ -120,13 +117,7 @@ inline void Precursor::reseed(unsigned seed)
 
     prng.seed(seed);
     noiseCycle = 0;
-    darkStepCount = 0;
     colorSeed = prng.uniform(2, 5);
-}
-
-inline float Precursor::totalSecondsOfDarkness()
-{
-    return darkStepCount / stepRate;
 }
 
 inline float Precursor::particleIntensity(float t) const
@@ -164,7 +155,6 @@ inline void Precursor::debug(const DebugInfo &di)
     fprintf(stderr, "\t[precursor] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[precursor] instantaneousMotion = %f\n", flow.instantaneousMotion());
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
-    fprintf(stderr, "\t[precursor] darkness = %f sec\n", totalSecondsOfDarkness());
 }
 
 inline void Precursor::runStep(const FrameInfo &f)
@@ -262,10 +252,6 @@ inline void Precursor::runStep(const FrameInfo &f)
 
     appearance.resize(j);
     dynamics.resize(j);
-
-    if (appearance.empty()) {
-        darkStepCount++;
-    }
 }
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const

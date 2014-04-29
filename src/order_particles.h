@@ -131,7 +131,7 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     // Particle appearance
     for (unsigned i = 0; i < appearance.size(); i++) {
         appearance[i].intensity = intensity;
-        appearance[i].radius = f.modelDiameter * relativeSize;
+        appearance[i].radius = f.modelRadius * relativeSize;
 
         // Viewpoint adjustment
         appearance[i].point += flow.model * flowScale;
@@ -167,7 +167,7 @@ inline void OrderParticles::runStep(const FrameInfo &f)
         nanoflann::SearchParams params;
         params.sorted = false;
 
-        float searchRadius = interactionSize * f.modelDiameter;
+        float searchRadius = interactionSize * f.modelRadius;
         index.radiusSearch(hits, p, searchRadius);
 
         for (unsigned i = 0; i < hits.size(); i++) {
