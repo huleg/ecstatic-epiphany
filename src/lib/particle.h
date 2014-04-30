@@ -325,7 +325,7 @@ inline Vec3 ParticleEffect::sampleIntensityGradient(Vec3 location, float epsilon
 
 inline void ParticleEffect::debug(const DebugInfo& d)
 {
-    fprintf(stderr, "\t[particle] %.1f kB, radius=%.1f\n",
+    fprintf(stderr, "\t[particle] %.1f kB, radiusMax = %.1f\n",
         index.tree.usedMemory() / 1024.0f,
         index.radiusMax);
 }

@@ -1,7 +1,8 @@
 {
     "initialState": 0,
-    "concurrency": 6,
-    "fps": 115.0,
+    "concurrency": 3,
+    "fps": 100.0,
+    "brightnessLimit": 0.35,
 
     "flow": {
         "debug": false,
@@ -75,11 +76,9 @@
         }
     },
 
-    "chaosBrightnessMin": 0.0,
-    "chaosBrightnessMax": 0.35,
     "chaosParticles": {
         "palette": "data/bang-palette.png",
-        "numParticles": 600,
+        "numParticles": 300,
         "numDarkParticles": 30,
         "maxAge": 9000,
         "generationScale": 0.071,
@@ -88,7 +87,7 @@
         "spinMin": 1.0471,
         "spinMax": 1.0473,
         "relativeSize": 0.32,
-        "intensity": 4.0,
+        "intensity": 5.0,
         "intensityExp": 0.4,
         "initialSpeedMin": 0.0001,
         "initialSpeedMax": 0.009,
@@ -109,7 +108,7 @@
         "flowLightAngleRate": 0.03,
         "flowColorCycleRate": 0.002,
         "relativeSize": 0.52,
-        "intensity": 0.05,
+        "intensity": 0.2,
         "brightness": 1.0,
         "stepSize": 0.01,
         "seedRadius": 1.9,
@@ -213,7 +212,6 @@
         "v2": 0.03
     },
 
-    "exploreBr": 0.75,
     "explore": {
         "map": "data/evergreen.png",
         "flowScale": -0.006,

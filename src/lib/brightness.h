@@ -53,6 +53,10 @@ private:
     float lowerLimit, upperLimit;
     std::vector<Vec3> colors;
     float currentScale;
+    unsigned numIters;
+
+    static const unsigned gammaTableSize = 256;
+    float gammaTable[gammaTableSize];
     float gamma;
 };
 
@@ -65,7 +69,7 @@ private:
 inline Brightness::Brightness(Effect &next)
     : next(next),
       lowerLimit(0), upperLimit(1),
-      currentScale(1)
+      currentScale(1), numIters(0)
 {
     // Fadecandy default
     setAssumedGamma(2.5);
@@ -85,6 +89,9 @@ inline void Brightness::set(float lowerLimit, float upperLimit)
 inline void Brightness::setAssumedGamma(float gamma)
 {
     this->gamma = gamma;
+    for (unsigned i = 0; i < gammaTableSize; i++) {
+        gammaTable[i] = powf(i / float(gammaTableSize + 1), gamma);
+    }
 }
 
 inline void Brightness::beginFrame(const FrameInfo& f)
@@ -127,39 +134,52 @@ inline void Brightness::beginFrame(const FrameInfo& f)
     const unsigned maxIters = 50;
     const float epsilon = 1e-3;
 
-    for (unsigned iter = 0; iter < maxIters; iter++) {
+    unsigned iter = 0;
+    float scale = 1.0;
+
+    for (; iter < maxIters; iter++) {
 
         std::vector<Vec3>::iterator ci = colors.begin();
         std::vector<Vec3>::iterator ce = colors.end();
+        PixelInfoIter pi = f.pixels.begin();
         float avg = 0;
 
-        for (;ci != ce; ++ci) {
+        for (;ci != ce; ++ci, ++pi) {
             Vec3& rgb = *ci;
 
             // Simulated linear brightness, using current scale
-            for (unsigned i = 0; i < 3; i++) {
-                avg += powf(std::max(0.0f, std::min(1.0f, rgb[i] * currentScale)), gamma);
+            if (pi->isMapped()) {
+                for (unsigned i = 0; i < 3; i++) {
+                    float c = rgb[i] * scale;
+                    avg += gammaTable[std::max<int>(0, std::min<int>(gammaTableSize - 1, c * float(gammaTableSize - 1)))];
+                }
             }
         }
 
         avg /= count;
 
-        // Make the best estimate we can for this iteration
         float adjustment;
         if (avg < lowerLimit) {
+            // Make brighter, operate against the lower limit
             adjustment = powf(lowerLimit / avg, 1.0f / gamma);
         } else if (avg > upperLimit) {
+            // Make dimmer, operate against the upper limit
             adjustment = powf(upperLimit / avg, 1.0f / gamma);
         } else {
-            adjustment = 1.0f;
+            // Not hitting any limits
+            break;
         }
-        currentScale = std::max(epsilon, currentScale * adjustment);
+
+        scale = std::max(epsilon, scale * adjustment);
 
         // Was this adjustment negligible? We can quit early.
         if (fabsf(adjustment - 1.0f) < epsilon) {
             break;
         }
     }
+
+    numIters = iter;
+    currentScale = scale;
 }
 
 inline void Brightness::endFrame(const FrameInfo& f)
@@ -169,6 +189,9 @@ inline void Brightness::endFrame(const FrameInfo& f)
 
 inline void Brightness::debug(const DebugInfo& d)
 {
+    fprintf(stderr, "\t[brightness] limits = [%f, %f]\n", lowerLimit, upperLimit);
+    fprintf(stderr, "\t[brightness] currentScale = %f\n", currentScale);
+    fprintf(stderr, "\t[brightness] iterations = %d\n", numIters);
     next.debug(d);
 }
 

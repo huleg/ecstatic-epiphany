@@ -174,59 +174,59 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
 
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {
+        ParticleDynamics pd = dynamics[i];
+        ParticleAppearance pa = appearance[i];
 
-        // Horizontal flow -> position
-        dynamics[i].position[0] += dynamics[i].velocity[0] - flow.model[0] * flowScale;
-        dynamics[i].position[1] += dynamics[i].velocity[1];
-        dynamics[i].age++;
-
-        if (dynamics[i].age > maxAge) {
-            dynamics[i].dead = true;
+        pd.age++;
+        if (pd.age > maxAge && !pd.dead) {
+            pd.dead = true;
+            pa.intensity = 0;
+            dynamics[i] = pd;
+            appearance[i] = pa;
         }
-        if (dynamics[i].dead) {
-            appearance[i].intensity = 0;
+        if (pd.dead) {
             continue;
         }
-        float ageF = dynamics[i].age / (float)maxAge;
 
         // XZ plane
-        appearance[i].point[0] = dynamics[i].position[0];
-        appearance[i].point[2] = dynamics[i].position[1];
+        pa.point[0] = pd.position[0];
+        pa.point[2] = pd.position[1];
 
-        // Dark matter, to break up the monotony of lightness
-        bool darkParticle = i < numDarkParticles;
+        float ageF = pd.age / (float)maxAge;
+        float c = (pd.generation + ageF) * generationScale;
 
         // Fade in/out
         float fade = pow(std::max(0.0f, sinf(ageF * M_PI)), intensityExp);
         float particleIntensity = intensity * fade;
-        appearance[i].intensity = darkParticle ? particleIntensity * darkMultiplier : particleIntensity;
-        appearance[i].radius = f.modelRadius * relativeSize * fade;
 
+        pa.radius = f.modelRadius * relativeSize * fade;
         numLiveParticles++;
-        intensityAccumulator += particleIntensity;
 
-        float c = (dynamics[i].generation + ageF) * generationScale;
-        appearance[i].color = darkParticle ? Vec3(1,1,1) : palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
+        // Dark matter, to break up the monotony of lightness
+        bool darkParticle = i < numDarkParticles;
+        pa.intensity = darkParticle ? particleIntensity * darkMultiplier : particleIntensity;
+        pa.color = darkParticle ? Vec3(1,1,1) : palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
+        intensityAccumulator += darkParticle ? particleIntensity : 0;
 
-        dynamics[i].escaped = f.distanceOutsideBoundingBox(appearance[i].point) >
-            outsideMargin * appearance[i].radius;
+        // Horizontal flow -> position
+        pd.position[0] += pd.velocity[0] - flow.model[0] * flowScale;
+        pd.position[1] += pd.velocity[1];
 
-        prng.remix(dynamics[i].position[0] * 1e8);
-        prng.remix(dynamics[i].position[1] * 1e8);
-    }
+        pd.escaped = f.distanceOutsideBoundingBox(pa.point) >
+            outsideMargin * pa.radius;
 
-    // Reassign each escaped particle randomly to be near a non-escaped one
-    for (unsigned i = 0; i < dynamics.size(); i++) {
-        if (dynamics[i].escaped && !dynamics[i].dead) {
+        // Respawn escaped particles near a random other particle;
+        // Appearance won't update until the next step.
+        if (pd.escaped) {
             for (unsigned attempt = 0; attempt < 100; attempt++) {
                 unsigned seed = prng.uniform(0, dynamics.size() - 0.0001);
                 if (!dynamics[seed].escaped) {
 
                     // Fractal respawn at seed position
-                    dynamics[i] = dynamics[seed];
-                    dynamics[i].generation++;
-                    dynamics[i].age = 0;
-                    Vec2 v = dynamics[i].velocity;
+                    pd = dynamics[seed];
+                    pd.generation++;
+                    pd.age = 0;
+                    Vec2 v = pd.velocity;
 
                     // Speed modulation
                     v *= prng.uniform(speedMin, speedMax);
@@ -238,11 +238,17 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
                     v = Vec2( v[0] * c - v[1] * s ,
                               v[0] * s + v[1] * c );
 
-                    dynamics[i].velocity = v;
+                    pd.velocity = v;
                     break;
                 }
             }
         }
+
+        prng.remix(pd.position[0] * 1e8);
+        prng.remix(pd.position[1] * 1e8);
+
+        dynamics[i] = pd;
+        appearance[i] = pa;
     }
 
     totalIntensity = intensityAccumulator;

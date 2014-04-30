@@ -13,15 +13,12 @@
 #include "partner_dance.h"
 #include "glowpoi.h"
 #include "explore.h"
-#include "lib/brightness.h"
 
 
 int Narrator::script(int st, PRNG &prng)
 {
     static ChaosParticles chaosA(flow, runner.config["chaosParticles"]);
     static ChaosParticles chaosB(flow, runner.config["chaosParticles"]);
-    static Brightness chaosABr(chaosA);
-    static Brightness chaosBBr(chaosB);
     static OrderParticles orderParticles(flow, runner.config["orderParticles"]);
     static Precursor precursor(flow, runner.config["precursor"]);
     static RingsEffect ringsA(flow, runner.config["ringsA"]);
@@ -30,7 +27,6 @@ int Narrator::script(int st, PRNG &prng)
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
     static Explore explore(flow, runner.config["explore"]);
-    static Brightness exploreBr(explore);
 
     switch (st) {
 
@@ -79,8 +75,7 @@ int Narrator::script(int st, PRNG &prng)
         case 5: {
             // Explore
             explore.reseed(prng.uniform32());
-            exploreBr.set(runner.config["exploreBr"].GetDouble());
-            crossfade(&exploreBr, 1);
+            crossfade(&explore, 1);
             delayForever();
         }
 
@@ -107,17 +102,12 @@ int Narrator::script(int st, PRNG &prng)
 
             ChaosParticles *pChaosA = &chaosA;
             ChaosParticles *pChaosB = &chaosB;
-            Brightness *pChaosABr = &chaosABr;
-            Brightness *pChaosBBr = &chaosBBr;
             
             for (int i = 0; i < prng.uniform(1, 5); i++) {
                 pChaosA->reseed(prng.circularVector() * 0.6, prng.uniform32());
-                pChaosABr->set(runner.config["chaosBrightnessMin"].GetDouble(),
-                               runner.config["chaosBrightnessMax"].GetDouble());
-                crossfade(pChaosABr, 0.25);
+                crossfade(pChaosA, 0.25);
                 delay((1 << i) * 0.5f);
                 std::swap(pChaosA, pChaosB);
-                std::swap(pChaosABr, pChaosBBr);
             }
 
             // Run unconditionally to bootstrap particle intensity
@@ -150,7 +140,6 @@ int Narrator::script(int st, PRNG &prng)
 
         case 50: {
             // Biology happens, order emerges. Cellular look, emergent order.
-            // Smooth out overall brightness jitter with the "Brightness" object.
 
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 10;

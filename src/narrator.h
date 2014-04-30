@@ -15,6 +15,7 @@
 #include "lib/effect_tap.h"
 #include "lib/prng.h"
 #include "lib/camera_flow.h"
+#include "lib/brightness.h"
 
 
 class Narrator
@@ -44,6 +45,7 @@ public:
     CameraFlowAnalyzer flow;
     NEffectRunner runner;
     EffectMixer mixer;
+    Brightness brightness;
 
 private:
     int script(int st, PRNG &prng);
