@@ -34,8 +34,7 @@ public:
 
 private:
     unsigned numParticles;
-    float damping;
-    float repelGain;
+    float centeringGain;
     float flowFilterRate;
     float flowScale;
     float flowLightAngleRate;
@@ -60,6 +59,7 @@ private:
     Vec3 lightVec;
     float lightAngle;
     float angleGain;
+    Vec3 centerPosition;
 
     void runStep(const FrameInfo &f);
 };
@@ -73,8 +73,7 @@ private:
 inline OrderParticles::OrderParticles(CameraFlowAnalyzer& flow, const rapidjson::Value &config)
     : palette(config["palette"].GetString()),
       numParticles(config["numParticles"].GetUint()),
-      damping(config["damping"].GetDouble()),
-      repelGain(config["repelGain"].GetDouble()),
+      centeringGain(config["centeringGain"].GetDouble()),
       flowFilterRate(config["flowFilterRate"].GetDouble()),
       flowScale(config["flowScale"].GetDouble()),
       flowLightAngleRate(config["flowLightAngleRate"].GetDouble()),
@@ -157,18 +156,19 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
 
 inline void OrderParticles::runStep(const FrameInfo &f)
 {
-    lightAngle *= 1.0f - damping;
+    // Calculate a new center position while we're here
+    Vec3 centerAccumulator(0, 0, 0);
 
     // Particle interactions
     for (unsigned i = 0; i < appearance.size(); i++) {
+        ParticleAppearance pa = appearance[i];
 
-        Vec3 &p = appearance[i].point;
-        std::vector<std::pair<size_t, Real> > hits;
-        nanoflann::SearchParams params;
-        params.sorted = false;
+        // Slide toward center of model uniformly
+        pa.point -= centerPosition * centeringGain;
 
+        ResultSet_t hits;
         float searchRadius = interactionSize * f.modelRadius;
-        index.radiusSearch(hits, p, searchRadius);
+        index.radiusSearch(hits, pa.point, searchRadius);
 
         for (unsigned i = 0; i < hits.size(); i++) {
             if (hits[i].first <= i) {
@@ -181,7 +181,7 @@ inline void OrderParticles::runStep(const FrameInfo &f)
             float q2 = hits[i].second / sq(searchRadius);
             if (q2 < 1.0f) {
                 // These particles influence each other
-                Vec3 d = hit.point - p;
+                Vec3 d = hit.point - pa.point;
 
                 // Angular 'snap' force, operates at a distance
                 float angle = atan2(d[2], d[0]);
@@ -192,17 +192,17 @@ inline void OrderParticles::runStep(const FrameInfo &f)
                 // Spin perpendicular to 'd'
                 Vec3 da = angleGain * angleDelta * Vec3( d[2], 0, -d[0] );
 
-                // Repel
-                da -= repelGain * d;
-
                 da *= kernel2(q2);
-                p += da;
+                pa.point += da;
                 hit.point -= da;
             }
         }
 
-        p *= 1.0f - damping;
+        centerAccumulator += pa.point;
+        appearance[i] = pa;
     }
+
+    centerPosition = appearance.size() ? centerAccumulator / appearance.size() : Vec3(0,0,0);
 }
 
 inline void OrderParticles::debug(const DebugInfo &di)
@@ -210,6 +210,7 @@ inline void OrderParticles::debug(const DebugInfo &di)
     fprintf(stderr, "\t[order-particles] symmetry = %d\n", symmetry);
     fprintf(stderr, "\t[order-particles] colorCycle = %f\n", colorCycle);
     fprintf(stderr, "\t[order-particles] lightAngle = %f\n", lightAngle);
+    fprintf(stderr, "\t[order-particles] center = (%f, %f, %f)\n", centerPosition[0], centerPosition[1], centerPosition[2]);
     ParticleEffect::debug(di);
 }
 

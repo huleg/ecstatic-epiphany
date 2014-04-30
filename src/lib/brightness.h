@@ -53,6 +53,7 @@ private:
     float lowerLimit, upperLimit;
     std::vector<Vec3> colors;
     float currentScale;
+    float latestAverage;
     unsigned numIters;
 
     static const unsigned gammaTableSize = 256;
@@ -135,6 +136,7 @@ inline void Brightness::beginFrame(const FrameInfo& f)
     const float epsilon = 1e-3;
 
     unsigned iter = 0;
+    float avg;
     float scale = 1.0;
 
     for (; iter < maxIters; iter++) {
@@ -142,7 +144,7 @@ inline void Brightness::beginFrame(const FrameInfo& f)
         std::vector<Vec3>::iterator ci = colors.begin();
         std::vector<Vec3>::iterator ce = colors.end();
         PixelInfoIter pi = f.pixels.begin();
-        float avg = 0;
+        avg = 0;
 
         for (;ci != ce; ++ci, ++pi) {
             Vec3& rgb = *ci;
@@ -176,10 +178,12 @@ inline void Brightness::beginFrame(const FrameInfo& f)
         if (fabsf(adjustment - 1.0f) < epsilon) {
             break;
         }
+
     }
 
     numIters = iter;
     currentScale = scale;
+    latestAverage = avg;
 }
 
 inline void Brightness::endFrame(const FrameInfo& f)
@@ -191,6 +195,7 @@ inline void Brightness::debug(const DebugInfo& d)
 {
     fprintf(stderr, "\t[brightness] limits = [%f, %f]\n", lowerLimit, upperLimit);
     fprintf(stderr, "\t[brightness] currentScale = %f\n", currentScale);
+    fprintf(stderr, "\t[brightness] latestAverage = %f\n", latestAverage);
     fprintf(stderr, "\t[brightness] iterations = %d\n", numIters);
     next.debug(d);
 }

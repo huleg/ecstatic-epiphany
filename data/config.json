@@ -2,7 +2,7 @@
     "initialState": 0,
     "concurrency": 3,
     "fps": 100.0,
-    "brightnessLimit": 0.35,
+    "brightnessLimit": 0.45,
 
     "flow": {
         "debug": false,
@@ -100,22 +100,21 @@
 
     "orderParticles": {
         "palette": "data/mars-palette.png",
-        "numParticles": 60,
-        "damping": 0.0001,
-        "repelGain": 0.00015,
-        "flowFilterRate": 0.05,
-        "flowScale": 0.016,
+        "numParticles": 40,
+        "centeringGain": 0.002,
+        "flowFilterRate": 0.1,
+        "flowScale": 0.03,
         "flowLightAngleRate": 0.03,
         "flowColorCycleRate": 0.002,
-        "relativeSize": 0.52,
+        "relativeSize": 0.42,
         "intensity": 0.2,
-        "brightness": 1.0,
+        "brightness": 4.0,
         "stepSize": 0.01,
         "seedRadius": 1.9,
-        "interactionSize": 0.58,
+        "interactionSize": 0.55,
         "colorRate": 0.035,
         "angleGainRate": 0.3,
-        "angleGainCenter": 0.04,
+        "angleGainCenter": 0.09,
         "angleGainVariation": 0.006
     },
 
