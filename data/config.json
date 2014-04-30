@@ -135,7 +135,7 @@
         "jitterStrength": 0.8,
         "jitterScale": 0.5,
         "flowScale": -0.03,
-        "brightness": 0.9,
+        "brightness": 4.0,
         "targetGain": 0.00008,
         "dampingRate": 0.0003,
         "targetSpin": 0.000035,
