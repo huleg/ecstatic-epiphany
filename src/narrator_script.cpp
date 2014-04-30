@@ -20,6 +20,8 @@ int Narrator::script(int st, PRNG &prng)
 {
     static ChaosParticles chaosA(flow, runner.config["chaosParticles"]);
     static ChaosParticles chaosB(flow, runner.config["chaosParticles"]);
+    static Brightness chaosABr(chaosA);
+    static Brightness chaosBBr(chaosB);
     static OrderParticles orderParticles(flow, runner.config["orderParticles"]);
     static Precursor precursor(flow, runner.config["precursor"]);
     static RingsEffect ringsA(flow, runner.config["ringsA"]);
@@ -94,7 +96,7 @@ int Narrator::script(int st, PRNG &prng)
             delay(18);
 
             // Wait for darkness
-            while (!precursor.isDone()) {
+            while (!precursor.isDone) {
                 doFrame();
             }
             return 20;
@@ -105,12 +107,17 @@ int Narrator::script(int st, PRNG &prng)
 
             ChaosParticles *pChaosA = &chaosA;
             ChaosParticles *pChaosB = &chaosB;
+            Brightness *pChaosABr = &chaosABr;
+            Brightness *pChaosBBr = &chaosBBr;
             
             for (int i = 0; i < prng.uniform(1, 5); i++) {
                 pChaosA->reseed(prng.circularVector() * 0.6, prng.uniform32());
-                crossfade(pChaosA, 0.25);
+                pChaosABr->set(runner.config["chaosBrightnessMin"].GetDouble(),
+                               runner.config["chaosBrightnessMax"].GetDouble());
+                crossfade(pChaosABr, 0.25);
                 delay((1 << i) * 0.5f);
                 std::swap(pChaosA, pChaosB);
+                std::swap(pChaosABr, pChaosBBr);
             }
 
             // Run unconditionally to bootstrap particle intensity

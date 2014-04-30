@@ -1,7 +1,7 @@
 {
     "initialState": 0,
     "concurrency": 6,
-    "fps": 120.0,
+    "fps": 115.0,
 
     "flow": {
         "debug": false,
@@ -13,7 +13,7 @@
         "maxPoints": 50,
         "decimate": 3,
         "discoveryGridSpacing": 5,
-        "pointTrialPeriod": 10,
+        "pointTrialPeriod": 2,
         "maxPointAge": 400,
         "minPointSpeed": 0.02,
         "minEigThreshold": 0.0055,
@@ -38,14 +38,18 @@
     "precursor": {
         "palette": "data/darkmatter-palette.png",
 
-        "flowScale": 0.00002,
+        "flowScale": 0.000018,
         "flowFilterRate": 0.3,
+
         "noiseRate": 0.0002,
         "noiseScale": 0.0025,
         "noiseDepth": 10.0,
+
         "brightness": 5.0,
-        "darknessDurationMin": 1.0,
-        "darknessDurationMax": 4.0,
+
+        "darknessDurationMin": 0.2,
+        "darknessDurationMax": 2.0,
+        "darknessThreshold": 0.18,
 
         "treeGrowth": {
             "maxParticles": 300,
@@ -71,25 +75,28 @@
         }
     },
 
+    "chaosBrightnessMin": 0.0,
+    "chaosBrightnessMax": 0.35,
     "chaosParticles": {
         "palette": "data/bang-palette.png",
         "numParticles": 600,
         "numDarkParticles": 30,
-        "maxAge": 18000,
+        "maxAge": 9000,
         "generationScale": 0.071,
         "speedMin": 0.97,
-        "speedMax": 1.8,
-        "spinMin": 0.5235,
-        "spinMax": 0.7749,
-        "relativeSize": 0.36,
-        "intensity": 1.4,
+        "speedMax": 1.3,
+        "spinMin": 1.0471,
+        "spinMax": 1.0473,
+        "relativeSize": 0.32,
+        "intensity": 4.0,
         "intensityExp": 0.4,
-        "initialSpeed": 0.008,
+        "initialSpeedMin": 0.0001,
+        "initialSpeedMax": 0.009,
         "stepSize": 0.005,
         "colorRate": 0.02,
-        "outsideMargin": 6.0,
+        "outsideMargin": 5.0,
         "darkMultiplier": -8.0,
-        "flowScale": 0.004
+        "flowScale": 0.017
     },
 
     "orderParticles": {
@@ -206,13 +213,13 @@
         "v2": 0.03
     },
 
-    "exploreBr": 0.7,
+    "exploreBr": 0.75,
     "explore": {
         "map": "data/evergreen.png",
-        "flowScale": -0.0003,
-        "modelScale": 0.011,
+        "flowScale": -0.006,
+        "modelScale": 0.03,
         "startRadius": 0.3,
         "brightness": 1.0,
-        "flowFilterRate": 0.06
+        "flowFilterRate": 0.003
     }
 }

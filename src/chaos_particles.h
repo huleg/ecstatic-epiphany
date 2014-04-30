@@ -40,7 +40,8 @@ private:
     float relativeSize;
     float intensity;
     float intensityExp;
-    float initialSpeed;
+    float initialSpeedMin;
+    float initialSpeedMax;
     float stepSize;
     float colorRate;
     float outsideMargin;
@@ -72,25 +73,6 @@ private:
  *                                   Implementation
  *****************************************************************************************/
 
-
-    unsigned numParticles;
-    unsigned numDarkParticles;
-    unsigned maxAge;
-    float generationScale;
-    float speedMin;
-    float speedMax;
-    float spinMin;
-    float spinMax;
-    float relativeSize;
-    float intensity;
-    float intensityExp;
-    float initialSpeed;
-    float stepSize;
-    float colorRate;
-    float outsideMargin;
-    float darkMultiplier;
-    float flowScale;
-
 inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow, const rapidjson::Value &config)
     : numParticles(config["numParticles"].GetUint()),
       numDarkParticles(config["numDarkParticles"].GetUint()),
@@ -98,10 +80,13 @@ inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow, const rapi
       generationScale(config["generationScale"].GetDouble()),
       speedMin(config["speedMin"].GetDouble()),
       speedMax(config["speedMax"].GetDouble()),
+      spinMin(config["speedMin"].GetDouble()),
+      spinMax(config["speedMax"].GetDouble()),
       relativeSize(config["relativeSize"].GetDouble()),
       intensity(config["intensity"].GetDouble()),
       intensityExp(config["intensityExp"].GetDouble()),
-      initialSpeed(config["initialSpeed"].GetDouble()),
+      initialSpeedMin(config["initialSpeedMin"].GetDouble()),
+      initialSpeedMax(config["initialSpeedMax"].GetDouble()),
       stepSize(config["stepSize"].GetDouble()),
       colorRate(config["colorRate"].GetDouble()),
       outsideMargin(config["outsideMargin"].GetDouble()),
@@ -140,7 +125,7 @@ inline void ChaosParticles::reseed(Vec2 location, unsigned seed)
 
     for (unsigned i = 0; i < dynamics.size(); i++) {
         dynamics[i].position = location;
-        dynamics[i].velocity = prng.ringVector(0.01, 1.0) * initialSpeed;
+        dynamics[i].velocity = prng.ringVector(initialSpeedMin, initialSpeedMax);
         dynamics[i].age = 0;
         dynamics[i].generation = 0;
         dynamics[i].dead = false;
@@ -241,7 +226,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
                     dynamics[i] = dynamics[seed];
                     dynamics[i].generation++;
                     dynamics[i].age = 0;
-                    Vec2 &v = dynamics[i].velocity;
+                    Vec2 v = dynamics[i].velocity;
 
                     // Speed modulation
                     v *= prng.uniform(speedMin, speedMax);
@@ -253,6 +238,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
                     v = Vec2( v[0] * c - v[1] * s ,
                               v[0] * s + v[1] * c );
 
+                    dynamics[i].velocity = v;
                     break;
                 }
             }

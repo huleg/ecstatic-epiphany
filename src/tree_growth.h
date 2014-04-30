@@ -26,8 +26,6 @@ public:
 
     void launch(Vec3 point, Vec3 velocity);
 
-    float darknessDuration;
-
 private:
     unsigned maxParticles;
     float flowLaunchScale;
@@ -74,8 +72,7 @@ private:
 
 
 inline TreeGrowth::TreeGrowth(const CameraFlowAnalyzer& flow, const rapidjson::Value &config)
-    : darknessDuration(0),
-      maxParticles(config["maxParticles"].GetUint()),
+    : maxParticles(config["maxParticles"].GetUint()),
       flowLaunchScale(config["flowLaunchScale"].GetDouble()),
       flowLaunchSpeed(config["flowLaunchSpeed"].GetDouble()),
       launchProbability(config["launchProbability"].GetDouble()),
@@ -106,7 +103,6 @@ inline void TreeGrowth::reseed(unsigned seed)
     flow.capture(1.0);
     flow.origin();
     prng.seed(seed);
-    darknessDuration = 0;
 }
 
 inline float TreeGrowth::particleIntensity(float t) const
@@ -127,13 +123,6 @@ inline void TreeGrowth::beginFrame(const FrameInfo &f)
         steps--;
     }
 
-    if (appearance.empty()) {
-        // Dark
-        darknessDuration += f.timeDelta;
-    } else {
-        darknessDuration = 0;
-    }
-
     ParticleEffect::beginFrame(f);
 }
 
@@ -142,7 +131,6 @@ inline void TreeGrowth::debug(const DebugInfo &di)
     fprintf(stderr, "\t[tree-growth] particles = %d\n", (int)appearance.size());
     fprintf(stderr, "\t[tree-growth] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[tree-growth] instantaneousMotion = %f\n", flow.instantaneousMotion());
-    fprintf(stderr, "\t[tree-growth] darknessDuration = %f\n", darknessDuration);
 }
 
 inline void TreeGrowth::launch(Vec3 point, Vec3 velocity)

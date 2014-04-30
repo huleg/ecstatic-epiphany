@@ -26,12 +26,13 @@ public:
     void reseed(unsigned seed);
 
     virtual void beginFrame(const FrameInfo &f);
+    virtual void endFrame(const FrameInfo &f);
+    virtual void postProcess(const Vec3& rgb, const PixelInfo& p);
     virtual void shader(Vec3& rgb, const PixelInfo &p) const;
     virtual void debug(const DebugInfo &di);
 
-    bool isDone();
-
     TreeGrowth treeGrowth;
+    bool isDone;
 
 private:
     float flowScale;
@@ -42,13 +43,16 @@ private:
     float brightness;
     float darknessDurationMin;
     float darknessDurationMax;
+    float darknessThreshold;
 
     CameraFlowCapture flow;
     Texture palette;
 
     float noiseCycle;
     float colorSeed;
-    float darknessDuration;
+    float darknessDurationLimit;
+    float darknessDurationCounter;
+    float maxActualBrightness;
 };
 
 
@@ -67,6 +71,7 @@ inline Precursor::Precursor(const CameraFlowAnalyzer& flow, const rapidjson::Val
       brightness(config["brightness"].GetDouble()),
       darknessDurationMin(config["darknessDurationMin"].GetDouble()),
       darknessDurationMax(config["darknessDurationMax"].GetDouble()),
+      darknessThreshold(config["darknessThreshold"].GetDouble()),
       flow(flow),
       palette(config["palette"].GetString())
 {
@@ -83,7 +88,10 @@ inline void Precursor::reseed(unsigned seed)
 
     noiseCycle = prng.uniform(0, 10);
     colorSeed = prng.uniform(2, 5);
-    darknessDuration = prng.uniform(darknessDurationMin, darknessDurationMax);
+    darknessDurationLimit = prng.uniform(darknessDurationMin, darknessDurationMax);
+    darknessDurationCounter = false;
+    maxActualBrightness = 0;
+    isDone = false;
 }
 
 inline void Precursor::beginFrame(const FrameInfo &f)
@@ -91,6 +99,23 @@ inline void Precursor::beginFrame(const FrameInfo &f)
     flow.capture(flowFilterRate);
     treeGrowth.beginFrame(f);
     noiseCycle += f.timeDelta * noiseRate;
+    maxActualBrightness = 0;
+}
+
+inline void Precursor::endFrame(const FrameInfo &f)
+{
+    if (maxActualBrightness < darknessThreshold) {
+        darknessDurationCounter += f.timeDelta;
+    } else {
+        darknessDurationCounter = 0;
+    }
+    isDone = darknessDurationCounter > darknessDurationLimit;
+}
+
+inline void Precursor::postProcess(const Vec3& rgb, const PixelInfo& p)
+{
+    maxActualBrightness = std::max<float>(maxActualBrightness,
+        std::max<float>(rgb[0], std::max<float>(rgb[1], rgb[2])));
 }
 
 inline void Precursor::debug(const DebugInfo &di)
@@ -98,12 +123,10 @@ inline void Precursor::debug(const DebugInfo &di)
     treeGrowth.debug(di);
     fprintf(stderr, "\t[precursor] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[precursor] colorSeed = %f\n", colorSeed);
-    fprintf(stderr, "\t[precursor] darknessDuration = %f\n", darknessDuration);
-}
-
-inline bool Precursor::isDone()
-{
-    return treeGrowth.darknessDuration >= darknessDuration;
+    fprintf(stderr, "\t[precursor] darknessDurationLimit = %f\n", darknessDurationLimit);
+    fprintf(stderr, "\t[precursor] darknessDurationCounter = %f\n", darknessDurationCounter);
+    fprintf(stderr, "\t[precursor] maxActualBrightness = %f\n", maxActualBrightness);
+    fprintf(stderr, "\t[precursor] darknessThreshold = %f\n", darknessThreshold);
 }
 
 inline void Precursor::shader(Vec3& rgb, const PixelInfo &p) const
