@@ -33,16 +33,21 @@ private:
         unsigned branchState;
     };
 
+    Sampler s;
+    CameraFlowCapture flow;
+    const rapidjson::Value& config;
+
     unsigned maxParticles;
     float outsideMargin;
     float flowScale;
     float flowFilterRate;
+    float maxIntensity;
+    float intensityRate;
+    Vec3 travelRate;
 
     Texture palette;
-    CameraFlowCapture flow;
-    const rapidjson::Value& config;
-    Sampler s;
     std::vector<TreeInfo> tree;
+    float travelAmount;
 
     void addPoint();
     void updateFlow(const FrameInfo &f);
@@ -56,15 +61,19 @@ private:
 
 
 inline Forest::Forest(const CameraFlowAnalyzer &flow, const rapidjson::Value &config)
-    : maxParticles(config["maxParticles"].GetUint()),
-      outsideMargin(config["outsideMargin"].GetDouble()),
-      flowScale(config["flowScale"].GetDouble()),
-      flowFilterRate(config["flowFilterRate"].GetDouble()),
-      palette(config["palette"].GetString()),
+    : s(42),
       flow(flow),
       config(config),
-      s(42)
-{}
+      maxParticles(config["maxParticles"].GetUint()),
+      outsideMargin(s.value(config["outsideMargin"])),
+      flowScale(s.value(config["flowScale"])),
+      flowFilterRate(s.value(config["flowFilterRate"])),
+      maxIntensity(s.value(config["maxIntensity"])),
+      intensityRate(s.value(config["intensityRate"])),
+      travelRate(s.value3D(config["travelRate"])),
+      palette(config["palette"].GetString())
+    {
+ }
 
 inline void Forest::reseed(unsigned seed)
 {
@@ -73,6 +82,7 @@ inline void Forest::reseed(unsigned seed)
     flow.capture(1.0);
     flow.origin();
     s = Sampler(seed);
+    travelAmount = 0;
 }
 
 inline void Forest::beginFrame(const FrameInfo &f)
@@ -83,12 +93,13 @@ inline void Forest::beginFrame(const FrameInfo &f)
 
     updateFlow(f);
 
+    travelAmount += f.timeDelta;
     ParticleEffect::beginFrame(f);
 }
 
 inline Vec3 Forest::pointOffset()
 {
-    return Vec3(flow.model[0] * flowScale, 0, 0);
+    return Vec3(flow.model[0] * flowScale, 0, 0) + travelRate * travelAmount;
 }
 
 inline void Forest::updateFlow(const FrameInfo &f)
@@ -98,6 +109,7 @@ inline void Forest::updateFlow(const FrameInfo &f)
     unsigned i = 0, j = 0;
     for (; i < appearance.size(); i++) {
         appearance[i].point = tree[i].point + pointOffset();
+        appearance[i].intensity = std::min(maxIntensity, appearance[i].intensity + f.timeDelta * intensityRate);
 
         if (f.distanceOutsideBoundingBox(appearance[i].point) > outsideMargin * appearance[i].radius) {
             // Escaped
@@ -120,7 +132,7 @@ inline void Forest::addPoint()
     TreeInfo ti;
 
     pa.radius = s.value(config["radius"]);
-    pa.intensity = s.value(config["intensity"]);
+    pa.intensity = 0;
 
     int root = std::max<int>(0,
         s.uniform(appearance.size() - s.value(config["historyDepth"]),
@@ -136,7 +148,7 @@ inline void Forest::addPoint()
         ti.texCoord = tree[root].texCoord + s.value2D(config["deltaTexCoord"]);
         ti.direction = tree[root].direction + s.value3D(config["deltaDirection"]);
         ti.branchState = tree[root].branchState + 1;
-        ti.point = appearance[root].point + tree[root].direction;
+        ti.point = tree[root].point + tree[root].direction;
     }
 
     pa.color = palette.sample(ti.texCoord);
@@ -144,7 +156,6 @@ inline void Forest::addPoint()
     appearance.push_back(pa);
     tree.push_back(ti);
 }
-
 
 inline void Forest::debug(const DebugInfo &di)
 {

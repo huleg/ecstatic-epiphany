@@ -128,8 +128,13 @@ inline void Brightness::beginFrame(const FrameInfo& f)
 {
     next.beginFrame(f);
     std::swap(nextColors, prevColors);
-    colorBuffer[0].resize(f.pixels.size());
-    colorBuffer[1].resize(f.pixels.size());
+
+    if (colorBuffer[0].size() != f.pixels.size()) {
+        for (unsigned i = 0; i < 2; i++) {
+           colorBuffer[i].resize(f.pixels.size());
+           std::fill(colorBuffer[i].begin(), colorBuffer[i].end(), Vec3(0,0,0));
+        }
+    }
 
     unsigned count = 0;
     float deltaAccumulator = 0;
@@ -158,6 +163,11 @@ inline void Brightness::beginFrame(const FrameInfo& f)
 
     const float deltaAccumulatorFilterRate = 0.05;
     totalBrightnessDelta += (deltaAccumulator - totalBrightnessDelta) * deltaAccumulatorFilterRate;
+
+    if (!(totalBrightnessDelta >= 0)) {
+        // NaN or negative
+        totalBrightnessDelta = 0;
+    }
 
     if (count == 0) {
         // No LEDs mapped

@@ -169,5 +169,15 @@ int Narrator::script(int st, PRNG &prng)
             attention(s, config["partnerAttention"]);
             return 70;
         }
+
+        case 70: {
+            // Continuous renewal and regrowth. Destruction happens unintentionally,
+            // regrowth is quick and generative. The only way to lose is to stagnate.
+
+            forest.reseed(prng.uniform32());
+            crossfade(&forest, s.value(config["forestCrossfade"]));
+            attention(s, config["forestAttention"]);
+            return 80;            
+        }
     }
 }
