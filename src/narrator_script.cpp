@@ -111,13 +111,13 @@ int Narrator::script(int st, PRNG &prng)
             }
 
             // Run unconditionally to bootstrap particle intensity
-            delay(30);
+            delay(5);
 
             // Keep going as long as it's fairly bright, with an upper limit
             float timeLimit = 4*60;
             do {
                 timeLimit -= doFrame();
-            } while (timeLimit > 0 && !(pChaosB->getTotalIntensity() < 500));
+            } while (timeLimit > 0 && !(pChaosB->getTotalIntensity() < 15));
 
             return 30;
         }

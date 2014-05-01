@@ -78,7 +78,7 @@
 
     "chaosParticles": {
         "palette": "data/bang-palette.png",
-        "numParticles": 300,
+        "numParticles": 250,
         "numDarkParticles": 30,
         "maxAge": 9000,
         "generationScale": 0.071,
@@ -87,7 +87,7 @@
         "spinMin": 1.0471,
         "spinMax": 1.0473,
         "relativeSize": 0.32,
-        "intensity": 4.0,
+        "intensity": 2.0,
         "intensityExp": 0.4,
         "initialSpeedMin": 0.0001,
         "initialSpeedMax": 0.009,
@@ -95,7 +95,8 @@
         "colorRate": 0.02,
         "outsideMargin": 5.0,
         "darkMultiplier": -8.0,
-        "flowScale": 0.017
+        "flowScale": 0.018,
+        "flowFilterRate": 0.02
     },
 
     "orderParticles": {

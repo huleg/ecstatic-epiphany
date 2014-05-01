@@ -47,6 +47,7 @@ private:
     float outsideMargin;
     float darkMultiplier;
     float flowScale;
+    float flowFilterRate;
 
     struct ParticleDynamics {
         Vec2 position;
@@ -92,6 +93,7 @@ inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow, const rapi
       outsideMargin(config["outsideMargin"].GetDouble()),
       darkMultiplier(config["darkMultiplier"].GetDouble()),
       flowScale(config["flowScale"].GetDouble()),
+      flowFilterRate(config["flowFilterRate"].GetDouble()),
       flow(flow),
       palette(config["palette"].GetString()),
       timeDeltaRemainder(0),
@@ -167,8 +169,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
     float intensityAccumulator = 0;
 
     // Capture the impulse between the last step and this one
-    flow.capture(1.0);
-    flow.origin();
+    flow.capture(flowFilterRate);
 
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {
@@ -187,7 +188,8 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         }
 
         // XZ plane
-        pa.point[0] = pd.position[0];
+        // Horizontal flow -> position
+        pa.point[0] = pd.position[0] - flow.model[0] * flowScale;
         pa.point[2] = pd.position[1];
 
         float ageF = pd.age / (float)maxAge;
@@ -206,10 +208,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
         pa.color = darkParticle ? Vec3(1,1,1) : palette.sample(c, 0.5 + 0.5 * sinf(colorCycle));
         intensityAccumulator += darkParticle ? particleIntensity : 0;
 
-        // Horizontal flow -> position
-        pd.position[0] += pd.velocity[0] - flow.model[0] * flowScale;
-        pd.position[1] += pd.velocity[1];
-
+        pd.position += pd.velocity;
         pd.escaped = f.distanceOutsideBoundingBox(pa.point) >
             outsideMargin * pa.radius;
 
