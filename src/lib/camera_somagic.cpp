@@ -41,7 +41,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <libusb-1.0/libusb.h>
 
@@ -1034,15 +1033,6 @@ namespace Camera {
         videoCallbackContext = context;
 
         cameraThread = new tthread::thread(cameraThreadFunc, 0);
-
-        // Make this a real-time thread
-        struct sched_param sp;
-        sp.sched_priority = 50;
-        if (0 == pthread_setschedparam(cameraThread->native_handle(), SCHED_FIFO, &sp)) {
-            fprintf(stderr, "camera: real-time processing thread\n");
-        } else {
-            perror("camera: Failed to make camera thread real-time");
-        }
 
         return cameraThread;
     }
