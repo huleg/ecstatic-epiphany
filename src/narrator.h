@@ -14,6 +14,7 @@
 #include "lib/effect_runner.h"
 #include "lib/effect_tap.h"
 #include "lib/prng.h"
+#include "lib/sampler.h"
 #include "lib/camera_flow.h"
 #include "lib/brightness.h"
 
@@ -49,11 +50,12 @@ public:
 
 private:
     int script(int st, PRNG &prng);
-    float doFrame();
+    EffectRunner::FrameStatus doFrame();
 
     void crossfade(Effect *to, float duration);
     void delay(float seconds);
     void delayForever();
+    void attention(Sampler &s, const rapidjson::Value& config);
 
     void formatTime(double s);
 

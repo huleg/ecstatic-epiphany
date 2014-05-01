@@ -36,6 +36,68 @@
         "motionLengthScale": 0.7
     },
 
+    "narrator": {
+        "precursorBootstrap": [15, 20],
+        "precursorCrossfade": [15, 20],
+
+        "bangCount": [1, 4.2],
+        "bangCrossfadeDuration": [0.25, 0.3],
+        "bangDelayBasis": [0.25, 0.35],
+        "bangAttention": {
+            "bootstrap": 1,
+            "initial": 1.0,
+            "brightnessDeltaMin": 1.0,
+            "brightnessAverageMin": 0.1,
+            "rateBaseline": 0.0033,
+            "rateDark": 0.14,
+            "rateStill": 0.05
+        },
+
+        "ringsA-Crossfade": [15, 25],
+        "ringsA-Attention": {
+            "bootstrap": 1,
+            "initial": 1.0,
+            "brightnessDeltaMin": 0.002,
+            "brightnessAverageMin": 0.1,
+            "rateBaseline": [0.01, 0.04],
+            "rateDark": 0.14,
+            "rateStill": 0.05
+        },
+
+        "ringsB-Crossfade": [30, 90],
+        "ringsB-Attention": {
+            "bootstrap": 1,
+            "initial": 1.0,
+            "brightnessDeltaMin": 0.002,
+            "brightnessAverageMin": 0.1,
+            "rateBaseline": [0.004, 0.04],
+            "rateDark": 0.14,
+            "rateStill": 0.05
+        },
+
+        "orderCrossfade": 15,
+        "orderStepAttention": {
+            "bootstrap": 2,
+            "initial": 1.0,
+            "brightnessDeltaMin": 10.0,
+            "brightnessAverageMin": 0.1,
+            "rateBaseline": [0.02, 0.1],
+            "rateDark": 0.14,
+            "rateStill": 0.1
+        },
+
+        "partnerCrossfade": [5, 10],
+        "partnerAttention": {
+            "bootstrap": 4,
+            "initial": 1.0,
+            "brightnessDeltaMin": 1.0,
+            "brightnessAverageMin": 0.1,
+            "rateBaseline": [0.004, 0.04],
+            "rateDark": 0.14,
+            "rateStill": 0.08
+        }
+    },
+
     "precursor": {
         "palette": "data/darkmatter-palette.png",
 
@@ -48,8 +110,8 @@
 
         "brightness": 5.0,
 
-        "darknessDurationMin": 0.3,
-        "darknessDurationMax": 2.0,
+        "darknessDurationMin": 3.0,
+        "darknessDurationMax": 4.0,
         "darknessThreshold": 0.18,
 
         "treeGrowth": {
@@ -213,11 +275,11 @@
     },
 
     "explore": {
-        "map": "data/evergreen.png",
-        "flowScale": -0.006,
-        "modelScale": 0.03,
+        "map": "data/sunset.png",
+        "flowScale": -0.008,
+        "modelScale": 0.02,
         "startRadius": 0.3,
-        "brightness": 1.0,
+        "brightness": 10.0,
         "flowFilterRate": 0.003
     }
 }

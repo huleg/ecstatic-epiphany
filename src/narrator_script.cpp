@@ -5,6 +5,7 @@
  * http://creativecommons.org/licenses/by/3.0/
  */
 
+#include "lib/sampler.h"
 #include "narrator.h"
 #include "chaos_particles.h"
 #include "order_particles.h"
@@ -27,6 +28,9 @@ int Narrator::script(int st, PRNG &prng)
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
     static Explore explore(flow, runner.config["explore"]);
+
+    rapidjson::Value& config = runner.config["narrator"];
+    Sampler s(prng.uniform32());
 
     switch (st) {
 
@@ -85,10 +89,10 @@ int Narrator::script(int st, PRNG &prng)
         case 10: {
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
             precursor.reseed(prng.uniform32());
-            crossfade(&precursor, 20);
+            crossfade(&precursor, s.value(config["precursorCrossfade"]));
 
             // Bootstrap
-            delay(18);
+            delay(s.value(config["precursorBootstrap"]));
 
             // Wait for darkness
             while (!precursor.isDone) {
@@ -103,21 +107,15 @@ int Narrator::script(int st, PRNG &prng)
             ChaosParticles *pChaosA = &chaosA;
             ChaosParticles *pChaosB = &chaosB;
             
-            for (int i = 0; i < prng.uniform(1, 5); i++) {
+            int bangCount = s.value(config["bangCount"]);
+            for (int i = 0; i < bangCount; i++) {
                 pChaosA->reseed(prng.circularVector() * 0.6, prng.uniform32());
-                crossfade(pChaosA, 0.25);
-                delay((1 << i) * 0.5f);
+                crossfade(pChaosA, s.value(config["bangCrossfadeDuration"]));
+                delay((1 << i) * s.value(config["bangDelayBasis"]));
                 std::swap(pChaosA, pChaosB);
             }
 
-            // Run unconditionally to bootstrap particle intensity
-            delay(5);
-
-            // Keep going as long as it's fairly bright, with an upper limit
-            float timeLimit = 4*60;
-            do {
-                timeLimit -= doFrame();
-            } while (timeLimit > 0 && !(pChaosB->getTotalIntensity() < 15));
+            attention(s, config["bangAttention"]);
 
             return 30;
         }
@@ -125,16 +123,16 @@ int Narrator::script(int st, PRNG &prng)
         case 30: {
             // Textures of light, exploring something formless. Slow crossfade in
             ringsA.reseed();
-            crossfade(&ringsA, prng.uniform(15, 25));
-            delay(prng.uniform(25, 90));
+            crossfade(&ringsA, s.value(config["ringsA-Crossfade"]));
+            attention(s, config["ringsA-Attention"]);
             return 40;
         }
 
         case 40: {
             // Add energy, explore another layer.
             ringsB.reseed();
-            crossfade(&ringsB, prng.uniform(30, 90));
-            delay(prng.uniform(25, 160));
+            crossfade(&ringsB, s.value(config["ringsB-Crossfade"]));
+            attention(s, config["ringsB-Attention"]);
             return 50;
         }
 
@@ -143,21 +141,23 @@ int Narrator::script(int st, PRNG &prng)
 
             orderParticles.reseed(prng.uniform32());
             orderParticles.symmetry = 10;
-            crossfade(&orderParticles, 15);
+            crossfade(&orderParticles, s.value(config["orderCrossfade"]));
             while (orderParticles.symmetry > 4) {
-                delay(prng.uniform(3, 25));
+                attention(s, config["orderStepAttention"]);
                 orderParticles.symmetry--;
             }
-            delay(prng.uniform(15, 35));
+            attention(s, config["orderStepAttention"]);
             return 60;
         }
 
         case 60: {
             // Two partners, populations of particles.
-            // Spiralling inwards. Depression. Beauty on the edge of destruction
+            // Spiralling inwards. Depression. Beauty on the edge of destruction,
+            // pressing forward until nothing remains.
+
             partnerDance.reseed(prng.uniform32());
-            crossfade(&partnerDance, prng.uniform(5, 10));
-            delay(prng.uniform(30, 45));
+            crossfade(&partnerDance, s.value(config["partnerCrossfade"]));
+            attention(s, config["partnerAttention"]);
             return 70;
         }
     }

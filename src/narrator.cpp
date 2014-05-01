@@ -63,14 +63,18 @@ void Narrator::run()
     }
 }
 
-float Narrator::doFrame()
+EffectRunner::FrameStatus Narrator::doFrame()
 {
-    float t = runner.doFrame();
+    EffectRunner::FrameStatus st = runner.doFrame();
 
-    totalTime += t;
-    singleStateTime[currentState] += t;
+    totalTime += st.timeDelta;
+    singleStateTime[currentState] += st.timeDelta;
 
-    return t;
+    if (st.debugOutput && runner.isVerbose()) {
+        fprintf(stderr, "\t[narrator] state = %d\n", currentState);
+    }
+
+    return st;
 }
 
 void Narrator::crossfade(Effect *to, float duration)
@@ -78,7 +82,7 @@ void Narrator::crossfade(Effect *to, float duration)
     int n = mixer.numChannels();
     if (n > 0) {
         mixer.add(to);
-        for (float t = 0; t < duration; t += doFrame()) {
+        for (float t = 0; t < duration; t += doFrame().timeDelta) {
             float q = t / duration;
             for (int i = 0; i < n; i++) {
                 mixer.setFader(i, 1 - q);
@@ -92,7 +96,7 @@ void Narrator::crossfade(Effect *to, float duration)
 void Narrator::delay(float seconds)
 {
     while (seconds > 0) {
-        seconds -= doFrame();
+        seconds -= doFrame().timeDelta;
     }
 }
 
@@ -168,3 +172,41 @@ bool Narrator::NEffectRunner::setConfig(const char *filename)
     return true;
 }
 
+void Narrator::attention(Sampler &s, const rapidjson::Value& config)
+{
+    // Keep running until we run out of attention for the current scene.
+    // Attention amounts and retention parameters come from JSON, and we show
+    // our state during debug debug output.
+
+    float bootstrap = s.value(config["bootstrap"]);
+    float attention = s.value(config["initial"]);
+    float brightnessDeltaMin = s.value(config["brightnessDeltaMin"]);
+    float brightnessAverageMin = s.value(config["brightnessAverageMin"]);
+    float rateBaseline = s.value(config["rateBaseline"]);
+    float rateDark = s.value(config["rateDark"]);
+    float rateStill = s.value(config["rateStill"]);
+
+    delay(bootstrap);
+
+    while (attention > 0) {
+        EffectRunner::FrameStatus st = doFrame();
+
+        float brightnessDelta = brightness.getTotalBrightnessDelta();
+        float brightnessAverage = brightness.getAverageBrightness();
+
+        float rate = rateBaseline
+            + (brightnessDelta < brightnessDeltaMin ? rateStill : 0)
+            + (brightnessAverage < brightnessAverageMin ? rateDark : 0);
+
+        if (st.debugOutput && runner.isVerbose()) {
+            fprintf(stderr, "\t[narrator] attention = %f\n", attention);
+            fprintf(stderr, "\t[narrator] rate = %f\n", rate);
+            fprintf(stderr, "\t[narrator] brightnessDelta = %f, threshold = %f %s\n",
+                brightnessDelta, brightnessDeltaMin, brightnessDelta < brightnessDeltaMin ? "<<<" : "");
+            fprintf(stderr, "\t[narrator] brightnessAverage = %f, threshold = %f %s\n",
+                brightnessAverage, brightnessAverageMin, brightnessAverage < brightnessAverageMin ? "<<<" : "");
+        }
+
+        attention -= st.timeDelta * rate;
+    }
+}

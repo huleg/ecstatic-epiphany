@@ -45,10 +45,10 @@ public:
     void setAssumedGamma(float gamma);
 
     // Gets the last brightness average; will be roughly between lowerLimit and upperLimit.
-    float getAverageBrightness();
+    float getAverageBrightness() const;
 
     // Get the total squared brightness delta between the last two frames
-    float getTotalBrightnessDelta();
+    float getTotalBrightnessDelta() const;
 
     virtual void beginFrame(const FrameInfo& f);
     virtual void endFrame(const FrameInfo& f);
@@ -114,7 +114,12 @@ inline void Brightness::setAssumedGamma(float gamma)
     }
 }
 
-inline float Brightness::getTotalBrightnessDelta()
+inline float Brightness::getAverageBrightness() const
+{
+    return latestAverage;
+}
+
+inline float Brightness::getTotalBrightnessDelta() const
 {
     return totalBrightnessDelta;
 }
@@ -228,12 +233,12 @@ inline void Brightness::endFrame(const FrameInfo& f)
 
 inline void Brightness::debug(const DebugInfo& d)
 {
+    next.debug(d);
     fprintf(stderr, "\t[brightness] limits = [%f, %f]\n", lowerLimit, upperLimit);
     fprintf(stderr, "\t[brightness] currentScale = %f\n", currentScale);
     fprintf(stderr, "\t[brightness] latestAverage = %f\n", latestAverage);
     fprintf(stderr, "\t[brightness] totalBrightnessDelta = %f\n", totalBrightnessDelta);
     fprintf(stderr, "\t[brightness] iterations = %d\n", numIters);
-    next.debug(d);
 }
 
 inline void Brightness::shader(Vec3& rgb, const PixelInfo& p) const

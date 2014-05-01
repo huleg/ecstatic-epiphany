@@ -73,9 +73,14 @@ public:
     float getIdleTimePerFrame() const;
     float getPercentBusy() const;
 
+    struct FrameStatus {
+        float timeDelta;
+        bool debugOutput;
+    };
+
     // Main loop body
-    float doFrame();
-    void doFrame(float timeDelta);
+    FrameStatus doFrame();
+    FrameStatus doFrame(float timeDelta);
 
     // Minimal main loop
     void run();
@@ -237,7 +242,7 @@ inline void EffectRunner::run()
     }
 }
    
-inline float EffectRunner::doFrame()
+inline EffectRunner::FrameStatus EffectRunner::doFrame()
 {
     struct timeval now;
 
@@ -252,19 +257,19 @@ inline float EffectRunner::doFrame()
         delta = maxStep;
     }
 
-    doFrame(delta);
-
-    // Caller gets the same modified view of time that effects get.
-    return delta * speed;
+    return doFrame(delta);
 }
 
-inline void EffectRunner::doFrame(float timeDelta)
+inline EffectRunner::FrameStatus EffectRunner::doFrame(float timeDelta)
 {
-    // Effects may get a modified view of time
-    frameInfo.timeDelta = timeDelta * speed;
+    FrameStatus frameStatus;
 
-    jitterStatsMin = std::min(jitterStatsMin, frameInfo.timeDelta);
-    jitterStatsMax = std::max(jitterStatsMax, frameInfo.timeDelta);
+    // Effects may get a modified view of time
+    frameStatus.timeDelta = frameInfo.timeDelta = timeDelta * speed;
+    frameStatus.debugOutput = false;
+
+    jitterStatsMin = std::min(jitterStatsMin, frameStatus.timeDelta);
+    jitterStatsMax = std::max(jitterStatsMax, frameStatus.timeDelta);
 
     if (getEffect() && hasLayout()) {
         effect->beginFrame(frameInfo);
@@ -312,6 +317,7 @@ inline void EffectRunner::doFrame(float timeDelta)
         const float debugInterval = 1.0f;
         if ((debugTimer += timeDelta) > debugInterval) {
             debugTimer = fmodf(debugTimer, debugInterval);
+            frameStatus.debugOutput = true;
             debug();
         }
     }
@@ -320,6 +326,8 @@ inline void EffectRunner::doFrame(float timeDelta)
     if (currentDelay > 0) {
         usleep(currentDelay * 1e6);
     }
+
+    return frameStatus;
 }
 
 inline OPCClient& EffectRunner::getClient()
