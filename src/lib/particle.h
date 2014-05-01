@@ -65,6 +65,8 @@ protected:
 
     typedef std::vector<std::pair<size_t, Real> > ResultSet_t;
 
+    void buildIndex();
+
     // Low-level sampling utilities, for use on an index search result set
     Vec3 sampleColor(ResultSet_t &hits) const;
     float sampleIntensity(ResultSet_t &hits) const;
@@ -196,6 +198,11 @@ inline float ParticleEffect::kernelDerivative(float q)
 }
 
 inline void ParticleEffect::beginFrame(const FrameInfo& f)
+{
+    buildIndex();
+}
+
+inline void ParticleEffect::buildIndex()
 {
     if (appearance.empty()) {
         // No particles

@@ -113,15 +113,14 @@ inline void OrderParticles::reseed(unsigned seed)
         Vec2 p = prng.ringVector(1e-4, seedRadius);
         appearance[i].point = Vec3(p[0], 0, p[1]);
     }
+
+    buildIndex();
 }
 
 inline void OrderParticles::beginFrame(const FrameInfo &f)
 {    
     flow.capture(flowFilterRate);
     flow.origin();
-
-    // Rebuild index
-    ParticleEffect::beginFrame(f);
 
     float t = f.timeDelta + timeDeltaRemainder;
     int steps = t / stepSize;
@@ -139,9 +138,6 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     while (steps > 0) {
         runStep(f);
         steps--;
-
-        // Build index again after each physics step
-        ParticleEffect::beginFrame(f);
     }
 
     // Lighting
@@ -152,6 +148,8 @@ inline void OrderParticles::beginFrame(const FrameInfo &f)
     // Angular speed and direction
     angleGain = angleGainCenter + angleGainVariation *
         fbm_noise2(colorCycle * angleGainRate, seed * 5e-7, 2);
+
+    ParticleEffect::beginFrame(f);
 }
 
 inline void OrderParticles::runStep(const FrameInfo &f)
