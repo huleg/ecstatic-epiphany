@@ -14,6 +14,7 @@
 #include "partner_dance.h"
 #include "glowpoi.h"
 #include "explore.h"
+#include "forest.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -28,6 +29,7 @@ int Narrator::script(int st, PRNG &prng)
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
     static Explore explore(flow, runner.config["explore"]);
+    static Forest forest(flow, runner.config["forest"]);
 
     rapidjson::Value& config = runner.config["narrator"];
     Sampler s(prng.uniform32());
@@ -80,6 +82,13 @@ int Narrator::script(int st, PRNG &prng)
             // Explore
             explore.reseed(prng.uniform32());
             crossfade(&explore, 1);
+            delayForever();
+        }
+
+        case 6: {
+            // Work in progress. Seeing through the trees.
+            forest.reseed(prng.uniform32());
+            crossfade(&forest, 1);
             delayForever();
         }
 

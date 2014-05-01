@@ -103,6 +103,20 @@ struct Sampler
     }
 
     /**
+     * Sample values for every component in a vector
+     */
+    
+    Vec2 value2D(const Value &v)
+    {
+        return Vec2(value(v[0u]), value(v[1]));
+    }
+
+    Vec3 value3D(const Value &v)
+    {
+        return Vec3(value(v[0u]), value(v[1]), value(v[2]));
+    }
+
+    /**
      * Determine the upper and lower bounds of a JSON Value that would
      * be sampled as a random variable. Does not require access to sampler state.
      *

@@ -275,11 +275,28 @@
     },
 
     "explore": {
-        "map": "data/sunset.png",
+        "map": "data/evergreen.png",
         "flowScale": -0.008,
         "modelScale": 0.02,
         "startRadius": 0.3,
         "brightness": 10.0,
         "flowFilterRate": 0.003
+    },
+
+    "forest": {
+        "palette": "data/evergreen.png",
+        "maxParticles": 1000,
+        "outsideMargin": 1.0,
+        "flowScale": 0.03,
+        "flowFilterRate": 0.05,
+        "radius": 0.28,
+        "intensity": 0.3,
+        "historyDepth": 20,
+        "newnessBias": 0.1,
+        "newTexCoord": [ [0.1, 0.9], [0.1, 0.9]],
+        "newDirection": [0, 0, 0.2],
+        "newPoint": [ [-0.1, 0.1], 0, -1.8],
+        "deltaTexCoord": [ [-0.002, 0.002], [-0.002, 0.002] ],
+        "deltaDirection": [ [-0.04, 0.04], 0, 0 ]
     }
 }
