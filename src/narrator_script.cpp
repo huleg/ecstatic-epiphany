@@ -13,7 +13,6 @@
 #include "rings.h"
 #include "partner_dance.h"
 #include "glowpoi.h"
-#include "explore.h"
 #include "forest.h"
 
 
@@ -28,7 +27,6 @@ int Narrator::script(int st, PRNG &prng)
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
-    static Explore explore(flow, runner.config["explore"]);
     static Forest forest(flow, runner.config["forest"]);
 
     rapidjson::Value& config = runner.config["narrator"];
@@ -75,20 +73,6 @@ int Narrator::script(int st, PRNG &prng)
             // Agency, creative energy.
             glowPoi.reseed(prng.uniform32());
             crossfade(&glowPoi, 1);
-            delayForever();
-        }
-
-        case 5: {
-            // Explore
-            explore.reseed(prng.uniform32());
-            crossfade(&explore, 1);
-            delayForever();
-        }
-
-        case 6: {
-            // Work in progress. Seeing through the trees.
-            forest.reseed(prng.uniform32());
-            crossfade(&forest, 1);
             delayForever();
         }
 
@@ -168,6 +152,16 @@ int Narrator::script(int st, PRNG &prng)
             crossfade(&partnerDance, s.value(config["partnerCrossfade"]));
             attention(s, config["partnerAttention"]);
             return 70;
+        }
+
+        case 70: {
+            // Continuous renewal and regrowth. Destruction happens unintentionally,
+            // regrowth is quick and generative. The only way to lose is to stagnate.
+
+            forest.reseed(prng.uniform32());
+            crossfade(&forest, s.value(config["forestCrossfade"]));
+            attention(s, config["forestAttention"]);
+            return 80;            
         }
     }
 }
