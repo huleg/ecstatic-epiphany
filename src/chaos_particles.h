@@ -135,20 +135,18 @@ inline void ChaosParticles::reseed(Vec2 location, unsigned seed)
 
 inline void ChaosParticles::beginFrame(const FrameInfo &f)
 {    
-    if (!running) {
-        return;
+    if (running) {
+        float t = f.timeDelta + timeDeltaRemainder;
+        int steps = t / stepSize;
+        timeDeltaRemainder = t - steps * stepSize;
+
+        while (steps > 0) {
+            runStep(f);
+            steps--;
+        }
+
+        colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
     }
-
-    float t = f.timeDelta + timeDeltaRemainder;
-    int steps = t / stepSize;
-    timeDeltaRemainder = t - steps * stepSize;
-
-    while (steps > 0) {
-        runStep(f);
-        steps--;
-    }
-
-    colorCycle = fmodf(colorCycle + f.timeDelta * colorRate, 2 * M_PI);
 
     ParticleEffect::beginFrame(f);
 }
