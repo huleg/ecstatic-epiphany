@@ -157,7 +157,7 @@ int Narrator::script(int st, PRNG &prng)
             // Spiralling inwards. Depression. Beauty on the edge of destruction
             partnerDance.reseed(prng.uniform32());
             crossfade(&partnerDance, prng.uniform(5, 10));
-            delay(prng.uniform(60, 90));
+            delay(prng.uniform(30, 45));
             return 70;
         }
     }

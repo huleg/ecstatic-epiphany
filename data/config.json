@@ -114,7 +114,7 @@
         "seedRadius": 1.9,
         "interactionSize": 0.55,
         "colorRate": 0.035,
-        "angleGainRate": 0.3,
+        "angleGainRate": 0.23,
         "angleGainCenter": 0.09,
         "angleGainVariation": 0.006
     },
@@ -125,9 +125,9 @@
         "stepSize": 0.01,
         "colorRate": 0.8,
         "noiseRate": 0.4,
-        "radius": 0.64,
+        "radius": 0.73,
         "radiusScale": 0.4,
-        "intensityScale": 14.0,
+        "intensityScale": 20.0,
         "maxIntensity": 0.15,
         "minIntensity": 0.01,
         "targetRadius": 0.5,
@@ -142,7 +142,7 @@
         "targetSpin": 0.000035,
         "damping": 0.005,
         "interactionRate": 0.0003,
-        "positionFuzz": 5.0,
+        "positionFuzz": 4.0,
         "separationRadius": 3.0
     },
 
