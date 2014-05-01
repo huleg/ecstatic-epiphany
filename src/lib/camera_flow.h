@@ -172,13 +172,11 @@ public:
     virtual void debug(const DebugInfo &d);
 
 private:
-    float originInterval;
     float scale;
     float radius;
     float motionLengthScale;
 
     CameraFlowCapture flow;
-    float originTimer;
 };
 
 
@@ -537,7 +535,7 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
             // Draw circles over each point; shade = age
             for (unsigned i = 0; i < f.points.size(); ++i) {
                 int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(frame, f.points[i], 2.68,
+                cv::circle(frame, f.points[i], 2,
                         f.pointInfo[i].age < pointTrialPeriod
                             ? cv::Scalar(0, 0, 0)
                             : cv::Scalar(l, 64 + l/2, 255 - l),
@@ -624,8 +622,7 @@ inline CameraFlowDebugEffect::CameraFlowDebugEffect(CameraFlowAnalyzer& flow, co
     : scale(config["scale"].GetDouble()),
       radius(config["radius"].GetDouble()),
       motionLengthScale(config["motionLengthScale"].GetDouble()),
-      flow(flow),
-      originTimer(0)
+      flow(flow)
 {}
 
 inline void CameraFlowDebugEffect::beginFrame(const FrameInfo &f)
