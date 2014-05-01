@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "effect.h"
 #include "opc_client.h"
@@ -103,6 +104,8 @@ private:
     float speed;
     bool verbose;
     struct timeval lastTime;
+    float jitterStatsMin;
+    float jitterStatsMax;
 
     void usage(const char *name);
     void debug();
@@ -121,7 +124,9 @@ inline EffectRunner::EffectRunner()
       filteredTimeDelta(0),
       debugTimer(0),
       speed(1.0),
-      verbose(false)
+      verbose(false),
+      jitterStatsMin(1),
+      jitterStatsMax(0)
 {
     lastTime.tv_sec = 0;
     lastTime.tv_usec = 0;
@@ -258,6 +263,9 @@ inline void EffectRunner::doFrame(float timeDelta)
     // Effects may get a modified view of time
     frameInfo.timeDelta = timeDelta * speed;
 
+    jitterStatsMin = std::min(jitterStatsMin, frameInfo.timeDelta);
+    jitterStatsMax = std::max(jitterStatsMax, frameInfo.timeDelta);
+
     if (getEffect() && hasLayout()) {
         effect->beginFrame(frameInfo);
 
@@ -373,11 +381,15 @@ inline void EffectRunner::usage(const char *name)
 
 inline void EffectRunner::debug()
 {
-    fprintf(stderr, " %7.2f FPS -- %6.2f%% CPU [%.2fms busy, %.2fms idle]\n",
+    fprintf(stderr, " %7.2f FPS -- %6.2f%% CPU [%.3fms busy, %.3fms idle, %.3fms jitter]\n",
         getFrameRate(),
         getPercentBusy(),
         1e3f * getBusyTimePerFrame(),
-        1e3f * getIdleTimePerFrame());
+        1e3f * getIdleTimePerFrame(),
+        1e3f * (jitterStatsMax - jitterStatsMin));
+
+    jitterStatsMax = 0;
+    jitterStatsMin = 1e10;
 
     if (effect) {
         Effect::DebugInfo d(*this);
