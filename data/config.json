@@ -87,7 +87,7 @@
         "spinMin": 1.0471,
         "spinMax": 1.0473,
         "relativeSize": 0.32,
-        "intensity": 5.0,
+        "intensity": 4.0,
         "intensityExp": 0.4,
         "initialSpeedMin": 0.0001,
         "initialSpeedMax": 0.009,
