@@ -47,7 +47,7 @@
 
         "brightness": 5.0,
 
-        "darknessDurationMin": 0.2,
+        "darknessDurationMin": 0.3,
         "darknessDurationMax": 2.0,
         "darknessThreshold": 0.18,
 
