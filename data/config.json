@@ -1,6 +1,7 @@
 {
     "initialState": 0,
     "concurrency": 3,
+    "fps": 100.0,
     "brightnessLimit": 0.45,
 
     "flow": {
