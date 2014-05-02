@@ -24,6 +24,7 @@ int Narrator::script(int st, PRNG &prng)
     static Precursor precursor(flow, runner.config["precursor"]);
     static RingsEffect ringsA(flow, runner.config["ringsA"]);
     static RingsEffect ringsB(flow, runner.config["ringsB"]);
+    static RingsEffect ringsC(flow, runner.config["ringsC"]);
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
@@ -115,7 +116,7 @@ int Narrator::script(int st, PRNG &prng)
 
         case 30: {
             // Textures of light, exploring something formless. Slow crossfade in
-            ringsA.reseed();
+            ringsA.reseed(prng.uniform32());
             crossfade(&ringsA, s.value(config["ringsA-Crossfade"]));
             attention(s, config["ringsA-Attention"]);
             return 40;
@@ -123,7 +124,7 @@ int Narrator::script(int st, PRNG &prng)
 
         case 40: {
             // Add energy, explore another layer.
-            ringsB.reseed();
+            ringsB.reseed(prng.uniform32());
             crossfade(&ringsB, s.value(config["ringsB-Crossfade"]));
             attention(s, config["ringsB-Attention"]);
             return 50;
@@ -155,13 +156,22 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         case 70: {
+            // Sinking deeper. Interlude before a change.
+
+            ringsC.reseed(prng.uniform32());
+            crossfade(&ringsC, s.value(config["ringsC-Crossfade"]));
+            attention(s, config["ringsC-Attention"]);
+            return 80;
+        }
+
+        case 80: {
             // Continuous renewal and regrowth. Destruction happens unintentionally,
             // regrowth is quick and generative. The only way to lose is to stagnate.
 
             forest.reseed(prng.uniform32());
             crossfade(&forest, s.value(config["forestCrossfade"]));
             attention(s, config["forestAttention"]);
-            return 80;            
+            return 90;            
         }
     }
 }

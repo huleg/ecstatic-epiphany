@@ -59,7 +59,7 @@
             "initial": 1.0,
             "brightnessDeltaMin": 0.002,
             "brightnessAverageMin": 0.1,
-            "rateBaseline": [0.006, 0.04],
+            "rateBaseline": [0.006, 0.02],
             "rateDark": 0.14,
             "rateStill": 0.05
         },
@@ -70,9 +70,20 @@
             "initial": 1.0,
             "brightnessDeltaMin": 0.002,
             "brightnessAverageMin": 0.1,
-            "rateBaseline": [0.004, 0.04],
+            "rateBaseline": [0.004, 0.02],
             "rateDark": 0.14,
             "rateStill": 0.05
+        },
+
+        "ringsC-Crossfade": [10, 15],
+        "ringsC-Attention": {
+            "bootstrap": 1,
+            "initial": 1.0,
+            "brightnessDeltaMin": 0.4,
+            "brightnessAverageMin": 0.1,
+            "rateBaseline": [0.004, 0.008],
+            "rateDark": 0.1,
+            "rateStill": 0.1
         },
 
         "orderCrossfade": [10, 20],
@@ -103,7 +114,7 @@
             "initial": 1.0,
             "brightnessDeltaMin": 1.0,
             "brightnessAverageMin": 0.1,
-            "rateBaseline": [0.002, 0.004],
+            "rateBaseline": [0.007, 0.02],
             "rateDark": 0.08,
             "rateStill": 0.08
         }
@@ -264,6 +275,30 @@
         "colorContrast": 0.8,
         "colorShiftRate": 0.12,
         "targetBrightness": 0.08,
+        "thresholdGain": 0.1,
+        "thresholdStepLimit": 0.02,
+        "initialThreshold": -1.0,
+        "brightnessOctaves": 7,
+        "colorOctaves": 3
+    },
+
+    "ringsC": {
+        "palette": "data/ybca-city-lights-palette.png",
+        "xyzSpeed": 0.2,
+        "xyzScale": 0.6,
+        "flowScale": 0.0035,
+        "wSpeed": 0.30,
+        "wRate": 0.015,
+        "ringScale": 1.5,
+        "ringScaleRate":
+         0.035,
+        "ringDepth": 0.9,
+        "wanderSpeed": 0.015,
+        "wanderSize": 1.5,
+        "brightnessContrast": 1.6,
+        "colorContrast": 0.8,
+        "colorShiftRate": 0.004,
+        "targetBrightness": 0.2,
         "thresholdGain": 0.1,
         "thresholdStepLimit": 0.02,
         "initialThreshold": -1.0,

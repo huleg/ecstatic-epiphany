@@ -15,6 +15,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#include "lib/prng.h"
 #include "lib/color.h"
 #include "lib/effect.h"
 #include "lib/noise.h"
@@ -48,7 +49,7 @@ public:
           flow(flow),
           palette(config["palette"].GetString())
     {
-        reseed();
+        reseed(29);
     }
 
     float xyzSpeed;
@@ -211,17 +212,6 @@ public:
 
         float target = targetBrightness;
         float current = pixelTotalDenominator ? pixelTotalNumerator / pixelTotalDenominator : 0.0f;
-        bool blackLevel = current <= 0.0f;
-
-        if (wantToReseed()) {
-            // Fade to black
-            target = 0;
-
-            if (blackLevel) {
-                // At black level. Reseed invisibly!
-                reseed();
-            }
-        }
 
         // Rate limited servo loop.
         // Disabled if we aren't calculating pixel values.
@@ -237,7 +227,7 @@ public:
     virtual void debug(const DebugInfo &di)
     {
         fprintf(stderr, "\t[rings] %s model\n", is3D ? "3D" : "2D"); 
-        fprintf(stderr, "\t[rings] seed = %f%s\n", seed, wantToReseed() ? " [reseed pending]" : "");
+        fprintf(stderr, "\t[rings] seed = %f\n", seed);
         fprintf(stderr, "\t[rings] timer = %f\n", timer);
         fprintf(stderr, "\t[rings] center = %f, %f, %f\n", center[0], center[1], center[2]);
         fprintf(stderr, "\t[rings] d = %f, %f, %f, %f\n", d[0], d[1], d[2], d[3]);
@@ -247,17 +237,14 @@ public:
     // Totally reinitialize our state variables. We do this periodically
     // during normal operation, during blank periods.
 
-    void reseed()
+    void reseed(unsigned seed)
     {
         flow.capture();
         flow.origin();
 
-        // Get okay seed mixing even with depressing rand() implementations
-        srand(time(0));
-        for (int i = 0; i < 50; i++) {
-            rand();
-        }
-        seed = rand() / double(RAND_MAX / 1024);
+        PRNG prng;
+        prng.seed(seed);
+        this->seed = prng.uniform(0, 1024);
 
         // Starting point
         d = Vec4(0,0,0,0);
@@ -268,28 +255,6 @@ public:
     }
 
 private:
-
-    // Do our state variables need resetting? This is like a watchdog timer,
-    // keeping an eye on the simulation parameters. If we need to start over,
-    // we'll start fading out and reseed during the darkness. This will happen
-    // periodically in order to keep our numbers within the useful resolution of
-    // a 32-bit float.
-
-    bool wantToReseed()
-    {
-        // Comparisons carefully written to NaN always causes reseed
-        return !(timer < 9000.0f) |
-               !(threshold <  10.0f) |
-               !(threshold > -10.0f) |
-               !(d[0] < 1000.0f) |
-               !(d[1] < 1000.0f) |
-               !(d[2] < 1000.0f) |
-               !(d[3] < 1000.0f) |
-               !(d[0] > -1000.0f) |
-               !(d[1] > -1000.0f) |
-               !(d[2] > -1000.0f) |
-               !(d[3] > -1000.0f) ;
-    }
 
     // Sample a color from our palette, using a lissajous curve within an image texture
 
