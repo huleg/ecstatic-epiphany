@@ -43,11 +43,13 @@ private:
     float flowFilterRate;
     float maxIntensity;
     float intensityRate;
+    float growthPointsPerSecond;
     Vec3 travelRate;
 
     Texture palette;
     std::vector<TreeInfo> tree;
     float travelAmount;
+    float growthAmount;
 
     void addPoint();
     void updateFlow(const FrameInfo &f);
@@ -70,6 +72,7 @@ inline Forest::Forest(const CameraFlowAnalyzer &flow, const rapidjson::Value &co
       flowFilterRate(s.value(config["flowFilterRate"])),
       maxIntensity(s.value(config["maxIntensity"])),
       intensityRate(s.value(config["intensityRate"])),
+      growthPointsPerSecond(s.value(config["growthPointsPerSecond"])),
       travelRate(s.value3D(config["travelRate"])),
       palette(config["palette"].GetString())
     {
@@ -87,8 +90,14 @@ inline void Forest::reseed(unsigned seed)
 
 inline void Forest::beginFrame(const FrameInfo &f)
 {
-    if (appearance.size() < maxParticles) {
+    growthAmount += growthPointsPerSecond * f.timeDelta;
+    while (growthAmount > 1.0f) {
+        if (appearance.size() >= maxParticles) {
+            growthAmount = 0;
+            break;
+        }
         addPoint();
+        growthAmount -= 1.0f;
     }
 
     updateFlow(f);

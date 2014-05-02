@@ -99,7 +99,7 @@
 
         "forestCrossfade": [3, 8],
         "forestAttention": {
-            "bootstrap": 2,
+            "bootstrap": 4,
             "initial": 1.0,
             "brightnessDeltaMin": 1.0,
             "brightnessAverageMin": 0.1,
@@ -306,17 +306,18 @@
         "outsideMargin": 5.0,
         "flowScale": -0.09,
         "flowFilterRate": 0.02,
-        "radius": 0.45,
+        "radius": 0.42,
         "intensity": 0.2,
         "historyDepth": 15,
         "newnessBias": 0.2,
         "newDirection": [0, 0, 0.08],
-        "deltaDirection": [ [-0.3, 0.3], 0, [-0.001, 0.001] ],
+        "deltaDirection": [ [-0.2, 0.2], 0, [-0.003, 0.003] ],
         "newPoint": [ [-0.9, 0.9], 0, -1.9],
         "newTexCoord": [ [0.1, 0.9], [0.1, 0.9]],
         "deltaTexCoord": [ [-0.009, 0.009], [-0.009, 0.009] ],
         "maxIntensity": 1.0,
         "intensityRate": 4.0,
-        "travelRate": [0.3, 0, -0.12]
+        "travelRate": [0.3, 0, -0.09],
+        "growthPointsPerSecond": 200
     }
 }
