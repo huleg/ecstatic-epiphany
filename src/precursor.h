@@ -83,6 +83,8 @@ inline void Precursor::reseed(unsigned seed)
     flow.capture(1.0);
     flow.origin();
 
+    treeGrowth.reseed(seed);
+
     PRNG prng;
     prng.seed(seed);
 

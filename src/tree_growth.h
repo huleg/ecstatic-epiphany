@@ -47,7 +47,7 @@ private:
     float visibleRadius;
     float outsideMargin;
     float flowFilterRate;
-    float spuriousLaunchProbability;
+    float spuriousLaunchProbabilityInitial;
     float spuriousLaunchProbabilityRate;
     float spuriousLaunchRadiusMin;
     float spuriousLaunchRadiusMax;
@@ -64,6 +64,7 @@ private:
     std::vector<ParticleDynamics> dynamics;
     PRNG prng;
     float timeDeltaRemainder;
+    float spuriousLaunchProbability;
 
     Vec3 launchPosition(const FrameInfo &f, Vec3 direction) const;
     float particleIntensity(float t) const;
@@ -97,7 +98,7 @@ inline TreeGrowth::TreeGrowth(const CameraFlowAnalyzer& flow, const rapidjson::V
       visibleRadius(config["visibleRadius"].GetDouble()),
       outsideMargin(config["outsideMargin"].GetDouble()),
       flowFilterRate(config["flowFilterRate"].GetDouble()),      
-      spuriousLaunchProbability(config["spuriousLaunchProbability"].GetDouble()),      
+      spuriousLaunchProbabilityInitial(config["spuriousLaunchProbabilityInitial"].GetDouble()),      
       spuriousLaunchProbabilityRate(config["spuriousLaunchProbabilityRate"].GetDouble()),      
       spuriousLaunchRadiusMin(config["spuriousLaunchRadiusMin"].GetDouble()),      
       spuriousLaunchRadiusMax(config["spuriousLaunchRadiusMax"].GetDouble()),      
@@ -114,6 +115,8 @@ inline void TreeGrowth::reseed(unsigned seed)
     flow.capture(1.0);
     flow.origin();
     prng.seed(seed);
+
+    spuriousLaunchProbability = spuriousLaunchProbabilityInitial;
 }
 
 inline float TreeGrowth::particleIntensity(float t) const

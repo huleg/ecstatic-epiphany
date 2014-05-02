@@ -48,6 +48,7 @@ private:
 
     Texture palette;
     std::vector<TreeInfo> tree;
+    Vec2 newTexCoord;
     float travelAmount;
     float growthAmount;
 
@@ -80,6 +81,7 @@ inline void Forest::reseed(unsigned seed)
     s = Sampler(seed);
     travelAmount = 0;
 
+    newTexCoord = s.value2D(config["newTexCoord"]);
     outsideMargin = s.value(config["outsideMargin"]);
     flowScale = s.value(config["flowScale"]);
     flowFilterRate = s.value(config["flowFilterRate"]);
@@ -150,12 +152,13 @@ inline void Forest::addPoint()
 
     if (root >= (int)appearance.size()) {
         // Start a new tree
-        ti.texCoord = s.value2D(config["newTexCoord"]);
+        newTexCoord += s.mRandom.circularVector() * s.value(config["walkTexCoord"]);
+        ti.texCoord = newTexCoord;
         ti.direction = s.value3D(config["newDirection"]);
         ti.branchState = 0;
         ti.point = s.value3D(config["newPoint"]) - pointOffset();
     } else {
-        ti.texCoord = tree[root].texCoord + s.value2D(config["deltaTexCoord"]);
+        ti.texCoord = tree[root].texCoord + s.mRandom.circularVector() * s.value(config["deltaTexCoord"]);
         ti.direction = tree[root].direction + s.value3D(config["deltaDirection"]);
         ti.branchState = tree[root].branchState + 1;
         ti.point = tree[root].point + tree[root].direction;
