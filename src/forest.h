@@ -67,13 +67,6 @@ inline Forest::Forest(const CameraFlowAnalyzer &flow, const rapidjson::Value &co
       flow(flow),
       config(config),
       maxParticles(config["maxParticles"].GetUint()),
-      outsideMargin(s.value(config["outsideMargin"])),
-      flowScale(s.value(config["flowScale"])),
-      flowFilterRate(s.value(config["flowFilterRate"])),
-      maxIntensity(s.value(config["maxIntensity"])),
-      intensityRate(s.value(config["intensityRate"])),
-      growthPointsPerSecond(s.value(config["growthPointsPerSecond"])),
-      travelRate(s.value3D(config["travelRate"])),
       palette(config["palette"].GetString())
     {
  }
@@ -86,6 +79,14 @@ inline void Forest::reseed(unsigned seed)
     flow.origin();
     s = Sampler(seed);
     travelAmount = 0;
+
+    outsideMargin = s.value(config["outsideMargin"]);
+    flowScale = s.value(config["flowScale"]);
+    flowFilterRate = s.value(config["flowFilterRate"]);
+    maxIntensity = s.value(config["maxIntensity"]);
+    intensityRate = s.value(config["intensityRate"]);
+    growthPointsPerSecond = s.value(config["growthPointsPerSecond"]);
+    travelRate = s.value3D(config["travelRate"]);
 }
 
 inline void Forest::beginFrame(const FrameInfo &f)

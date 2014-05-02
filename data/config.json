@@ -306,7 +306,7 @@
         "outsideMargin": 5.0,
         "flowScale": -0.09,
         "flowFilterRate": 0.02,
-        "radius": 0.42,
+        "radius": [0.35, 0.48],
         "intensity": 0.2,
         "historyDepth": 15,
         "newnessBias": 0.2,
@@ -317,7 +317,7 @@
         "deltaTexCoord": [ [-0.009, 0.009], [-0.009, 0.009] ],
         "maxIntensity": 1.0,
         "intensityRate": 4.0,
-        "travelRate": [0.3, 0, -0.09],
+        "travelRate": [ [-0.5, 0.5], 0, [-0.1, -0.02]],
         "growthPointsPerSecond": 200
     }
 }
