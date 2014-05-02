@@ -46,7 +46,8 @@ private:
     float colorRate;
     float outsideMargin;
     float darkMultiplier;
-    float flowScale;
+    float flowScaleTarget;
+    float flowScaleRampRate;
     float flowFilterRate;
 
     struct ParticleDynamics {
@@ -64,6 +65,7 @@ private:
     float timeDeltaRemainder;
     float colorCycle;
     float totalIntensity;
+    float flowScale;
     bool running;
 
     void runStep(const FrameInfo &f);
@@ -92,7 +94,8 @@ inline ChaosParticles::ChaosParticles(const CameraFlowAnalyzer &flow, const rapi
       colorRate(config["colorRate"].GetDouble()),
       outsideMargin(config["outsideMargin"].GetDouble()),
       darkMultiplier(config["darkMultiplier"].GetDouble()),
-      flowScale(config["flowScale"].GetDouble()),
+      flowScaleTarget(config["flowScaleTarget"].GetDouble()),
+      flowScaleRampRate(config["flowScaleRampRate"].GetDouble()),
       flowFilterRate(config["flowFilterRate"].GetDouble()),
       flow(flow),
       palette(config["palette"].GetString()),
@@ -116,6 +119,7 @@ inline void ChaosParticles::reseed(Vec2 location, unsigned seed)
 {
     running = true;
     totalIntensity = nanf("");
+    flowScale = 0;
 
     appearance.resize(numParticles);
     dynamics.resize(numParticles);
@@ -157,6 +161,7 @@ inline void ChaosParticles::debug(const DebugInfo &di)
 {
     fprintf(stderr, "\t[chaos-particles] running = %d\n", running);
     fprintf(stderr, "\t[chaos-particles] totalIntensity = %f\n", totalIntensity);
+    fprintf(stderr, "\t[chaos-particles] flowScale = %f\n", flowScale);
     ParticleEffect::debug(di);
 }
 
@@ -170,6 +175,7 @@ inline void ChaosParticles::runStep(const FrameInfo &f)
 
     // Capture the impulse between the last step and this one
     flow.capture(flowFilterRate);
+    flowScale = std::min(flowScaleTarget, flowScale + flowScaleRampRate * stepSize);
 
     // Update dynamics
     for (unsigned i = 0; i < dynamics.size(); i++) {

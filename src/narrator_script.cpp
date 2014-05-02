@@ -103,7 +103,7 @@ int Narrator::script(int st, PRNG &prng)
             
             int bangCount = s.value(config["bangCount"]);
             for (int i = 0; i < bangCount; i++) {
-                pChaosA->reseed(prng.circularVector() * 0.6, prng.uniform32());
+                pChaosA->reseed(prng.circularVector() * s.value(config["bangSeedRadius"]), prng.uniform32());
                 crossfade(pChaosA, s.value(config["bangCrossfadeDuration"]));
                 delay((1 << i) * s.value(config["bangDelayBasis"]));
                 std::swap(pChaosA, pChaosB);

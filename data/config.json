@@ -43,6 +43,7 @@
         "bangCount": [1, 4.2],
         "bangCrossfadeDuration": [0.25, 0.3],
         "bangDelayBasis": [0.25, 0.35],
+        "bangSeedRadius": 0.25,
         "bangAttention": {
             "bootstrap": 1,
             "initial": 1.0,
@@ -185,8 +186,9 @@
         "colorRate": 0.02,
         "outsideMargin": 5.0,
         "darkMultiplier": -2.0,
-        "flowScale": 0.018,
-        "flowFilterRate": 0.02
+        "flowFilterRate": 0.02,
+        "flowScaleTarget": 0.025,
+        "flowScaleRampRate": 0.0015
     },
 
     "orderParticles": {

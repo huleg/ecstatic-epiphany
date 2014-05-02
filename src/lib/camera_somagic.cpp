@@ -113,8 +113,8 @@ static uint8_t brightness = 128;
 /* Luminance aperture factor: 0 = 0, 1 = 0.25, 2 = 0.5, 3 = 1.0 */
 static int luminance_aperture = 1;
 
-/* Control the number of concurrent ISO transfers we have running. <= 32 */
-static const int num_iso_transfers = 31;
+/* Control the number of concurrent ISO transfers we have running. <= 30 */
+static const int num_iso_transfers = 30;
 
 enum sync_state {
     HSYNC = 0,
