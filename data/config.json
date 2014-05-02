@@ -75,7 +75,7 @@
             "rateStill": 0.05
         },
 
-        "orderCrossfade": 15,
+        "orderCrossfade": [10, 20],
         "orderStepAttention": {
             "bootstrap": 2,
             "initial": 1.0,
@@ -86,18 +86,18 @@
             "rateStill": 0.1
         },
 
-        "partnerCrossfade": [5, 10],
+        "partnerCrossfade": [10, 20],
         "partnerAttention": {
             "bootstrap": 4,
             "initial": 1.0,
-            "brightnessDeltaMin": 1.0,
+            "brightnessDeltaMin": 0.1,
             "brightnessAverageMin": 0.1,
-            "rateBaseline": [0.004, 0.04],
-            "rateDark": 0.14,
-            "rateStill": 0.08
+            "rateBaseline": [0.002, 0.03],
+            "rateDark": 0.09,
+            "rateStill": 0.09
         },
 
-        "forestCrossfade": [3, 8],
+        "forestCrossfade": [10, 20],
         "forestAttention": {
             "bootstrap": 4,
             "initial": 1.0,
@@ -173,7 +173,7 @@
         "stepSize": 0.005,
         "colorRate": 0.02,
         "outsideMargin": 5.0,
-        "darkMultiplier": -8.0,
+        "darkMultiplier": -2.0,
         "flowScale": 0.018,
         "flowFilterRate": 0.02
     },
@@ -211,15 +211,15 @@
         "minIntensity": 0.01,
         "targetRadius": 0.5,
         "interactionRadius": 0.2,
-        "jitterRate": 0.16,
-        "jitterStrength": 0.8,
+        "jitterRate": 0.35,
+        "jitterStrength": 0.9,
         "jitterScale": 0.5,
         "flowScale": -0.03,
         "brightness": 4.0,
         "targetGain": 0.00008,
-        "dampingRate": 0.0003,
+        "dampingRate": 0.0001,
         "targetSpin": 0.000035,
-        "damping": 0.005,
+        "damping": 0.003,
         "interactionRate": 0.0003,
         "positionFuzz": 4.0,
         "separationRadius": 3.0
