@@ -47,6 +47,12 @@ private:
     float visibleRadius;
     float outsideMargin;
     float flowFilterRate;
+    float spuriousLaunchProbability;
+    float spuriousLaunchProbabilityRate;
+    float spuriousLaunchRadiusMin;
+    float spuriousLaunchRadiusMax;
+    float spuriousLaunchSpeedMin;
+    float spuriousLaunchSpeedMax;
 
     struct ParticleDynamics {
         Vec3 velocity;
@@ -91,6 +97,12 @@ inline TreeGrowth::TreeGrowth(const CameraFlowAnalyzer& flow, const rapidjson::V
       visibleRadius(config["visibleRadius"].GetDouble()),
       outsideMargin(config["outsideMargin"].GetDouble()),
       flowFilterRate(config["flowFilterRate"].GetDouble()),      
+      spuriousLaunchProbability(config["spuriousLaunchProbability"].GetDouble()),      
+      spuriousLaunchProbabilityRate(config["spuriousLaunchProbabilityRate"].GetDouble()),      
+      spuriousLaunchRadiusMin(config["spuriousLaunchRadiusMin"].GetDouble()),      
+      spuriousLaunchRadiusMax(config["spuriousLaunchRadiusMax"].GetDouble()),      
+      spuriousLaunchSpeedMin(config["spuriousLaunchSpeedMin"].GetDouble()),      
+      spuriousLaunchSpeedMax(config["spuriousLaunchSpeedMax"].GetDouble()),      
       flow(flow),
       timeDeltaRemainder(0)
 {
@@ -130,6 +142,7 @@ inline void TreeGrowth::debug(const DebugInfo &di)
     fprintf(stderr, "\t[tree-growth] particles = %d\n", (int)appearance.size());
     fprintf(stderr, "\t[tree-growth] motionLength = %f\n", flow.motionLength);
     fprintf(stderr, "\t[tree-growth] instantaneousMotion = %f\n", flow.instantaneousMotion());
+    fprintf(stderr, "\t[tree-growth] spuriousLaunchProbability = %f\n", spuriousLaunchProbability);
 }
 
 inline void TreeGrowth::launch(Vec3 point, Vec3 velocity)
@@ -174,6 +187,21 @@ inline Vec3 TreeGrowth::launchPosition(const FrameInfo &f, Vec3 direction) const
 
 inline void TreeGrowth::runStep(const FrameInfo &f)
 {
+    // Launch completely spurious particles; their probability decreases over time.
+    // This helps demarcate the transition into this effect, plus it gives us a backup
+    // trigger in case our camera input is disabled or broken.
+    if (spuriousLaunchProbability > 0) { 
+        int launchCount = std::min<int>(maxParticles - appearance.size(),
+            prng.uniform(0, 1.0f + spuriousLaunchProbability));
+        spuriousLaunchProbability += spuriousLaunchProbabilityRate;
+
+        while (launchCount--) {
+            Vec2 p = prng.ringVector(spuriousLaunchRadiusMin, spuriousLaunchRadiusMax); 
+            Vec2 v = prng.ringVector(spuriousLaunchSpeedMin, spuriousLaunchSpeedMax);
+            launch(Vec3(p[0], 0, p[1]), Vec3(v[0], 0, v[1]));
+        }
+    }
+
     // Launch new particles based on flow
     if (flowLaunchScale) {
         flow.capture(flowFilterRate);

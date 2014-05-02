@@ -145,7 +145,13 @@
             "damping": 0.009,
             "visibleRadius": 0.22,
             "outsideMargin": 2.0,
-            "flowFilterRate": 0.2
+            "flowFilterRate": 0.2,
+            "spuriousLaunchProbability": 0.015,
+            "spuriousLaunchProbabilityRate": -0.000005,
+            "spuriousLaunchRadiusMin": 0.2,
+            "spuriousLaunchRadiusMax": 0.8,
+            "spuriousLaunchSpeedMin": 0.0001,
+            "spuriousLaunchSpeedMax": 0.0004
         }
     },
 
