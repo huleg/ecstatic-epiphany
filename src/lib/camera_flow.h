@@ -54,6 +54,12 @@
 
 class CameraFlowCapture;
 
+#ifdef __linux__
+    // Currently use OpenCV VideoWriter on Linux only. It's broken on the Homebrew
+    // OpenCV package for Mac, and I don't need it there anyway :(
+    #define USE_OPENCV_VIDEO
+#endif
+
 
 class CameraFlowAnalyzer {
 public:
@@ -105,7 +111,9 @@ private:
         std::vector<PointInfo> pointInfo;
     };
 
-    cv::VideoWriter debugVideoWriter;
+    #ifdef USE_OPENCV_VIDEO
+        cv::VideoWriter debugVideoWriter;
+    #endif
     Field fields[Camera::kFields];
 
     // Optical flow integrators, in 16:16 fixed point
@@ -259,11 +267,13 @@ inline void CameraFlowAnalyzer::clear()
         fields[i].points.clear();
     }
 
-    if (debug && debugFrameInterval) {
-        float fps = 60 / 1.001 / debugFrameInterval;
-        debugVideoWriter.open(debugVideoFile.c_str(),
-            stringToFourCC(debugVideoFourcc), fps, fields[0].frames[0].size());
-    }
+    #ifdef USE_OPENCV_VIDEO
+        if (debug && debugFrameInterval) {
+            float fps = 60 / 1.001 / debugFrameInterval;
+            debugVideoWriter.open(debugVideoFile.c_str(),
+                stringToFourCC(debugVideoFourcc), fps, fields[0].frames[0].size());
+        }
+    #endif
 }
 
 inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
@@ -525,54 +535,56 @@ inline void CameraFlowAnalyzer::calculateFlow(Field &f)
     filterFastL += (fL - filterFastL) * motionFilterFast;
 
     // Write frames to disk periodically in super-verbose debug mode
-    if (debug && debugFrameInterval) {
-        debugFrameCounter++;
-        if ((debugFrameCounter % debugFrameInterval) == 0 && debugVideoWriter.isOpened()) {
+    #ifdef USE_OPENCV_VIDEO
+        if (debug && debugFrameInterval) {
+            debugFrameCounter++;
+            if ((debugFrameCounter % debugFrameInterval) == 0 && debugVideoWriter.isOpened()) {
 
-            cv::Mat frame;
-            cv::cvtColor(f.frames[1], frame, cv::COLOR_GRAY2BGR);
+                cv::Mat frame;
+                cv::cvtColor(f.frames[1], frame, cv::COLOR_GRAY2BGR);
 
-            // Draw circles over each point; shade = age
-            for (unsigned i = 0; i < f.points.size(); ++i) {
-                int l = std::min<int>(255, f.pointInfo[i].age);
-                cv::circle(frame, f.points[i], 2,
-                        f.pointInfo[i].age < pointTrialPeriod
-                            ? cv::Scalar(0, 0, 0)
-                            : cv::Scalar(l, 64 + l/2, 255 - l),
-                        1, CV_AA);
+                // Draw circles over each point; shade = age
+                for (unsigned i = 0; i < f.points.size(); ++i) {
+                    int l = std::min<int>(255, f.pointInfo[i].age);
+                    cv::circle(frame, f.points[i], 2,
+                            f.pointInfo[i].age < pointTrialPeriod
+                                ? cv::Scalar(0, 0, 0)
+                                : cv::Scalar(l, 64 + l/2, 255 - l),
+                            1, CV_AA);
+                }
+
+                // Motion length since the last debug frame, scaled to units of pixels per field
+                uint32_t prevL = debugCaptureL;
+                uint32_t nextL = integratorL;
+                float zoom = debugMotionZoom;
+                debugCaptureL = nextL;
+                float debugL = int32_t(nextL - prevL) * (zoom / 0x10000 / debugFrameInterval);
+                cv::rectangle(frame,
+                    cv::Point2f(1, 1),
+                    cv::Point2f(3 + debugL, 4),
+                    cv::Scalar(250, 176, 0), -1, CV_AA);
+
+                // Filtered motion length dots
+                cv::rectangle(frame,
+                    cv::Point2f(1 + filterFastL * zoom, 6),
+                    cv::Point2f(3 + filterFastL * zoom, 8),
+                    cv::Scalar(255, 255, 190), -1, CV_AA);
+                cv::rectangle(frame,
+                    cv::Point2f(1 + filterSlowL * zoom, 10),
+                    cv::Point2f(3 + filterSlowL * zoom, 12),
+                    cv::Scalar(255, 190, 255), -1, CV_AA);
+
+                // Computed instantaneoud motion
+                float iM = instantaneousMotion();
+                cv::rectangle(frame,
+                    cv::Point2f(1, 14),
+                    cv::Point2f(3 + iM * zoom, 16),
+                    cv::Scalar(64, 64, 255), -1, CV_AA);
+
+                debugVideoWriter.write(frame);
             }
-
-            // Motion length since the last debug frame, scaled to units of pixels per field
-            uint32_t prevL = debugCaptureL;
-            uint32_t nextL = integratorL;
-            float zoom = debugMotionZoom;
-            debugCaptureL = nextL;
-            float debugL = int32_t(nextL - prevL) * (zoom / 0x10000 / debugFrameInterval);
-            cv::rectangle(frame,
-                cv::Point2f(1, 1),
-                cv::Point2f(3 + debugL, 4),
-                cv::Scalar(250, 176, 0), -1, CV_AA);
-
-            // Filtered motion length dots
-            cv::rectangle(frame,
-                cv::Point2f(1 + filterFastL * zoom, 6),
-                cv::Point2f(3 + filterFastL * zoom, 8),
-                cv::Scalar(255, 255, 190), -1, CV_AA);
-            cv::rectangle(frame,
-                cv::Point2f(1 + filterSlowL * zoom, 10),
-                cv::Point2f(3 + filterSlowL * zoom, 12),
-                cv::Scalar(255, 190, 255), -1, CV_AA);
-
-            // Computed instantaneoud motion
-            float iM = instantaneousMotion();
-            cv::rectangle(frame,
-                cv::Point2f(1, 14),
-                cv::Point2f(3 + iM * zoom, 16),
-                cv::Scalar(64, 64, 255), -1, CV_AA);
-
-            debugVideoWriter.write(frame);
         }
-    }
+    #endif
 
     std::swap(f.frames[0], f.frames[1]);
 }

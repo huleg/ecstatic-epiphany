@@ -1,5 +1,11 @@
 /*
- * Ecstatic Epiphany
+ * Ecstatic Epiphany.
+ *
+ * Energy for inspiration.
+ * Layers of self-organization.
+ * Visual metaphors for creation.
+ * Understanding, death, rebirth.
+ * You are not the person you thought you'd become.
  *
  * (c) 2014 Micah Elizabeth Scott
  * http://creativecommons.org/licenses/by/3.0/

@@ -30,7 +30,6 @@ private:
     unsigned maxParticles;
     float flowLaunchScale;
     float flowLaunchSpeed;
-    float flowLaunchDistance;
     float launchProbability;
     float launchPointNoise;
     float launchVelocityNoise;

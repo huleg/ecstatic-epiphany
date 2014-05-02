@@ -160,5 +160,5 @@ inline void Forest::addPoint()
 inline void Forest::debug(const DebugInfo &di)
 {
     ParticleEffect::debug(di);
-    fprintf(stderr, "\t[forest] numParticles = %d\n", appearance.size());
+    fprintf(stderr, "\t[forest] numParticles = %d\n", (int)appearance.size());
 }
