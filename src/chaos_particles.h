@@ -127,6 +127,9 @@ inline void ChaosParticles::reseed(Vec2 location, unsigned seed)
     PRNG prng;
     prng.seed(seed);
 
+    flow.capture(1.0);
+    flow.origin();
+
     colorCycle = prng.uniform(0, M_PI * 2);
 
     for (unsigned i = 0; i < dynamics.size(); i++) {
