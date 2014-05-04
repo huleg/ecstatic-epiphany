@@ -12,7 +12,6 @@
 #include "precursor.h"
 #include "rings.h"
 #include "partner_dance.h"
-#include "glowpoi.h"
 #include "forest.h"
 
 
@@ -27,7 +26,6 @@ int Narrator::script(int st, PRNG &prng)
     static RingsEffect ringsC(flow, runner.config["ringsC"]);
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
-    static GlowPoi glowPoi(flow, runner.config["glowPoi"]);
     static Forest forest(flow, runner.config["forest"]);
 
     rapidjson::Value& config = runner.config["narrator"];
@@ -50,7 +48,7 @@ int Narrator::script(int st, PRNG &prng)
         // Debug states
 
         case 1: {
-            // Special state; precursor only (sleep mode)            
+            // Precursor only (sleep mode)            
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 1);
             delayForever();
@@ -59,21 +57,6 @@ int Narrator::script(int st, PRNG &prng)
         case 2: {
             // Debugging the computer vision system
             crossfade(&flowDebugEffect, 1);
-            delayForever();
-        }
-
-        case 3: {
-            // Tree growth only
-            precursor.treeGrowth.reseed(prng.uniform32());
-            precursor.treeGrowth.launch(Vec3(0,0,0), Vec3(0,0,0));
-            crossfade(&precursor.treeGrowth, 1);
-            delayForever();
-        }
-
-        case 4: {
-            // Agency, creative energy.
-            glowPoi.reseed(prng.uniform32());
-            crossfade(&glowPoi, 1);
             delayForever();
         }
 
