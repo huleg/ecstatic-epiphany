@@ -111,7 +111,7 @@ inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Val
 
 inline void PartnerDance::reseed(uint32_t seed)
 {
-    flow.capture();
+    flow.capture(1.0);
     flow.origin();
 
     PRNG prng;
