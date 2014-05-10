@@ -164,6 +164,10 @@ inline void Forest::addPoint()
         ti.point = tree[root].point + tree[root].direction;
     }
 
+    // Texture sampler already clamps, but this keeps our random walk constrained within the texture bounds.
+    ti.texCoord[0] = std::min(1.0f, std::max(0.0f, ti.texCoord[0]));
+    ti.texCoord[1] = std::min(1.0f, std::max(0.0f, ti.texCoord[1]));
+
     pa.color = palette.sample(ti.texCoord);
 
     appearance.push_back(pa);

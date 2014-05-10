@@ -33,7 +33,6 @@ private:
     unsigned particlesPerDancer;
     unsigned numParticles;
     float stepSize;
-    float colorRate;
     float noiseRate;
     float radius;
     float radiusScale;
@@ -82,7 +81,6 @@ inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Val
       particlesPerDancer(config["particlesPerDancer"].GetUint()),
       numParticles(particlesPerDancer * numDancers),
       stepSize(config["stepSize"].GetDouble()),
-      colorRate(config["colorRate"].GetDouble()),
       noiseRate(config["noiseRate"].GetDouble()),
       radius(config["radius"].GetDouble()),
       radiusScale(config["radiusScale"].GetDouble()),
@@ -176,6 +174,7 @@ inline void PartnerDance::debug(const DebugInfo& d)
     fprintf(stderr, "\t[partner-dance] radius = %f\n", appearance[0].radius);
     fprintf(stderr, "\t[partner-dance] noiseCycle = %f\n", noiseCycle);
     fprintf(stderr, "\t[partner-dance] damping = %f\n", damping);
+    fprintf(stderr, "\t[partner-dance] flow.model = [%f, %f]\n", flow.model[0], flow.model[2]);
     ParticleEffect::debug(d);
 }
 

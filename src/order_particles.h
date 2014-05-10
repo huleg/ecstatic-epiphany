@@ -95,7 +95,7 @@ inline OrderParticles::OrderParticles(CameraFlowAnalyzer& flow, const rapidjson:
 
 inline void OrderParticles::reseed(unsigned seed)
 {
-    flow.capture();
+    flow.capture(1.0);
     flow.origin();
 
     symmetry = 1000;

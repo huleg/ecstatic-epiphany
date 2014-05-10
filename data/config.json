@@ -206,16 +206,15 @@
         "seedRadius": 1.9,
         "interactionSize": 0.55,
         "colorRate": 0.035,
-        "angleGainRate": 0.23,
-        "angleGainCenter": 0.09,
-        "angleGainVariation": 0.006
+        "angleGainRate": 5.0,
+        "angleGainCenter": 0.055,
+        "angleGainVariation": 0.035
     },
 
     "partnerDance": {
         "palette": "data/foggy-bay-palette.png",
         "particlesPerDancer": 60,
         "stepSize": 0.01,
-        "colorRate": 0.8,
         "noiseRate": 0.4,
         "radius": 0.73,
         "radiusScale": 0.4,
@@ -308,35 +307,6 @@
         "colorOctaves": 3
     },
 
-    "glowPoi": {
-        "palette": "data/poi-palette.png",
-        "numPoi": 2,
-        "particlesPerPoi": 120,
-        "radius": 1.2,
-        "intensity": 0.019,
-        "rate": 1.2,
-        "flowScale": 0.2,
-
-        "r1": 1.0,
-        "a1": 6.0,
-        "u1": 2.14,
-        "v1": 0.08,
-
-        "r2": 0.9,
-        "a2": 5.7,
-        "u2": 8.4,
-        "v2": 0.03
-    },
-
-    "explore": {
-        "map": "data/evergreen.png",
-        "flowScale": -0.008,
-        "modelScale": 0.02,
-        "startRadius": 0.3,
-        "brightness": 10.0,
-        "flowFilterRate": 0.003
-    },
-
     "forest": {
         "palette": "data/evergreen.png",
         "maxParticles": 800,
@@ -350,7 +320,7 @@
         "newDirection": [0, 0, 0.08],
         "deltaDirection": [ [-0.2, 0.2], 0, [-0.003, 0.003] ],
         "newPoint": [ [-0.9, 0.9], 0, -1.9],
-        "newTexCoord": [ [0.2, 0.8], [0.2, 0.8]],
+        "newTexCoord": [ [0.2, 0.8], [0.2, 0.8] ],
         "walkTexCoord": 0.3,
         "deltaTexCoord": 0.02,
         "maxIntensity": 1.0,
