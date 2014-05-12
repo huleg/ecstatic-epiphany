@@ -230,8 +230,8 @@
         "brightness": 4.0,
         "targetGain": 0.00008,
         "dampingRate": 0.0001,
+        "initialDamping": 0.003,
         "targetSpin": 0.000035,
-        "damping": 0.003,
         "interactionRate": 0.0003,
         "positionFuzz": 4.0,
         "separationRadius": 3.0

@@ -48,8 +48,8 @@ private:
     float brightness;
     float targetGain;
     float dampingRate;
+    float initialDamping;
     float targetSpin;
-    float damping;
     float interactionRate;
     float positionFuzz;
     float separationRadius;
@@ -65,6 +65,7 @@ private:
     float timeDeltaRemainder;
     float noiseCycle;
     Vec2 target;
+    float damping;
 
     void resetParticle(ParticleDynamics &pd, PRNG &prng, unsigned dancer) const;
     void runStep(const FrameInfo &f);
@@ -96,8 +97,8 @@ inline PartnerDance::PartnerDance(CameraFlowAnalyzer& flow, const rapidjson::Val
       brightness(config["brightness"].GetDouble()),
       targetGain(config["targetGain"].GetDouble()),
       dampingRate(config["dampingRate"].GetDouble()),
+      initialDamping(config["initialDamping"].GetDouble()),
       targetSpin(config["targetSpin"].GetDouble()),
-      damping(config["damping"].GetDouble()),
       interactionRate(config["interactionRate"].GetDouble()),
       positionFuzz(config["positionFuzz"].GetDouble()),
       separationRadius(config["separationRadius"].GetDouble()),
@@ -116,6 +117,7 @@ inline void PartnerDance::reseed(uint32_t seed)
     prng.seed(seed);
 
     noiseCycle = prng.uniform(0, 1000);
+    damping = initialDamping;
 
     appearance.resize(numParticles);
     dynamics.resize(numParticles);
