@@ -46,7 +46,7 @@
         "bangSeedRadius": 0.25,
         "bangAttention": {
             "bootstrap": 1,
-            "initial": 1.0,
+            "initial": 2.0,
             "brightnessDeltaMin": 1.0,
             "brightnessAverageMin": 0.1,
             "rateBaseline": 0.0033,
@@ -57,7 +57,7 @@
         "ringsA-Crossfade": [15, 25],
         "ringsA-Attention": {
             "bootstrap": 1,
-            "initial": 1.0,
+            "initial": 2.0,
             "brightnessDeltaMin": 0.002,
             "brightnessAverageMin": 0.1,
             "rateBaseline": [0.006, 0.02],
@@ -68,7 +68,7 @@
         "ringsB-Crossfade": [30, 90],
         "ringsB-Attention": {
             "bootstrap": 1,
-            "initial": 1.0,
+            "initial": 2.0,
             "brightnessDeltaMin": 0.002,
             "brightnessAverageMin": 0.1,
             "rateBaseline": [0.004, 0.02],
@@ -79,7 +79,7 @@
         "ringsC-Crossfade": [10, 15],
         "ringsC-Attention": {
             "bootstrap": 1,
-            "initial": 1.0,
+            "initial": 2.0,
             "brightnessDeltaMin": 0.4,
             "brightnessAverageMin": 0.1,
             "rateBaseline": [0.004, 0.008],
@@ -101,7 +101,7 @@
         "partnerCrossfade": [10, 20],
         "partnerAttention": {
             "bootstrap": 4,
-            "initial": 1.0,
+            "initial": 1.3,
             "brightnessDeltaMin": 0.1,
             "brightnessAverageMin": 0.1,
             "rateBaseline": [0.002, 0.03],
@@ -112,7 +112,7 @@
         "forestCrossfade": [10, 20],
         "forestAttention": {
             "bootstrap": 4,
-            "initial": 1.0,
+            "initial": 2.3,
             "brightnessDeltaMin": 1.0,
             "brightnessAverageMin": 0.1,
             "rateBaseline": [0.007, 0.02],
