@@ -5,5 +5,4 @@ An interactive light art installation.
 
 2014, Micah Elizabeth Scott
 
-**WORK IN PROGRESS**
-
+Portfolio link: [misc.name/ecstatic-epiphany](http://www.misc.name/ecstatic-epiphany)
