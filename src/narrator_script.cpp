@@ -13,6 +13,7 @@
 #include "rings.h"
 #include "partner_dance.h"
 #include "forest.h"
+#include "darkness.h"
 
 
 int Narrator::script(int st, PRNG &prng)
@@ -27,6 +28,7 @@ int Narrator::script(int st, PRNG &prng)
     static PartnerDance partnerDance(flow, runner.config["partnerDance"]);
     static CameraFlowDebugEffect flowDebugEffect(flow, runner.config["flowDebugEffect"]);
     static Forest forest(flow, runner.config["forest"]);
+    static DarknessEffect darkness;
 
     rapidjson::Value& config = runner.config["narrator"];
     Sampler s(prng.uniform32());
@@ -45,16 +47,22 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         //////////////////////////////////////////////////////////////////////////////////////////////
-        // Debug states
+        // Special states
 
         case 1: {
+            // Darkness only ("off")
+            crossfade(&darkness, 1);
+            delayForever();
+        }
+
+        case 2: {
             // Precursor only (sleep mode)            
             precursor.reseed(prng.uniform32());
             crossfade(&precursor, 1);
             delayForever();
         }
 
-        case 2: {
+        case 3: {
             // Debugging the computer vision system
             crossfade(&flowDebugEffect, 1);
             delayForever();
