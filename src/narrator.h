@@ -51,14 +51,18 @@ public:
 private:
     int script(int st, PRNG &prng);
     EffectRunner::FrameStatus doFrame();
+    void endCycle();
 
     void crossfade(Effect *to, float duration);
     void delay(float seconds);
     void delayForever();
     void attention(Sampler &s, const rapidjson::Value& config);
+    void delayUntilDate(const rapidjson::Value& target);
 
-    void formatTime(double s);
+    static double secondsAfterDate(const rapidjson::Value& target);
+    static void formatTime(FILE *f, double s);
 
+    FILE *logFile;
     unsigned totalLoops;
     double totalTime;
     std::map<int, double> singleStateTime;

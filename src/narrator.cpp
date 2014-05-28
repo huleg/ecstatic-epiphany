@@ -5,6 +5,7 @@
  * http://creativecommons.org/licenses/by/3.0/
  */
 
+#include <time.h>
 #include "narrator.h"
 
 
@@ -21,6 +22,11 @@ void Narrator::setup()
     mixer.setConcurrency(runner.config["concurrency"].GetUint());
     runner.setMaxFrameRate(runner.config["fps"].GetDouble());
     currentState = runner.initialState;
+
+    logFile = fopen(runner.config["narrator"]["logFile"].GetString(), "a");
+    if (!logFile) {
+        perror("Failed to open narrator log file");
+    }
 }    
 
 void Narrator::run()
@@ -32,34 +38,37 @@ void Narrator::run()
     prng.seed(time(0));
 
     while (true) {
-        if (runner.isVerbose()) {
-            fprintf(stderr, "narrator: state %d\n", currentState);
-        }
+        currentState = script(currentState, prng);
+    }
+}
 
-        int nextState = script(currentState, prng);
+void Narrator::endCycle()
+{
+    totalLoops++;
 
-        if (nextState == runner.initialState) {
-            totalLoops++;
+    if (logFile) {
+        time_t now = time(NULL);
+        char timeBuffer[256];
+        ctime_r(&now, timeBuffer);        
 
-            fprintf(stderr, "narrator: ------------------- Summary ------------------\n");
-            fprintf(stderr, "narrator: Total loops: %d\n", totalLoops);
-            fprintf(stderr, "narrator:       loop total "); formatTime(totalTime); 
-            fprintf(stderr, "  average ");
-            formatTime(totalTime / totalLoops);
-            fprintf(stderr, "\n");
+        fprintf(logFile, "\n------ Summary : %s", timeBuffer);
+        fprintf(logFile, "      loop total ");
+        formatTime(logFile, totalTime); 
+        fprintf(logFile, "  average ");
+        formatTime(logFile, totalTime / totalLoops);
+        fprintf(logFile, "\n");
 
-            for (std::map<int, double>::iterator it = singleStateTime.begin(); it != singleStateTime.end(); it++) {
-                fprintf(stderr, "narrator: state %-3d  total ", it->first);
-                formatTime(it->second);
-                fprintf(stderr, "  average ");
-                formatTime(it->second / totalLoops);
-                fprintf(stderr, "\n");
-            } 
+        for (std::map<int, double>::iterator it = singleStateTime.begin(); it != singleStateTime.end(); it++) {
+            fprintf(logFile, "state %-3d  total ", it->first);
+            formatTime(logFile, it->second);
+            fprintf(logFile, "  average ");
+            formatTime(logFile, it->second / totalLoops);
+            fprintf(logFile, "\n");
+        } 
 
-            fprintf(stderr, "narrator: ----------------------------------------------\n");
-        }
-
-        currentState = nextState;
+        fprintf(logFile, "Total loops: %d\n", totalLoops);
+        fprintf(logFile, "----\n");
+        fflush(logFile);
     }
 }
 
@@ -93,24 +102,68 @@ void Narrator::crossfade(Effect *to, float duration)
     mixer.set(to);
 }
 
+void Narrator::delayUntilDate(const rapidjson::Value& target)
+{
+    while (true) {
+        double t = secondsAfterDate(target);
+        if (t >= 0) {
+            break;
+        }
+
+        EffectRunner::FrameStatus st = doFrame();
+        if (st.debugOutput && runner.isVerbose()) {
+            fprintf(stderr, "\t[delay] %f seconds left until date %s\n",
+                -t, target.GetString());
+        }
+    }
+}
+
 void Narrator::delay(float seconds)
 {
     while (seconds > 0) {
-        seconds -= doFrame().timeDelta;
+        EffectRunner::FrameStatus st = doFrame();
+        seconds -= st.timeDelta;
+        if (st.debugOutput && runner.isVerbose()) {
+            fprintf(stderr, "\t[delay] %f seconds left\n", seconds);
+        }
     }
 }
 
 void Narrator::delayForever()
 {
     for (;;) {
-        doFrame();
+        EffectRunner::FrameStatus st = doFrame();
+        if (st.debugOutput && runner.isVerbose()) {
+            fprintf(stderr, "\t[delay] forever\n");
+        }
     }
 }
 
-void Narrator::formatTime(double s)
+void Narrator::formatTime(FILE *f, double s)
 {
-    fprintf(stderr, "%02d:%02d:%05.2f", (int)s / (60*60), ((int)s / 60) % 60, fmod(s, 60));
+    fprintf(f, "%4d:%02d:%05.2f", (int)s / (60*60), ((int)s / 60) % 60, fmod(s, 60));
 } 
+
+double Narrator::secondsAfterDate(const rapidjson::Value& target)
+{
+    if (!target.IsString()) {
+        fprintf(stderr, "Configured date is not a JSON String object\n");
+        return 0;
+    }
+
+    time_t tNow = time(NULL);
+    struct tm tmTarget;
+    localtime_r(&tNow, &tmTarget);
+
+    char *result = strptime(target.GetString(), "%Y-%m-%dT%H:%M:%S", &tmTarget);
+    if (!result || *result) {
+        fprintf(stderr, "Cannot parse \"%s\" as a date\n", target.GetString());
+        return 0;
+    }        
+
+    time_t tTarget = mktime(&tmTarget);
+    return difftime(tNow, tTarget);
+}
 
 Narrator::NEffectRunner::NEffectRunner()
     : initialState(0)

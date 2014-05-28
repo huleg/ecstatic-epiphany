@@ -37,6 +37,14 @@
     },
 
     "narrator": {
+
+        "logFile": "narrator.log",
+
+        "opening": {
+            "date": "2014-05-31T20:45:00",
+            "nextState": 20
+        },
+
         "precursorBootstrap": [15, 20],
         "precursorCrossfade": [15, 20],
 

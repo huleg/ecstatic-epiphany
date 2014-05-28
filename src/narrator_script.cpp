@@ -36,17 +36,6 @@ int Narrator::script(int st, PRNG &prng)
     switch (st) {
 
         //////////////////////////////////////////////////////////////////////////////////////////////
-        // Defaults
-
-        default: {
-            return 0;
-        }
-
-        case 0: {
-            return 10;
-        }
-
-        //////////////////////////////////////////////////////////////////////////////////////////////
         // Special states
 
         case 1: {
@@ -69,7 +58,23 @@ int Narrator::script(int st, PRNG &prng)
         }
 
         //////////////////////////////////////////////////////////////////////////////////////////////
-        // Normal states
+        // Opening sequence
+
+        case 0: {
+            // Darkness until opening
+
+            crossfade(&darkness, 1);
+            delayUntilDate(config["opening"]["date"]);
+            return config["opening"]["nextState"].GetInt();
+        }
+
+        //////////////////////////////////////////////////////////////////////////////////////////////
+        // Cyclic states
+
+        default: {
+            endCycle();
+            return 10;
+        }
 
         case 10: {
             // Order trying to form out of the tiniest sparks; runs for an unpredictable time, fails.
@@ -162,7 +167,7 @@ int Narrator::script(int st, PRNG &prng)
             forest.reseed(prng.uniform32());
             crossfade(&forest, s.value(config["forestCrossfade"]));
             attention(s, config["forestAttention"]);
-            return 90;            
+            return 90;
         }
     }
 }
