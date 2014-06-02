@@ -11,6 +11,9 @@
         "debugVideoFourcc": "XVID",
         "debugMotionZoom": 20.0,
 
+        "motionLogFile": "flow.log",
+        "motionLogInterval": 1.0,
+
         "maxPoints": 50,
         "decimate": 3,
         "discoveryGridSpacing": 5,

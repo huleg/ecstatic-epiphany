@@ -84,6 +84,7 @@ private:
     unsigned debugFrameInterval;    // How often to output frames; 0 = never
     std::string debugVideoFile;     // Where to save encoded video debug output
     std::string debugVideoFourcc;   // FOURCC format code for debug video output
+    std::string motionLogFile;      // Filename for motion integrator logs
     float debugMotionZoom;          // Scale factor for motion bars in debug video
     unsigned maxPoints;             // Max number of corner points to track at once
     unsigned decimate;              // Divide horizontal video resolution by skipping samples
@@ -95,6 +96,7 @@ private:
     float deletePointProbability;   // Probability we'll delete a random tracking point to make room for a new one
     float motionFilterFast;         // First motion filter, higher frequency
     float motionFilterSlow;         // Second motion filter, low frequency
+    float motionLogInterval;        // Seconds between motion integrator log records
 
     struct PointInfo {
         PointInfo();
@@ -132,6 +134,9 @@ private:
 
     unsigned debugFrameCounter;
     uint32_t debugCaptureL;
+
+    FILE *motionLogStream;
+    double motionLogTimestamp;
 
     static uint32_t stringToFourCC(const std::string &f);
     void calculateFlow(Field &f);
@@ -194,7 +199,7 @@ private:
 
 
 inline CameraFlowAnalyzer::CameraFlowAnalyzer()
-    : decimate(0)
+    : decimate(0), motionLogStream(NULL)
 {
     prng.seed(29);
 
@@ -229,6 +234,8 @@ inline void CameraFlowAnalyzer::setConfig(const rapidjson::Value &config)
     motionFilterFast = config["motionFilterFast"].GetDouble();
     motionFilterSlow = config["motionFilterSlow"].GetDouble();
     debugMotionZoom = config["debugMotionZoom"].GetDouble();
+    motionLogFile = config["motionLogFile"].GetString();
+    motionLogInterval = config["motionLogInterval"].GetDouble();
 
     const rapidjson::Value& t = config["transform"];
     if (t.IsArray() && t.Size() == 9) {
@@ -274,6 +281,15 @@ inline void CameraFlowAnalyzer::clear()
                 stringToFourCC(debugVideoFourcc), fps, fields[0].frames[0].size());
         }
     #endif
+
+    if (motionLogStream) {
+        fclose(motionLogStream);
+    }
+    motionLogTimestamp = 0;
+    motionLogStream = fopen(motionLogFile.c_str(), "a");
+    if (!motionLogStream) {
+        perror("Error opening motion log file");
+    }
 }
 
 inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
@@ -314,6 +330,21 @@ inline void CameraFlowAnalyzer::process(const Camera::VideoChunk &chunk)
     if (iter.line == Camera::kLinesPerField - 1 &&
         chunk.byteCount + chunk.byteOffset == Camera::kBytesPerLine) {
         calculateFlow(f);
+
+        // Check time elapsed for motion logging
+        if (motionLogStream) {
+            struct timeval tv;
+            gettimeofday(&tv, NULL);
+            double now = tv.tv_sec + tv.tv_usec * 1e-6;
+            if (now >= motionLogTimestamp + motionLogInterval) {
+
+                fprintf(motionLogStream, "%f 0x%x 0x%x 0x%x\n",
+                    now, integratorX, integratorY, integratorL);
+                fflush(motionLogStream);
+
+                motionLogTimestamp = now;
+            }
+        }
     }
 }
 
