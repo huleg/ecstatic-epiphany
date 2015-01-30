@@ -37,6 +37,8 @@ endif
 
 ifeq ($(UNAME), Darwin)
 	CPPFLAGS += -Wno-gnu-static-float-init
+	CPPFLAGS += -I/usr/local/include
+	LDFLAGS += -L/usr/local/lib
 endif
 
 OBJS := $(CPP_FILES:.cpp=.o) 
