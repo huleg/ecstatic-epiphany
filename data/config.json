@@ -6,16 +6,16 @@
 
     "flow": {
         "debug": false,
-        "debugFrameInterval": 4,
+        "debugFrameInterval": 1,
         "debugVideoFile": "debug-output.avi",
-        "debugVideoFourcc": "XVID",
+        "debugVideoFourcc": "MJPG",
         "debugMotionZoom": 20.0,
 
         "motionLogFile": "flow.log",
         "motionLogInterval": 1.0,
 
-        "maxPoints": 50,
-        "decimate": 3,
+        "maxPoints": 20,
+        "decimate": 4,
         "discoveryGridSpacing": 5,
         "pointTrialPeriod": 2,
         "maxPointAge": 400,
