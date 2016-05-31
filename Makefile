@@ -27,8 +27,7 @@ CPPFLAGS += -MMD
 CPPFLAGS += -std=c++11
 
 ifeq ($(UNAME), Linux)
-	# Use a recent toolchain (Linux)
-	CXX := gcc-4.8
+	CXX := clang
 	CPPFLAGS += -march=native
 	LDFLAGS += -march=native
 	CPPFLAGS += -pthread
